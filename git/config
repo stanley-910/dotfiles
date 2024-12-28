@@ -1,0 +1,22 @@
+[filter "lfs"]
+	required = true
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+[user]
+	name = twinfantasyfan
+	email = wangstanley910@gmail.com
+[color]
+	ui = true
+[rerere]
+	enabled = true
+[column]
+	ui = auto
+[branch]
+	sort = -committerdate
+[core]
+	excludesfile = /Users/stanley/.gitignore_global
+[push]
+	autoSetupRemote = true
+[pull]
+	rebase = false

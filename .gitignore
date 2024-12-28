@@ -1,0 +1,15 @@
+/*
+!.gitignore
+
+!/kitty/
+!/ghostty/
+!/fastfetch/
+!/nvim/
+!/zed/
+!/zsh/
+!/git/
+!/starship.toml
+
+
+# Explicitly ignore nvim backup files
+nvim.bak/

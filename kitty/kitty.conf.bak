@@ -1,0 +1,39 @@
+# BEGIN_KITTY_THEME
+# Catppuccin-Mocha
+include current-theme.conf
+# END_KITTY_THEME
+kitty -o allow_remote_control=yes --single-instance --listen-on unix:/tmp/mykitty
+
+# BEGIN_KITTY_FONTS
+font_family      family='JetBrainsMono Nerd Font Mono' postscript_name=JetBrainsMonoNFM-Regular
+bold_font        family='JetBrainsMono Nerd Font Mono' postscript_name=JetBrainsMonoNFM-Bold
+italic_font      family='JetBrainsMono Nerd Font Mono' postscript_name=JetBrainsMonoNFM-Italic
+bold_italic_font auto
+# Make symbols render bigger
+symbol_map U+E000-U+F1AF0  JetBrainsMono Nerd Font
+# END_KITTY_FONTS
+
+# Allow option as Alt key MacOS
+macos_option_as_alt yes
+
+# Make kitty borderless
+hide_window_decorations titlebar-only
+# macos_titlebar_color background
+# run below to make ctrl+cmd + click able to drag and resize window
+# defaults write -g NSWindowShouldDragOnGesture YES
+
+window_padding_width 5 5 5 5
+
+
+# Window Navigation
+map alt+j kitten pass_keys.py bottom alt+j "^.* - nvim$"
+map alt+k kitten pass_keys.py top    alt+k "^.* - nvim$"
+map alt+h kitten pass_keys.py left   alt+h "^.* - nvim$"
+map alt+l kitten pass_keys.py right  alt+l "^.* - nvim$"
+
+
+# disable ligatures
+disable_ligatures always
+# For incremental search in terminal window
+map ctrl+/      launch --location=hsplit --allow-remote-control kitty +kitten search.py @active-kitty-window-id
+kitty --debug-font-fallback

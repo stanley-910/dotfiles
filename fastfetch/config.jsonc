@@ -1,0 +1,101 @@
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": {
+    "source": "none",
+    "type": "none",
+    "padding": {
+      "top": 0,
+      "left": 0,
+      "bottom": 0,
+    },
+  },
+  "display": {
+    "separator": " ",
+    "key": {
+      "width": 15,
+    },
+    "bar": {
+      "charElapsed": "=",
+      "charTotal": "-",
+      "width": 13,
+    },
+    "percent": {
+      "type": 2,
+    },
+    "temp": {
+      "unit": "F",
+    },
+  },
+  "modules": [
+    "break",
+    {
+      "key": " User",
+      "type": "title",
+      "format": "{user-name}",
+      "keyColor": "",
+    },
+    {
+      "key": " OS",
+      "keyColor": "",
+      "type": "os",
+    },
+    {
+      "key": " Uptime",
+      "keyColor": "",
+      "type": "uptime",
+    },
+    {
+      "key": "󰌢 Res",
+      "keyColor": "",
+      "type": "display",
+      "compactType": "original-with-refresh-rate",
+    },
+    {
+      "key": "hell",
+      "keyColor": "",
+      "type": "shell",
+    },
+    {
+      "key": " Terminal",
+      "keyColor": "",
+      "type": "terminal",
+    },
+    {
+      "key": " CPU",
+      "type": "cpu",
+      "keyColor": "",
+      "showPeCoreCount": false,
+      "temp": true,
+    },
+    {
+      "key": " RAM",
+      "type": "memory",
+      "keyColor": "",
+      "display": {
+        "bar": {
+          "charElapsed": "=",
+          "charTotal": "-",
+          "width": 13,
+        },
+        "percent": {
+          "type": 2,
+        },
+      },
+    },
+    {
+      "key": "󰖟 Local",
+      "type": "localip",
+      "format": "{ipv4} ({ifname})",
+      "keyColor": "",
+    },
+    {
+      "type": "colors",
+      "keyColor": "",
+      "key": " Colour", // For printing icon
+      "block": {
+        "range": [1, 6],
+      },
+    },
+    "break",
+  ],
+}

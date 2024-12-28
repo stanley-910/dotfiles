@@ -1,0 +1,162 @@
+# Get editor completions based on the config schema
+"$schema" = 'https://starship.rs/config-schema.json'
+
+
+# # Replace the '❯' symbol in the prompt with '➜'
+# [character] # The name of the module we are configuring is 'character'
+# success_symbol = '[➜](bold green)' # The 'success_symbol' segment is being set to '➜' with the color 'bold green'
+#
+# # Disable the package module, hiding it from the prompt completely
+# [package]
+# disabled = true
+# Nordic-darker color palette
+#2e3440	user
+#3b4252	dir
+#434c5e	git
+#4c566a	version
+#5e81ac	doc (from dracula color palette)
+#6272a4	time (from dracula color palette)
+
+# some extra symbols
+# 
+# 
+#[░▒▓](#2e3440)\
+# ---------------------------------------------------------------
+format = """
+$os\
+$username\
+$directory\
+$git_branch\
+$git_status\
+$c\
+$python\
+$elixir\
+$elm\
+$golang\
+$haskell\
+$java\
+$julia\
+$nodejs\
+$nim\
+$rust\
+$scala\
+$docker_context\
+$time\
+$cmd_duration\
+$character\
+"""
+add_newline = true
+
+[line_break]
+disabled = false
+
+[username]
+show_always = true
+# style_user = "bg:#2e3440"
+# style_root = "bg:#9A348E"
+# format = '[\[$user\]:: ]($style)'
+format = '[\[爱 \]:: ]($style)'
+disabled = false
+
+[os]
+# style = "bg:#9A348E"
+disabled = true # Disabled by default
+
+[directory]
+# style = "bg:#3b4252"
+format = "[$path ]($style)"
+truncation_length = 3 # or any larger number you prefer
+truncate_to_repo = true
+# truncation_symbol = ".../"
+# fish_style_pwd_dir_length = 1  # Changes how paths are displayed
+
+# [directory.substitutions]
+# "Downloads" = " "
+# "Music" = " "
+# "Pictures" = " "
+
+[git_branch]
+symbol = ""
+# style = "bg:#434c5e"
+format = '[[on](text) $symbol $branch ]($style)'
+
+# [git_status]
+# # style = "bg:#434c5e"
+# format = '[$all_status$ahead_behind ]($style)'
+
+[c]
+symbol = " "
+# style = "bg:#4c566a"
+format = '[$symbol($version) ]($style)'
+
+[python]
+symbol = " "
+# style = "bg:#4c566a"
+format = '[$symbol($version) ]($style)'
+
+[docker_context]
+symbol = " "
+# style = "bg:#5e81ac"
+format = '[$symbol$context ]($style) $path'
+
+[elixir]
+symbol = " "
+# style = "bg:#434c5e"
+format = '[$symbol($version) ]($style)'
+
+[elm]
+symbol = " "
+# style = "bg:#434c5e"
+format = '[$symbol($version) ]($style)'
+
+[golang]
+symbol = " "
+# style = "bg:#434c5e"
+format = '[$symbol($version) ]($style)'
+
+[haskell]
+symbol = " "
+# style = "bg:#434c5e"
+format = '[$symbol($version) ]($style)'
+
+[java]
+symbol = " "
+# style = "bg:#434c5e"
+format = '[$symbol($version) ]($style)'
+
+[julia]
+symbol = " "
+# style = "bg:#434c5e"
+format = '[$symbol($version) ]($style)'
+
+[nodejs]
+symbol = " "
+# style = "bg:#434c5e"
+format = '[$symbol($version) ]($style)'
+
+[rust]
+symbol = "󱘗 "
+# style = "bg:#434c5e"
+format = '[$symbol($version) ]($style)'
+
+[scala]
+symbol = " "
+# style = "bg:#434c5e"
+format = '[$symbol($version) ]($style)'
+
+[time]
+disabled = true
+use_12hr = true
+# time_format = "%R" # Hour:Minute Format
+# style = "bg:#6272a4"
+format = '[  $time ]($style)'
+	
+[character]
+success_symbol = '[✦](#6272a4)'
+# success_symbol = '[✦](green)'
+error_symbol = '[✦](red)'
+# style = "bg:#6272a4"
+
+[cmd_duration]
+min_time = 500
+format = '[$duration ](#6272a4)'
