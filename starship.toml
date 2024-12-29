@@ -43,6 +43,7 @@ $scala\
 $docker_context\
 $time\
 $cmd_duration\
+\n
 $character\
 """
 add_newline = true
@@ -55,7 +56,7 @@ show_always = true
 # style_user = "bg:#2e3440"
 # style_root = "bg:#9A348E"
 # format = '[\[$user\]:: ]($style)'
-format = '[\[爱 \]:: ]($style)'
+format = '[\[爱 \]: ]($style)'
 disabled = false
 
 [os]
@@ -87,12 +88,12 @@ format = '[[on](text) $symbol $branch ]($style)'
 [c]
 symbol = " "
 # style = "bg:#4c566a"
-format = '[$symbol($version) ]($style)'
+format = '[[via](text) $symbol($version) ]($style)'
 
 [python]
 symbol = " "
 # style = "bg:#4c566a"
-format = '[$symbol($version) ]($style)'
+format = '[[via](text) $symbol($version) ]($style)'
 
 [docker_context]
 symbol = " "
@@ -102,59 +103,61 @@ format = '[$symbol$context ]($style) $path'
 [elixir]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[$symbol($version) ]($style)'
+format = '[[via](text) $symbol($version) ]($style)'
 
 [elm]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[$symbol($version) ]($style)'
+format = '[[via](text) $symbol($version) ]($style)'
 
 [golang]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[$symbol($version) ]($style)'
+format = '[[via](text) $symbol($version) ]($style)'
 
 [haskell]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[$symbol($version) ]($style)'
+format = '[[via](text) $symbol($version) ]($style)'
 
 [java]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[$symbol($version) ]($style)'
+format = '[[via](text) $symbol($version) ]($style)'
 
 [julia]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[$symbol($version) ]($style)'
+format = '[[via](text) $symbol($version) ]($style)'
 
 [nodejs]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[$symbol($version) ]($style)'
+format = '[[via](text) $symbol($version) ]($style)'
 
 [rust]
 symbol = "󱘗 "
 # style = "bg:#434c5e"
-format = '[$symbol($version) ]($style)'
+format = '[[via](text) $symbol($version) ]($style)'
 
 [scala]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[$symbol($version) ]($style)'
+format = '[[via](text) $symbol($version) ]($style)'
 
 [time]
 disabled = true
 use_12hr = true
 # time_format = "%R" # Hour:Minute Format
 # style = "bg:#6272a4"
-format = '[  $time ]($style)'
+format = '[ $time ]($style)'
 	
 [character]
-success_symbol = '[✦](#6272a4)'
 # success_symbol = '[✦](green)'
-error_symbol = '[✦](red)'
+success_symbol = '[ ✦](#6272a4)'
+error_symbol = '[ ✦](red)'
+# success_symbol = '[ λ](#6272a4)'
+# error_symbol = '[ λ](red)'
 # style = "bg:#6272a4"
 
 [cmd_duration]
