@@ -9,6 +9,7 @@
 !/zsh/
 !/git/
 !/starship.toml
+!/idea/
 
 
 # Explicitly ignore nvim backup files
