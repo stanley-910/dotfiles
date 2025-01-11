@@ -1,1 +1,149 @@
-../../.ideavimrc
+silent !stty -ixon > /dev/null 2>/dev/null
+set clipboard+=unnamed
+
+set rnu
+
+"" -- Suggested options --
+" Show a few lines of context around the cursor. Note that this makes the
+" text scroll if you mouse-click near the start or end of the window.
+set scrolloff=5
+
+" Do incremental searching.
+set incsearch
+
+" Don't use Ex mode, use Q for formatting.
+map Q gq
+imap kj <Esc>l
+nmap ; :
+set timeoutlen=1000
+
+" Basic movement enhancements
+nnoremap H ^
+vnoremap H ^
+nnoremap L $
+vnoremap L $
+nnoremap <M-S-H> H
+vnoremap <M-S-H> H
+nnoremap <M-S-L> L
+vnoremap <M-S-L> L
+
+inoremap <M-K> <Esc>k
+inoremap <M-J> <Esc>j
+
+inoremap <M-S-O> <C-o>O
+inoremap <M-O> <C-o>o
+inoremap <C-h> <Left>
+inoremap <C-j> <Down>
+inoremap <C-k> <Up>
+inoremap <C-l> <Right>
+
+" Jump navigation
+nnoremap <M-q> <C-o>
+nnoremap <M-d> <C-i>
+
+
+" Insert mode movement
+inoremap <C-a> <C-o>I
+inoremap <C-e> <C-o>A
+inoremap <C-b> <C-a>
+
+inoremap <M-S-A> <C-o>A
+inoremap <M-S-I> <C-o>I
+
+
+" Visual mode word selection
+nnoremap <M-w> viw
+vnoremap <M-w> w
+inoremap <M-w> <Esc>viw
+nnoremap <M-b> evb
+vnoremap <M-b> b
+inoremap <M-b> <Esc>evb
+nnoremap <M-e> viw
+vnoremap <M-e> e
+
+" Command mode history
+cnoremap <M-e> <Up>
+cnoremap <M-f> <Down>
+
+" Basic editing
+nnoremap <CR> ciw
+inoremap <M-d> <space><Esc>ce
+
+nnoremap <C-u> <C-u>zz
+nnoremap <C-d> <C-d>zz
+nnoremap n nzzzv
+nnoremap N Nzzzv
+nnoremap zl 15zl
+nnoremap zh 15zh
+" For local replace
+nnoremap gr gd[{V%::s/<C-R>///gc<left><left><left>
+
+" For global replace
+nnoremap gR gD:%s/<C-R>///gc<left><left><left>
+
+vnoremap J :m '>+1<CR>gv=gv
+vnoremap K :m '<-2<CR>gv=gv
+
+
+nnoremap <C-q> <C-o>
+nnoremap <C-e> <C-i>
+
+
+" Inner text objects
+nnoremap ri" vi"P
+nnoremap ri' vi'P
+nnoremap ri` vi`P
+
+" Brackets
+nnoremap ri( vi(P
+nnoremap ri{ vi{P
+nnoremap ri[ vi[P
+nnoremap ri< vi<P
+
+" Words
+nnoremap riw viwP
+nnoremap riW viWP
+
+" Paragraphs and blocks
+nnoremap rip vipP
+nnoremap rib vibP
+
+" Around text objects
+nnoremap ra" va"P
+nnoremap ra' va'P
+nnoremap ra` va`P
+
+" Around brackets
+nnoremap ra( va(P
+nnoremap ra{ va{P
+nnoremap ra[ va[P
+nnoremap ra< va<P
+
+" Around words
+nnoremap raw vawP
+nnoremap raW vaWP
+
+" Around paragraphs and blocks
+nnoremap rap vapP
+nnoremap rab vabP
+
+
+
+" --- Enable IdeaVim plugins https://jb.gg/ideavim-plugins
+
+" Highlight copied text
+Plug 'machakann/vim-highlightedyank'
+" Commentary plugin
+Plug 'tpope/vim-commentary'
+
+Plug 'tpope/vim-surround'
+
+"" -- Map IDE actions to IdeaVim -- https://jb.gg/abva4t
+"" Map \r to the Reformat Code action
+"map \r <Action>(ReformatCode)
+
+"" Map <leader>d to start debug
+"map <leader>d <Action>(Debug)
+
+"" Map \b to toggle the breakpoint on the current line
+"map \b <Action>(ToggleLineBreakpoint)
