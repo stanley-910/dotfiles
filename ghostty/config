@@ -1,3 +1,4 @@
+macos-titlebar-style = tabs
 macos-titlebar-proxy-icon = hidden
 theme = vesper
 window-padding-x = 6
@@ -5,5 +6,9 @@ window-padding-balance = true
 font-feature = -liga
 font-feature = -calt
 font-feature = -dlig
-
 macos-option-as-alt = true
+background-opacity = 0.9
+background-blur = true
+
+
+
