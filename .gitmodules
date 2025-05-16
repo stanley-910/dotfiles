@@ -1,5 +1,4 @@
 [submodule "nvim"]
 	path = nvim
 	url = https://github.com/stanley-utf8/.nvim
-[submodule "./nvim"]
 	branch = main
