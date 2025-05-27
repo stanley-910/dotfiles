@@ -11,6 +11,7 @@
 !/starship.toml
 !/idea/
 !/jetbrains/
+!/cursor/
 
 
 # Explicitly ignore nvim backup files
