@@ -1,14 +1,36 @@
+# =============================================================================
+#                              ZSH Configuration
+# =============================================================================
+# Dependencies Required:
+# 1. Homebrew packages:
+#    - brew install starship node@20 python autojump thefuck lsd fastfetch fzf
+#
+# 2. ZSH Plugins (clone these into ~/.zsh/):
+#    - git clone https://github.com/Aloxaf/fzf-tab ~/.zsh/fzf-tab
+#    - git clone https://github.com/zsh-users/zsh-autosuggestions ~/.zsh/zsh-autosuggestions
+#    - git clone https://github.com/zsh-users/zsh-syntax-highlighting ~/.zsh/zsh-syntax-highlighting
+#    - git clone https://github.com/marlonrichert/zsh-autocomplete ~/.zsh/zsh-autocomplete
+
+# =============================================================================
+#                           Environment Setup
+# =============================================================================
 eval "$(/opt/homebrew/bin/brew shellenv)"
 [ -f /opt/homebrew/etc/profile.d/autojump.sh ] && . /opt/homebrew/etc/profile.d/autojump.sh
 setopt globdots
 # Basic auto/tab complete:
 autoload -U compinit 
 
+# =============================================================================
+#                           ZSH Core Settings
+# =============================================================================
 stty -ixon
 # vi mode
 bindkey -v
 export KEYTIMEOUT=10
-#
+
+# =============================================================================
+#                           Word Manipulation
+# =============================================================================
 # Backward delete word
 my-backward-kill-word () {
     local WORDCHARS='*?_.[]~=&;!#$%^(){}<>:,"'"'"
@@ -29,6 +51,9 @@ zle -N my-forward-kill-word
 bindkey '^x' my-forward-kill-word
 bindkey '\ed' my-forward-kill-word
 
+# =============================================================================
+#                           Key Bindings
+# =============================================================================
 bindkey '^Z' undo
 
 # Paste from kill ring
@@ -51,7 +76,9 @@ function vi-yank-xclip {
 zle -N vi-yank-xclip
 bindkey -M vicmd 'y' vi-yank-xclip
 
-#
+# =============================================================================
+#                           Vi Mode Configuration
+# =============================================================================
 # Change cursor shape for different vi modes.
 function zle-keymap-select {
   if [[ ${KEYMAP} == vicmd ]] ||
@@ -75,9 +102,9 @@ preexec() { echo -ne '\e[5 q' ;} # Use beam shape cursor for each new prompt.
 autoload edit-command-line; zle -N edit-command-line
 bindkey '^v' edit-command-line
 
-#
-#
-
+# =============================================================================
+#                           Environment Variables
+# =============================================================================
 eval "$(starship init zsh)"
 alias vim="nvim"
 
@@ -85,6 +112,10 @@ export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
 export LDFLAGS="-L/opt/homebrew/opt/node@20/lib"
 export CPPFLAGS="-I/opt/homebrew/opt/node@20/include"
 export PATH="/usr/local/opt/python/libexec/bin:$PATH"
+
+# =============================================================================
+#                           Plugin Configuration
+# =============================================================================
 source ~/.zsh/fzf-tab/fzf-tab.plugin.zsh
 source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
 # source ~/.zsh/zsh-autocomplete/zsh-autocomplete.plugin.zsh
@@ -93,17 +124,12 @@ source <(fzf --zsh)
 
 # take only consecutive ctrl + d for exiting shell
 set -o ignoreeof
-#
-# # autocomplete plugin
+
+# autocomplete plugin
 # bindkey              '^I'         menu-complete
 # bindkey "$terminfo[kcbt]" reverse-menu-complete
-#
-#
-#
+
 # bindkey -M menuselect '^M' .accept-line
-#
-
-
 
 # zsh-autosuggestions plugin maps
 bindkey '^S' autosuggest-accept  
@@ -126,7 +152,11 @@ export FZF_DEFAULT_OPTS="
 --bind 'ctrl-v:execute(code {+})'
 --bind ctrl-d:down,ctrl-q:up
 "
-# Comletion conf
+
+# =============================================================================
+#                           Completion System
+# =============================================================================
+# Completion conf
 # disable sort when completing `git checkout`
 zstyle ':completion:*:git-checkout:*' sort false
 # set descriptions format to enable group support
@@ -149,6 +179,10 @@ zstyle ':completion:*' matcher-list \
 zmodload zsh/complist
 compinit
 _comp_options+=(globdots)		# Include hidden files.
+
+# =============================================================================
+#                           History Configuration
+# =============================================================================
 # history setup
 setopt SHARE_HISTORY
 HISTFILE=$HOME/.zhistory
@@ -156,7 +190,9 @@ SAVEHIST=1000
 HISTSIZE=999
 setopt HIST_EXPIRE_DUPS_FIRST
 
-
+# =============================================================================
+#                           Menu Selection
+# =============================================================================
 # bindkey -M menuselect 'h' vi-backward-char
 # bindkey -M menuselect 'k' vi-up-line-or-history
 # bindkey -M menuselect 'l' vi-forward-char
@@ -175,6 +211,9 @@ zle -N down-line-or-beginning-search
 bindkey '^e' up-line-or-beginning-search
 bindkey '^f' down-line-or-beginning-search
 
+# =============================================================================
+#                           Aliases & Functions
+# =============================================================================
 # aliases
 
 alias ls='lsd -la'
@@ -200,16 +239,15 @@ gasp() {
   git add -A && git commit -m "$*" && git push
 }
 
-# Tilda aliases
+# Directory navigation aliases
 alias cc='cd ~/Developer/'
 alias c.="cd ~/.config/"
 alias cs="cd ~/School/"
 
 # Render image alias
-
 alias icat='kitten icat'
 
-
+# Enhanced cd function with directory stack
 function cd() {
     if [ $# -eq 0 ]; then
         # make "popd" without args act like "cd ~"
@@ -227,6 +265,9 @@ alias -- -=popd
 alias v="nvim"
 alias fastfetch='fastfetch --color-keys "38;5;230" --color-output "38;5;230"'
 
+# =============================================================================
+#                           External Tools Configuration
+# =============================================================================
 # BEGIN opam configuration
 # This is useful if you're using opam as it adds:
 #   - the correct directories to the PATH

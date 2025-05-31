@@ -12,6 +12,7 @@
 !/jetbrains/
 !/cursor/
 !/karabiner/
+!/scripts/
 
 
 # Explicitly ignore nvim backup files
