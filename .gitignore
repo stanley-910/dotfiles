@@ -5,13 +5,13 @@
 !/ghostty/
 !/fastfetch/
 !/nvim/
-!/zed/
 !/zsh/
 !/git/
 !/starship.toml
 !/idea/
 !/jetbrains/
 !/cursor/
+!/karabiner/
 
 
 # Explicitly ignore nvim backup files
