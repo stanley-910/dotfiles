@@ -288,7 +288,7 @@ eval "$(rbenv init - --no-rehash zsh)"
 eval $(thefuck --alias)
 
 # Less filter for file previews
-export LESSOPEN='|~/.lessfilter %s'
+export LESSOPEN='|~/.config/scripts/.lessfilter %s'
 
 # ==============================================================================
 # STARTUP COMMANDS
