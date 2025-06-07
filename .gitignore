@@ -12,6 +12,7 @@
 !/idea/
 !/jetbrains/
 !/cursor/
+!/tmux/
 
 
 # Explicitly ignore nvim backup files

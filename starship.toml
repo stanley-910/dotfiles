@@ -23,30 +23,31 @@
 #[░▒▓](#2e3440)\
 # ---------------------------------------------------------------
 format = """
-$os\
-$username\
+$character\
 $directory\
 $git_branch\
 $git_status\
-$c\
-$python\
-$elixir\
-$elm\
-$golang\
-$haskell\
-$java\
-$julia\
-$nodejs\
-$nim\
-$rust\
-$scala\
-$docker_context\
-$time\
-$cmd_duration\
-\n
-$character\
 """
-add_newline = true
+
+# $username\
+# $cmd_duration\
+# $time\
+# $c\
+# $python\
+# $elixir\
+# $elm\
+# $golang\
+# $haskell\
+# $java\
+# $julia\
+# $nodejs\
+# $nim\
+# $rust\
+# $scala\
+# $docker_context\
+
+ 
+add_newline = true # add new line between prompts
 
 [line_break]
 disabled = false
@@ -56,8 +57,9 @@ show_always = true
 # style_user = "bg:#2e3440"
 # style_root = "bg:#9A348E"
 # format = '[\[$user\]:: ]($style)'
-format = '[\[爱 \]: ]($style)'
+format = '[\[s\]: ]($style)'
 disabled = false
+# disabled = true
 
 [os]
 # style = "bg:#9A348E"
@@ -79,7 +81,8 @@ truncate_to_repo = true
 [git_branch]
 symbol = ""
 # style = "bg:#434c5e"
-format = '[[on](text) $symbol $branch ]($style)'
+format = '[$symbol $branch ]($style)'
+
 
 # [git_status]
 # # style = "bg:#434c5e"
@@ -88,62 +91,75 @@ format = '[[on](text) $symbol $branch ]($style)'
 [c]
 symbol = " "
 # style = "bg:#4c566a"
-format = '[[via](text) $symbol($version) ]($style)'
+# format = '[[via](text) $symbol($version) ]($style)'
+format = '[$symbol]($style)'
 
 [python]
 symbol = " "
 # style = "bg:#4c566a"
-format = '[[via](text) $symbol($version) ]($style)'
+# format = '[[via](text) $symbol($version) ]($style)'
+format = '[$symbol]($style)'
+
 
 [docker_context]
 symbol = " "
 # style = "bg:#5e81ac"
-format = '[$symbol$context ]($style) $path'
+# format = '[[via](text) $symbol($version) ]($style)'
+format = '[$symbol]($style)'
 
 [elixir]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[[via](text) $symbol($version) ]($style)'
+# format = '[[via](text) $symbol($version) ]($style)'
+format = '[$symbol]($style)'
 
 [elm]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[[via](text) $symbol($version) ]($style)'
+# format = '[[via](text) $symbol($version) ]($style)'
+format = '[$symbol]($style)'
 
 [golang]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[[via](text) $symbol($version) ]($style)'
+# format = '[[via](text) $symbol($version) ]($style)'
+format = '[$symbol]($style)'
 
 [haskell]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[[via](text) $symbol($version) ]($style)'
+# format = '[[via](text) $symbol($version) ]($style)'
+format = '[$symbol]($style)'
 
 [java]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[[via](text) $symbol($version) ]($style)'
+# format = '[[via](text) $symbol($version) ]($style)'
+format = '[$symbol]($style)'
 
 [julia]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[[via](text) $symbol($version) ]($style)'
+# format = '[[via](text) $symbol($version) ]($style)'
+format = '[$symbol]($style)'
 
 [nodejs]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[[via](text) $symbol($version) ]($style)'
+# format = '[[via](text) $symbol($version) ]($style)'
+format = '[$symbol]($style)'
 
 [rust]
 symbol = "󱘗 "
 # style = "bg:#434c5e"
-format = '[[via](text) $symbol($version) ]($style)'
+# format = '[[via](text) $symbol($version) ]($style)'
+format = '[$symbol]($style)'
 
 [scala]
 symbol = " "
 # style = "bg:#434c5e"
-format = '[[via](text) $symbol($version) ]($style)'
+# format = '[[via](text) $symbol($version) ]($style)'
+format = '[$symbol]($style)'
 
 [time]
 disabled = true
@@ -163,3 +179,4 @@ error_symbol = '[ ✦](red)'
 [cmd_duration]
 min_time = 500
 format = '[$duration ](#6272a4)'
+disabled = true
