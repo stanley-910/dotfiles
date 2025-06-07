@@ -1,4 +1,60 @@
 # ==============================================================================
+# DEPENDENCIES
+# ==============================================================================
+
+# Terminal Multiplexer
+# brew install tmux
+# mkdir -p ~/.config/tmux
+# git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+
+# Shell Enhancements
+# brew install zsh-autosuggestions zsh-syntax-highlighting
+# git clone https://github.com/zsh-users/zsh-autosuggestions ~/.zsh/zsh-autosuggestions
+# git clone https://github.com/zsh-users/zsh-syntax-highlighting ~/.zsh/zsh-syntax-highlighting
+
+# Fuzzy Finder and Extensions
+# brew install fzf
+# git clone https://github.com/Aloxaf/fzf-tab ~/.zsh/fzf-tab
+
+# Modern CLI Tools
+# brew install eza    # 0.21.4
+# brew install bat    # 0.25.0_1
+# brew install lsd    # 1.1.5
+
+# Classics 
+# brew install tree
+# brew install rg     # 14.1.1
+
+
+# Development Tools
+# brew install starship         # Cross-shell prompt 
+# brew install thefuck         # Command correction
+# brew install fastfetch       # System info display
+
+# Node.js Setup (Optional)
+# brew install node@20
+# npm install -g npm@latest
+# npm install -g yarn
+
+# Python Setup (Optional)
+# brew install python@3.11
+# pip3 install --user pipx
+# pipx ensurepath
+
+# Neovim 
+# brew install neovim
+
+# Additional Language Support (Optional)
+# brew install rust
+# brew install go
+# brew install opam      # OCaml package manager
+# brew install rbenv     # Ruby version manager
+
+# After Installation Steps:
+# 1. Run 'compaudit' and fix any permissions issues
+# 2. Install tmux plugins: Press prefix + I (capital i) in tmux
+# 3. Reload shell: 'source ~/.zshrc'
+# ==============================================================================
 # ENVIRONMENT SETUP
 # ==============================================================================
 
@@ -277,13 +333,13 @@ eval "$(starship init zsh)"
 [[ ! -r '/Users/stanley/.opam/opam-init/init.zsh' ]] || source '/Users/stanley/.opam/opam-init/init.zsh' > /dev/null 2> /dev/null
 
 # Node Version Manager (nvm)
-export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
-[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
-
-# Ruby version manager (rbenv)
-eval "$(rbenv init - --no-rehash zsh)"
-
+# export NVM_DIR="$HOME/.nvm"
+# [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+# [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
+#
+# # Ruby version manager (rbenv)
+# eval "$(rbenv init - --no-rehash zsh)"
+#
 # TheFuck command correction
 eval $(thefuck --alias)
 
