@@ -1,11 +1,11 @@
 /*
 !.gitignore
+!README.md
 
 !/kitty/
 !/ghostty/
 !/fastfetch/
 !/nvim/
-!/zed/
 !/zsh/
 !/git/
 !/starship.toml
@@ -13,6 +13,8 @@
 !/jetbrains/
 !/cursor/
 !/tmux/
+!/karabiner/
+!/scripts/
 
 
 # Explicitly ignore nvim backup files
