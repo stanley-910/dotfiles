@@ -80,6 +80,10 @@ bindkey '^w' my-backward-kill-word    # Ctrl+W: Delete word backward
 bindkey '^x' my-forward-kill-word     # Ctrl+X: Delete word forward
 bindkey '\ed' my-forward-kill-word    # Alt+D: Delete word forward
 
+# line nav
+bindkey "^a" beginning-of-line
+bindkey "^e" end-of-line
+
 # Undo and clipboard
 bindkey '^Z' undo                     # Ctrl+Z: Undo last action
 bindkey '^y' yank                     # Ctrl+Y: Paste from kill ring
