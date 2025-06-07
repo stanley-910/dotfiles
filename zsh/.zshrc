@@ -1,141 +1,179 @@
-# =============================================================================
-#                              ZSH Configuration
-# =============================================================================
-# Dependencies Required:
-# 1. Homebrew packages:
-#    - brew install starship node@20 python autojump thefuck lsd fastfetch fzf
-#
-# 2. ZSH Plugins (clone these into ~/.zsh/):
-#    - git clone https://github.com/Aloxaf/fzf-tab ~/.zsh/fzf-tab
-#    - git clone https://github.com/zsh-users/zsh-autosuggestions ~/.zsh/zsh-autosuggestions
-#    - git clone https://github.com/zsh-users/zsh-syntax-highlighting ~/.zsh/zsh-syntax-highlighting
-#    - git clone https://github.com/marlonrichert/zsh-autocomplete ~/.zsh/zsh-autocomplete
+# ==============================================================================
+# ENVIRONMENT SETUP
+# ==============================================================================
 
-# =============================================================================
-#                           Environment Setup
-# =============================================================================
+# Initialize Homebrew environment (macOS package manager)
 eval "$(/opt/homebrew/bin/brew shellenv)"
-[ -f /opt/homebrew/etc/profile.d/autojump.sh ] && . /opt/homebrew/etc/profile.d/autojump.sh
-setopt globdots
-# Basic auto/tab complete:
-autoload -U compinit 
 
-# =============================================================================
-#                           ZSH Core Settings
-# =============================================================================
+# Enable autojump plugin for directory navigation
+[ -f /opt/homebrew/etc/profile.d/autojump.sh ] && . /opt/homebrew/etc/profile.d/autojump.sh
+
+# Show hidden files in glob patterns (files starting with .)
+setopt globdots
+
+# Disable XON/XOFF flow control (allows Ctrl+S to work in other applications)
 stty -ixon
-# vi mode
+
+# ==============================================================================
+# COMPLETION SYSTEM
+# ==============================================================================
+
+# Load and initialize the completion system
+autoload -U compinit
+compinit
+
+# Include hidden files in completions
+_comp_options+=(globdots)
+
+# Completion styling and behavior
+zstyle ':completion:*' menu select                    # Use menu selection
+zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS} # Enable filename colorizing
+zstyle ':completion:*:descriptions' format '[%d]'     # Set descriptions format
+zstyle ':completion:*' menu no                        # Disable default menu (for fzf-tab)
+zstyle ':completion:*:git-checkout:*' sort false      # Disable sort for git checkout
+
+# Case-insensitive completion with smart matching
+zstyle ':completion:*' matcher-list \
+    'm:{[:lower:]}={[:upper:]}' \
+    '+r:|[._-]=* r:|=*' \
+    '+l:|=*'
+
+# Load completion list module
+zmodload zsh/complist
+
+# ==============================================================================
+# VI MODE CONFIGURATION
+# ==============================================================================
+
+# Enable vi mode
 bindkey -v
 export KEYTIMEOUT=10
 
-# =============================================================================
-#                           Word Manipulation
-# =============================================================================
-# Backward delete word
+# Custom word deletion functions
 my-backward-kill-word () {
     local WORDCHARS='*?_.[]~=&;!#$%^(){}<>:,"'"'"
     zle -f kill
     zle backward-kill-word
 }
 zle -N my-backward-kill-word
-bindkey '^w' my-backward-kill-word
 
-# Forward delete word
 my-forward-kill-word () {
     local WORDCHARS='*?_.[]~=&;!#$%^(){}<>:,"'"'"
     zle -f kill
     zle kill-word
 }
-
 zle -N my-forward-kill-word
-bindkey '^x' my-forward-kill-word
-bindkey '\ed' my-forward-kill-word
 
-# =============================================================================
-#                           Key Bindings
-# =============================================================================
-bindkey '^Z' undo
-
-# Paste from kill ring
-bindkey '^y' yank
-
-# Switch to vi command mode
-bindkey -M viins 'kj' vi-cmd-mode
-# Use vim keys in tab complete menu:
-
-bindkey '^?' backward-delete-char
-bindkey -M viins '^C' vi-cmd-mode
-
-bindkey -M vicmd 'p' paste-from-clipboard
-# Yank to the system clipboard
+# Custom yank function that copies to system clipboard
 function vi-yank-xclip {
     zle vi-yank
-   echo "$CUTBUFFER" | pbcopy -i
+    echo "$CUTBUFFER" | pbcopy -i
 }
-
 zle -N vi-yank-xclip
-bindkey -M vicmd 'y' vi-yank-xclip
 
-# =============================================================================
-#                           Vi Mode Configuration
-# =============================================================================
-# Change cursor shape for different vi modes.
+# ==============================================================================
+# KEY BINDINGS
+# ==============================================================================
+
+# Word manipulation
+bindkey '^w' my-backward-kill-word    # Ctrl+W: Delete word backward
+bindkey '^x' my-forward-kill-word     # Ctrl+X: Delete word forward
+bindkey '\ed' my-forward-kill-word    # Alt+D: Delete word forward
+
+# Undo and clipboard
+bindkey '^Z' undo                     # Ctrl+Z: Undo last action
+bindkey '^y' yank                     # Ctrl+Y: Paste from kill ring
+
+# Vi mode specific bindings
+bindkey -M viins 'kj' vi-cmd-mode     # kj: Enter command mode from insert
+bindkey -M vicmd 'y' vi-yank-xclip    # y: Yank to system clipboard
+bindkey -M vicmd 'p' paste-from-clipboard # p: Paste from clipboard
+bindkey -M viins '^C' vi-cmd-mode     # Ctrl+C: Enter command mode
+bindkey '^?' backward-delete-char     # Backspace: Delete character backward
+bindkey '^v' edit-command-line        # Ctrl+V: Edit command in $EDITOR
+
+# Menu selection navigation
+bindkey -M menuselect '^[[Z' reverse-menu-complete  # Shift+Tab: Previous item
+
+# History navigation with partial matching
+autoload up-line-or-beginning-search
+autoload down-line-or-beginning-search
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+bindkey '^k' up-line-or-beginning-search
+bindkey '^j' down-line-or-beginning-search
+
+# ==============================================================================
+# CURSOR CONFIGURATION
+# ==============================================================================
+
+# Change cursor shape based on vi mode
 function zle-keymap-select {
-  if [[ ${KEYMAP} == vicmd ]] ||
-     [[ $1 = 'block' ]]; then
-    echo -ne '\e[1 q'
-  elif [[ ${KEYMAP} == main ]] ||
-       [[ ${KEYMAP} == viins ]] ||
-       [[ ${KEYMAP} = '' ]] ||
-       [[ $1 = 'beam' ]]; then
-    echo -ne '\e[5 q'
+  if [[ ${KEYMAP} == vicmd ]] || [[ $1 = 'block' ]]; then
+    echo -ne '\e[1 q'  # Block cursor for command mode
+  elif [[ ${KEYMAP} == main ]] || [[ ${KEYMAP} == viins ]] || 
+       [[ ${KEYMAP} = '' ]] || [[ $1 = 'beam' ]]; then
+    echo -ne '\e[5 q'  # Beam cursor for insert mode
   fi
 }
 zle -N zle-keymap-select
+
+# Initialize line editor in insert mode with beam cursor
 zle-line-init() {
-    zle -K viins # initiate `vi insert` as keymap (can be removed if `bindkey -V` has been set elsewhere)
+    zle -K viins
     echo -ne "\e[5 q"
 }
 zle -N zle-line-init
-echo -ne '\e[5 q' # Use beam shape cursor on startup.
-preexec() { echo -ne '\e[5 q' ;} # Use beam shape cursor for each new prompt.
+
+# Set beam cursor on startup and for each new prompt
+echo -ne '\e[5 q'
+preexec() { echo -ne '\e[5 q' ;}
+
+# Load edit-command-line function
 autoload edit-command-line; zle -N edit-command-line
-bindkey '^v' edit-command-line
 
-# =============================================================================
-#                           Environment Variables
-# =============================================================================
-eval "$(starship init zsh)"
-alias vim="nvim"
+# ==============================================================================
+# HISTORY CONFIGURATION
+# ==============================================================================
 
-export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
-export LDFLAGS="-L/opt/homebrew/opt/node@20/lib"
-export CPPFLAGS="-I/opt/homebrew/opt/node@20/include"
-export PATH="/usr/local/opt/python/libexec/bin:$PATH"
+# History settings
+setopt SHARE_HISTORY              # Share history between sessions
+setopt HIST_EXPIRE_DUPS_FIRST     # Expire duplicate entries first
+HISTFILE=$HOME/.zhistory          # History file location
+SAVEHIST=1000                     # Number of entries to save
+HISTSIZE=999                      # Number of entries to keep in memory
 
-# =============================================================================
-#                           Plugin Configuration
-# =============================================================================
+# Require multiple Ctrl+D presses to exit shell
+set -o ignoreeof
+
+# ==============================================================================
+# PLUGIN CONFIGURATION
+# ==============================================================================
+
+# fzf-tab: Enhanced tab completion with fzf
 source ~/.zsh/fzf-tab/fzf-tab.plugin.zsh
+
+# fzf-tab configuration
+zstyle ':fzf-tab:*' fzf-flags '--bind=alt-s:toggle+down'  # Alt+S: Multi-select
+zstyle ':fzf-tab:*' switch-group '<' '>'                  # Switch groups with < >
+zstyle ':fzf-tab:*' fzf-bindings 'ctrl-s:accept'         # Ctrl+S: Accept
+zstyle ':fzf-tab:*' fzf-bindings 'space:accept'          # Space: Accept
+zstyle ':fzf-tab:*' accept-line enter                    # Enter: Accept & Execute
+
+# Preview configuration for different commands
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -T --icons --no-permissions --no-user --no-time --level=2 --color=always $realpath' # Display two directories deep
+zstyle ':fzf-tab:complete:(vim|cat|less|nano|cp|mv):*' fzf-preview 'bat --style=plain --color=always --line-range :50 $realpath 2>/dev/null || cat $realpath 2>/dev/null || eza -1 --icons --no-permissions --no-user --no-time --no-filesize --color=always $realpath'
+zstyle ':fzf-tab:complete:*:*' fzf-preview 'less ${(Q)realpath}'
+
+# Other plugins
 source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
-# source ~/.zsh/zsh-autocomplete/zsh-autocomplete.plugin.zsh
 source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 source <(fzf --zsh)
 
-# take only consecutive ctrl + d for exiting shell
-set -o ignoreeof
+# zsh-autosuggestions configuration
+bindkey '^S' autosuggest-accept  # Ctrl+S: Accept suggestion
 
-# autocomplete plugin
-# bindkey              '^I'         menu-complete
-# bindkey "$terminfo[kcbt]" reverse-menu-complete
-
-# bindkey -M menuselect '^M' .accept-line
-
-# zsh-autosuggestions plugin maps
-bindkey '^S' autosuggest-accept  
-
-# Multiselect for fzftab
-zstyle ':fzf-tab:*' fzf-flags '--bind=alt-s:toggle+down'
+# FZF Configuration
 export FZF_DEFAULT_COMMAND="find . -maxdepth 1"
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_DEFAULT_OPTS="
@@ -153,75 +191,33 @@ export FZF_DEFAULT_OPTS="
 --bind ctrl-d:down,ctrl-q:up
 "
 
-# =============================================================================
-#                           Completion System
-# =============================================================================
-# Completion conf
-# disable sort when completing `git checkout`
-zstyle ':completion:*:git-checkout:*' sort false
-# set descriptions format to enable group support
-# NOTE: don't use escape sequences here, fzf-tab will ignore them
-zstyle ':completion:*:descriptions' format '[%d]'
-# set list-colors to enable filename colorizing
-zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
-# force zsh not to show completion menu, which allows fzf-tab to capture the unambiguous prefix
-zstyle ':completion:*' menu no
-# # preview directory's content with eza when completing cd
-# zstyle ':fzf-tab:*' fzf-flags $FZF_PREVIEW_OPTS
-# switch group using `<` and `>`
-zstyle ':fzf-tab:*' switch-group '<' '>'
-zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
-zstyle ':completion:*' menu select
-zstyle ':completion:*' matcher-list \
-    'm:{[:lower:]}={[:upper:]}' \
-    '+r:|[._-]=* r:|=*' \
-    '+l:|=*'
-zmodload zsh/complist
-compinit
-_comp_options+=(globdots)		# Include hidden files.
+# ==============================================================================
+# PATH CONFIGURATION
+# ==============================================================================
 
-# =============================================================================
-#                           History Configuration
-# =============================================================================
-# history setup
-setopt SHARE_HISTORY
-HISTFILE=$HOME/.zhistory
-SAVEHIST=1000
-HISTSIZE=999
-setopt HIST_EXPIRE_DUPS_FIRST
+# Node.js (Homebrew installation)
+export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
 
-# =============================================================================
-#                           Menu Selection
-# =============================================================================
-# bindkey -M menuselect 'h' vi-backward-char
-# bindkey -M menuselect 'k' vi-up-line-or-history
-# bindkey -M menuselect 'l' vi-forward-char
-# bindkey -M menuselect 'j' vi-down-line-or-history
-# Add Shift+Tab to go to previous item in completion menu
-bindkey -M menuselect '^[[Z' reverse-menu-complete
+# Python (local installation)
+export PATH="/usr/local/opt/python/libexec/bin:$PATH"
 
+# User local binaries (pipx installations)
+export PATH="$PATH:/Users/stanley/.local/bin"
 
-autoload up-line-or-beginning-search
-autoload down-line-or-beginning-search
-zle -N up-line-or-beginning-search
-zle -N down-line-or-beginning-search
+# ==============================================================================
+# ALIASES
+# ==============================================================================
 
+# File and directory operations
+alias ls='lsd -la'        # List with icons and details
+alias la='lsd -a'         # List all files with icons  
+alias ll='lsd -al'        # List all with details and icons
+alias v="nvim"            # Quick nvim access
+alias vim="nvim"          # Use neovim instead of vim
+alias t="tmux"            # Quick tmux access
+alias icat='kitten icat'  # Display images in terminal
 
-# autocompletion using arrow keys (based on history)
-bindkey '^e' up-line-or-beginning-search
-bindkey '^f' down-line-or-beginning-search
-
-# =============================================================================
-#                           Aliases & Functions
-# =============================================================================
-# aliases
-
-alias ls='lsd -la'
-alias la='lsd -a'
-alias ll='lsd -al'
-
-
-# Git aliases
+# Git shortcuts
 alias ga='git add'
 alias gs='git status'
 alias gp='git push'
@@ -229,57 +225,70 @@ alias gP='git pull'
 alias gb='git branch'
 alias gch='git checkout'
 alias gr='git remote'
+
+# Quick navigation
+alias cc='cd ~/Developer/'     # Navigate to development directory
+alias c.="cd ~/.config/"       # Navigate to config directory
+alias cs="cd ~/School/"        # Navigate to school directory
+alias -- -=popd               # Use - as popd shortcut
+
+# System
+alias fastfetch='fastfetch --color-keys "38;5;230" --color-output "38;5;230"'
+
+# ==============================================================================
+# CUSTOM FUNCTIONS
+# ==============================================================================
+
+# Git functions
 gc() {
   git commit -m "$*"
 }
+
 gac() {
   git add -A && git commit -m "$*" 
 }
+
 gasp() {
   git add -A && git commit -m "$*" && git push
 }
 
-# Directory navigation aliases
-alias cc='cd ~/Developer/'
-alias c.="cd ~/.config/"
-alias cs="cd ~/School/"
-
-# Render image alias
-alias icat='kitten icat'
-
 # Enhanced cd function with directory stack
 function cd() {
     if [ $# -eq 0 ]; then
-        # make "popd" without args act like "cd ~"
         set "$HOME"
     elif [ "$1" = "-" ]; then
-        # make "cd -" act like "popd" without args;
-        # make that "-" go away
         shift
     fi
-
     pushd "$@" >/dev/null
 }
-alias -- -=popd
 
-alias v="nvim"
-alias fastfetch='fastfetch --color-keys "38;5;230" --color-output "38;5;230"'
+# ==============================================================================
+# EXTERNAL TOOL INITIALIZATION
+# ==============================================================================
 
-# =============================================================================
-#                           External Tools Configuration
-# =============================================================================
-# BEGIN opam configuration
-# This is useful if you're using opam as it adds:
-#   - the correct directories to the PATH
-#   - auto-completion for the opam binary
-# This section can be safely removed at any time if needed.
+# Starship prompt
+eval "$(starship init zsh)"
+
+# OCaml package manager (opam)
 [[ ! -r '/Users/stanley/.opam/opam-init/init.zsh' ]] || source '/Users/stanley/.opam/opam-init/init.zsh' > /dev/null 2> /dev/null
-# END opam configuration
 
-# Created by `pipx` on 2024-10-06 16:12:50
-export PATH="$PATH:/Users/stanley/.local/bin"
+# Node Version Manager (nvm)
+export NVM_DIR="$HOME/.nvm"
+[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
 
+# Ruby version manager (rbenv)
+eval "$(rbenv init - --no-rehash zsh)"
+
+# TheFuck command correction
 eval $(thefuck --alias)
 
-fastfetch
+# Less filter for file previews
+export LESSOPEN='|~/.lessfilter %s'
 
+# ==============================================================================
+# STARTUP COMMANDS
+# ==============================================================================
+
+# Display system information on terminal startup
+fastfetch 
