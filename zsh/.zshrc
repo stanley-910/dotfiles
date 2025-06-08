@@ -292,6 +292,11 @@ alias c.="cd ~/.config/"       # Navigate to config directory
 alias cs="cd ~/School/"        # Navigate to school directory
 alias -- -=popd               # Use - as popd shortcut
 
+# tmux aliases
+
+
+alias tls="tmux ls"
+alias td="tmux detach"
 # System
 alias fastfetch='fastfetch --color-keys "38;5;230" --color-output "38;5;230"'
 
@@ -321,6 +326,20 @@ function cd() {
     fi
     pushd "$@" >/dev/null
 }
+
+# TMUX functions
+
+# || operator runs the second if the first fails
+ta() {
+  if [ $# -eq 0 ]; then
+    # No arguments - attach to any session or create new one
+    tmux attach || tmux new-session
+  else
+    # Argument provided - attach to specific session or create it
+    tmux attach -t "$1" || tmux new-session -s "$1"
+  fi
+}
+
 
 # ==============================================================================
 # EXTERNAL TOOL INITIALIZATION
