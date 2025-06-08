@@ -5,151 +5,7 @@
             "complex_modifications": {
                 "rules": [
                     {
-                        "description": "ctrl+hjkl remapped to arrow keys in specified apps",
-                        "manipulators": [
-                            {
-                                "conditions": [
-                                    {
-                                        "bundle_identifiers": [
-                                            "^com.apple.Safari",
-                                            "^org.mozilla.firefox",
-                                            "^com.google.Chrome",
-                                            "^com.apple.Preview",
-                                            "^com.spotify.client",
-                                            "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.Maps"
-                                        ],
-                                        "type": "frontmost_application_if"
-                                    }
-                                ],
-                                "from": {
-                                    "key_code": "h",
-                                    "modifiers": { "mandatory": ["control"] }
-                                },
-                                "to": [{ "key_code": "left_arrow" }],
-                                "type": "basic"
-                            },
-                            {
-                                "conditions": [
-                                    {
-                                        "bundle_identifiers": [
-                                            "^com.apple.Safari",
-                                            "^org.mozilla.firefox",
-                                            "^com.google.Chrome",
-                                            "^com.apple.Preview",
-                                            "^com.spotify.client",
-                                            "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.Maps"
-                                        ],
-                                        "type": "frontmost_application_if"
-                                    }
-                                ],
-                                "from": {
-                                    "key_code": "j",
-                                    "modifiers": { "mandatory": ["control"] }
-                                },
-                                "to": [{ "key_code": "down_arrow" }],
-                                "type": "basic"
-                            },
-                            {
-                                "conditions": [
-                                    {
-                                        "bundle_identifiers": [
-                                            "^com.apple.Safari",
-                                            "^org.mozilla.firefox",
-                                            "^com.google.Chrome",
-                                            "^com.apple.Preview",
-                                            "^com.spotify.client",
-                                            "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.Maps"
-                                        ],
-                                        "type": "frontmost_application_if"
-                                    }
-                                ],
-                                "from": {
-                                    "key_code": "k",
-                                    "modifiers": { "mandatory": ["control"] }
-                                },
-                                "to": [{ "key_code": "up_arrow" }],
-                                "type": "basic"
-                            },
-                            {
-                                "conditions": [
-                                    {
-                                        "bundle_identifiers": [
-                                            "^com.apple.Safari",
-                                            "^org.mozilla.firefox",
-                                            "^com.google.Chrome",
-                                            "^com.apple.Preview",
-                                            "^com.spotify.client",
-                                            "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.Maps"
-                                        ],
-                                        "type": "frontmost_application_if"
-                                    }
-                                ],
-                                "from": {
-                                    "key_code": "l",
-                                    "modifiers": { "mandatory": ["control"] }
-                                },
-                                "to": [{ "key_code": "right_arrow" }],
-                                "type": "basic"
-                            },
-                            {
-                                "conditions": [
-                                    {
-                                        "bundle_identifiers": [
-                                            "^com.apple.Safari",
-                                            "^org.mozilla.firefox",
-                                            "^com.google.Chrome",
-                                            "^com.apple.Preview",
-                                            "^com.spotify.client",
-                                            "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.Maps"
-                                        ],
-                                        "type": "frontmost_application_if"
-                                    }
-                                ],
-                                "from": {
-                                    "key_code": "g",
-                                    "modifiers": { "mandatory": ["control"] }
-                                },
-                                "to": [{ "key_code": "home" }],
-                                "type": "basic"
-                            },
-                            {
-                                "conditions": [
-                                    {
-                                        "bundle_identifiers": [
-                                            "^com.apple.Safari",
-                                            "^org.mozilla.firefox",
-                                            "^com.google.Chrome",
-                                            "^com.apple.Preview",
-                                            "^com.spotify.client",
-                                            "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.Maps"
-                                        ],
-                                        "type": "frontmost_application_if"
-                                    }
-                                ],
-                                "from": {
-                                    "key_code": "g",
-                                    "modifiers": { "mandatory": ["control", "shift"] }
-                                },
-                                "to": [{ "key_code": "end" }],
-                                "type": "basic"
-                            }
-                        ]
-                    },
-                    {
                         "description": "Double left_option press to send escape key",
-                        "enabled": false,
                         "manipulators": [
                             {
                                 "conditions": [
@@ -405,7 +261,6 @@
                     },
                     {
                         "description": "left_option twice toggle to get into vim-like hjkl arrows in specified apps",
-                        "enabled": false,
                         "manipulators": [
                             {
                                 "conditions": [
@@ -427,8 +282,7 @@
                                             "^com.apple.Preview",
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.finder"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -464,8 +318,7 @@
                                             "^com.apple.Preview",
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.finder"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -491,8 +344,7 @@
                                             "^com.apple.Preview",
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.finder"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -545,8 +397,7 @@
                                             "^com.apple.Preview",
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.finder"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -570,8 +421,7 @@
                                             "^com.apple.Preview",
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.finder"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -595,8 +445,7 @@
                                             "^com.apple.Preview",
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.finder"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -620,8 +469,7 @@
                                             "^com.apple.Preview",
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.finder"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -645,8 +493,7 @@
                                             "^com.apple.Preview",
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.finder"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -670,8 +517,7 @@
                                             "^com.apple.Preview",
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.finder"
                                         ],
                                         "type": "frontmost_application_if"
                                     }

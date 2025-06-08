@@ -84,9 +84,21 @@ symbol = ""
 format = '[$symbol $branch ]($style)'
 
 
-# [git_status]
-# # style = "bg:#434c5e"
-# format = '[$all_status$ahead_behind ]($style)'
+[git_status]
+# style = "bg:#434c5e"
+# conflicted = ''
+# up_to_date = ''
+# untracked = ''
+# stashed = ''
+# modified = ''
+# staged = '[++\($count\)](green)'
+# renamed = ''
+# deleted = ''
+ahead = '⇡${count}'
+diverged = '⇕⇡${ahead_count}⇣${behind_count}'
+behind = '⇣${count}'
+format = '[$all_status$ahead_behind ]($style)'
+
 
 [c]
 symbol = " "
