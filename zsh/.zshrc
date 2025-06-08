@@ -131,6 +131,16 @@ zle -N vi-yank-xclip
 # KEY BINDINGS
 # ==============================================================================
 
+function retry_command {
+  BUFFER="fuck"
+  CURSOR=$#BUFFER
+  zle accept-line           # This simulates pressing Enter
+}
+zle -N retry_command
+
+# retry failed command with most likely output
+bindkey '^[r' retry_command
+
 # Word manipulation
 bindkey '^w' my-backward-kill-word    # Ctrl+W: Delete word backward
 bindkey '^x' my-forward-kill-word     # Ctrl+X: Delete word forward
@@ -217,8 +227,9 @@ source ~/.zsh/fzf-tab/fzf-tab.plugin.zsh
 zstyle ':fzf-tab:*' fzf-flags '--bind=alt-s:toggle+down'  # Alt+S: Multi-select
 zstyle ':fzf-tab:*' switch-group '<' '>'                  # Switch groups with < >
 zstyle ':fzf-tab:*' fzf-bindings 'ctrl-s:accept'         # Ctrl+S: Accept
-zstyle ':fzf-tab:*' fzf-bindings 'space:accept'          # Space: Accept
-zstyle ':fzf-tab:*' accept-line enter                    # Enter: Accept & Execute
+# zstyle ':fzf-tab:*' fzf-bindings 'space:accept'          # Space: Accept
+zstyle ':fzf-tab:*' accept-line 'ctrl-d'                    # Enter: Accept & Execute
+zstyle ':fzf-tab:*' continuous-trigger 'ctrl-e'
 
 # Preview configuration for different commands
 zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -T --icons --no-permissions --no-user --no-time --level=2 --color=always $realpath' # Display two directories deep
@@ -293,8 +304,6 @@ alias cs="cd ~/School/"        # Navigate to school directory
 alias -- -=popd               # Use - as popd shortcut
 
 # tmux aliases
-
-
 alias tls="tmux ls"
 alias td="tmux detach"
 # System
@@ -357,7 +366,7 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
 
 # Ruby version manager (rbenv)
-eval "$(rbenv init - --no-rehash zsh)"
+# eval "$(rbenv init - --no-rehash zsh)"
 
 # TheFuck command correction
 eval $(thefuck --alias)
