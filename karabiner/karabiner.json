@@ -18,7 +18,9 @@
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
                                             "^com.apple.finder",
-                                            "^com.apple.Maps"
+                                            "^com.apple.Maps",
+                                            "^com.tinyspeck.slackmacgap",
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -41,7 +43,9 @@
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
                                             "^com.apple.finder",
-                                            "^com.apple.Maps"
+                                            "^com.apple.Maps",
+                                            "^com.tinyspeck.slackmacgap",
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -64,7 +68,9 @@
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
                                             "^com.apple.finder",
-                                            "^com.apple.Maps"
+                                            "^com.apple.Maps",
+                                            "^com.tinyspeck.slackmacgap",
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -87,7 +93,9 @@
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
                                             "^com.apple.finder",
-                                            "^com.apple.Maps"
+                                            "^com.apple.Maps",
+                                            "^com.tinyspeck.slackmacgap",
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -110,7 +118,9 @@
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
                                             "^com.apple.finder",
-                                            "^com.apple.Maps"
+                                            "^com.apple.Maps",
+                                            "^com.tinyspeck.slackmacgap",
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -133,7 +143,9 @@
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
                                             "^com.apple.finder",
-                                            "^com.apple.Maps"
+                                            "^com.apple.Maps",
+                                            "^com.tinyspeck.slackmacgap",
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -428,7 +440,9 @@
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
                                             "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.maps",
+                                            "^com.tinyspeck.slackmacgap",
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -465,7 +479,9 @@
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
                                             "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.maps",
+                                            "^com.tinyspeck.slackmacgap",
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -492,7 +508,9 @@
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
                                             "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.maps",
+                                            "^com.tinyspeck.slackmacgap",
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -546,7 +564,9 @@
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
                                             "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.maps",
+                                            "^com.tinyspeck.slackmacgap",
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -571,7 +591,9 @@
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
                                             "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.maps",
+                                            "^com.tinyspeck.slackmacgap",
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -596,7 +618,9 @@
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
                                             "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.maps",
+                                            "^com.tinyspeck.slackmacgap",
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -621,7 +645,9 @@
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
                                             "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.maps",
+                                            "^com.tinyspeck.slackmacgap",
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -646,7 +672,9 @@
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
                                             "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.maps",
+                                            "^com.tinyspeck.slackmacgap",
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -671,7 +699,9 @@
                                             "^com.spotify.client",
                                             "^com.actualbudget.actual",
                                             "^com.apple.finder",
-                                            "^com.apple.maps"
+                                            "^com.apple.maps",
+                                            "^com.tinyspeck.slackmacgap",
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
