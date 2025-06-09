@@ -74,9 +74,12 @@ stty -ixon
 # COMPLETION SYSTEM
 # ==============================================================================
 
-# Load and initialize the completion system
-autoload -U compinit
-compinit
+# Lazy load completions
+autoload -Uz compinit
+for dump in ~/.zcompdump(N.mh+24); do
+  compinit
+done
+compinit -C
 
 # Include hidden files in completions
 _comp_options+=(globdots)
@@ -175,7 +178,8 @@ bindkey '^j' down-line-or-beginning-search
 
 # Tmux sessionizer function and binding
 function tmux_sessionizer() {
-    ~/.config/scripts/tmux-sessionizer
+    BUFFER="~/.config/scripts/tmux-sessionizer"
+    zle accept-line
 }
 zle -N tmux_sessionizer
 bindkey ^f tmux_sessionizer
@@ -241,6 +245,7 @@ zstyle ':fzf-tab:*' continuous-trigger 'ctrl-e'
 # Preview configuration for different commands
 zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -T --icons --no-permissions --no-user --no-time --level=2 --color=always $realpath' # Display two directories deep
 zstyle ':fzf-tab:complete:(vim|cat|less|nano|cp|mv):*' fzf-preview 'bat --style=plain --color=always --line-range :50 $realpath 2>/dev/null || cat $realpath 2>/dev/null || eza -1 --icons --no-permissions --no-user --no-time --no-filesize --color=always $realpath'
+zstyle ':fzf-tab:complete:ta:*' fzf-preview 'tmux ls | grep -F "${word}:" | sed "s/^.*: //"' # substitute session name with empty replacement
 zstyle ':fzf-tab:complete:*:*' fzf-preview 'less ${(Q)realpath}'
 
 # Other plugins
@@ -349,17 +354,72 @@ function cd() {
 
 # TMUX functions
 
-# || operator runs the second if the first fails
+# Kill all tmux sessions
+tkill() {
+    echo "Active sessions:"
+    tmux ls
+    echo "\nAre you sure you want to kill all sessions? (y/n) "
+    read -k 1 answer
+    echo # New line after response
+    if [[ $answer =~ ^[Yy]$ ]]; then
+        if [ -n "$TMUX" ]; then
+            tmux switch-client -t $(tmux list-sessions -F "#{session_name}" | head -n 1)
+        fi
+        tmux kill-session -a
+        tmux kill-session
+        echo "All sessions killed."
+    else
+        echo "Operation cancelled."
+    fi
+}
+
 ta() {
-  if [ $# -eq 0 ]; then
-    # No arguments - attach to any session or create new one
+  # If -n flag is provided, allow nesting
+  if [ "$1" = "-n" ]; then
+    shift
+    if [ $# -eq 0 ]; then
+      tmux new-session
+    else
+      tmux new-session -s "$1"
+    fi
+    return
+  fi
+
+  # Get session name if provided
+  local session_name="$1"
+
+  # If no session name provided and not in tmux, just attach to any or create new
+  if [[ -z "$session_name" ]] && [[ -z "$TMUX" ]]; then
     tmux attach || tmux new-session
+    return
+  fi
+
+  # If no session name provided but in tmux, create random one
+  if [[ -z "$session_name" ]]; then
+    session_name="session-$(date +%s)"
+  fi
+
+  # Create session in detached state if it doesn't exist
+  if ! tmux has-session -t="$session_name" 2> /dev/null; then
+    tmux new-session -ds "$session_name"
+  fi
+
+  # If we're in a tmux session, switch to the new one
+  if [ -n "$TMUX" ]; then
+    tmux switch-client -t "$session_name"
   else
-    # Argument provided - attach to specific session or create it
-    tmux attach -t "$1" || tmux new-session -s "$1"
+    # If we're not in tmux, just attach to the session
+    tmux attach -t "$session_name"
   fi
 }
 
+# Tmux session tab completion
+function _ta() {
+    local sessions
+    sessions=(${(f)"$(tmux ls 2>/dev/null | cut -d: -f1)"})
+    _describe 'sessions' sessions
+}
+compdef _ta ta
 
 # ==============================================================================
 # EXTERNAL TOOL INITIALIZATION
@@ -377,7 +437,7 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
 
 # Ruby version manager (rbenv)
-# eval "$(rbenv init - --no-rehash zsh)"
+eval "$(rbenv init - --no-rehash zsh)"
 
 # TheFuck command correction
 eval $(thefuck --alias)
@@ -385,10 +445,6 @@ eval $(thefuck --alias)
 # Less filter for file previews
 export LESSOPEN='|~/.config/scripts/.lessfilter %s'
 
-# ==============================================================================
-# STARTUP COMMANDS
-# ==============================================================================
-
-# Display system information on terminal startup
-fastfetch 
+# Remove fastfetch from startup and make it an alias
+alias sysinfo='fastfetch'
 
