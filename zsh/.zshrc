@@ -173,6 +173,13 @@ zle -N down-line-or-beginning-search
 bindkey '^k' up-line-or-beginning-search
 bindkey '^j' down-line-or-beginning-search
 
+# Tmux sessionizer function and binding
+function tmux_sessionizer() {
+    ~/.config/scripts/tmux-sessionizer
+}
+zle -N tmux_sessionizer
+bindkey ^f tmux_sessionizer
+
 # ==============================================================================
 # CURSOR CONFIGURATION
 # ==============================================================================
@@ -309,6 +316,10 @@ alias td="tmux detach"
 # System
 alias fastfetch='fastfetch --color-keys "38;5;230" --color-output "38;5;230"'
 
+# IDE aliases
+alias c="open -a 'Cursor.app' ."
+alias ws="open -a 'WebStorm.app' ."
+
 # ==============================================================================
 # CUSTOM FUNCTIONS
 # ==============================================================================
@@ -380,3 +391,4 @@ export LESSOPEN='|~/.config/scripts/.lessfilter %s'
 
 # Display system information on terminal startup
 fastfetch 
+
