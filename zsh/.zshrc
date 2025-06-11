@@ -237,10 +237,12 @@ source ~/.zsh/fzf-tab/fzf-tab.plugin.zsh
 # fzf-tab configuration
 zstyle ':fzf-tab:*' fzf-flags '--bind=alt-s:toggle+down'  # Alt+S: Multi-select
 zstyle ':fzf-tab:*' switch-group '<' '>'                  # Switch groups with < >
-zstyle ':fzf-tab:*' fzf-bindings 'ctrl-s:accept'         # Ctrl+S: Accept
-zstyle ':fzf-tab:*' fzf-bindings 'ctrl-n:preview-down,ctrl-p:preview-up'
-zstyle ':fzf-tab:*' accept-line 'ctrl-d'                    # Enter: Accept & Execute
-zstyle ':fzf-tab:*' continuous-trigger 'ctrl-e'
+zstyle ':fzf-tab:*' fzf-bindings \
+    'ctrl-s:accept' \
+    'ctrl-n:preview-down' \
+    'ctrl-p:preview-up'
+zstyle ':fzf-tab:*' accept-line 'ctrl-e'                    # Enter: Accept & Execute
+zstyle ':fzf-tab:*' continuous-trigger 'ctrl-d'
 
 # Preview configuration for different commands
 zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -T --icons --no-permissions --no-user --no-time --level=2 --color=always $realpath' # Display two directories deep
