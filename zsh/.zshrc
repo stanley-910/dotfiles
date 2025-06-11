@@ -413,11 +413,11 @@ ta() {
   fi
 }
 
-# Tmux session tab completion
+# Tmux session completion
 function _ta() {
     local sessions
     sessions=(${(f)"$(tmux ls 2>/dev/null | cut -d: -f1)"})
-    _describe 'sessions' sessions
+    _arguments '1:session:($sessions)' && return 0 # only allow one session to attach onto
 }
 compdef _ta ta
 
