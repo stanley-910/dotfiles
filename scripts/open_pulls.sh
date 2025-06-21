@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-# Open the current repository in the browser
+# Open the current repository's pull requests filtered by user in the browser
 dir=$(tmux display-message -p "#{pane_current_path}")
 cd "$dir"
 url=$(git remote get-url origin)
-url_branch=$(git branch --show-current)
+username='wangs3'
 
 # Check if the repository is on GitHub or Autodesk
 if [[ $url == *"github.com"* ]] || [[ $url == *"git.autodesk.com"* ]]; then
@@ -13,14 +13,8 @@ if [[ $url == *"github.com"* ]] || [[ $url == *"git.autodesk.com"* ]]; then
     url=$(echo "$url" | sed 's/git@\(.*\):/https:\/\/\1\//')
   fi
 
-  if [[ ! -z $url_branch ]]; then
-    if [[ $url_branch != "master" && $url_branch != "main" ]]; then
-      url=${url%.git} # rm git suffix if present
-      url="$url/tree/$url_branch"
-    fi
-  fi
-
-  open "$url"
+  url=${url%.git} # rm git suffix if present
+  open "$url/pulls/$username"
 else
   echo "This repository is not hosted on GitHub or Autodesk Git"
   exit 1

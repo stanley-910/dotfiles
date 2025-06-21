@@ -27,6 +27,7 @@ $character\
 $directory\
 $git_branch\
 $git_status\
+$python
 """
 
 # $username\
@@ -84,21 +85,9 @@ symbol = ""
 format = '[$symbol $branch ]($style)'
 
 
-[git_status]
-# style = "bg:#434c5e"
-# conflicted = ''
-# up_to_date = ''
-# untracked = ''
-# stashed = ''
-# modified = ''
-# staged = '[++\($count\)](green)'
-# renamed = ''
-# deleted = ''
-ahead = '⇡${count}'
-diverged = '⇕⇡${ahead_count}⇣${behind_count}'
-behind = '⇣${count}'
+# [git_status]
+# # style = "bg:#434c5e"
 # format = '[$all_status$ahead_behind ]($style)'
-
 
 [c]
 symbol = " "
@@ -110,7 +99,7 @@ format = '[$symbol]($style)'
 symbol = " "
 # style = "bg:#4c566a"
 # format = '[[via](text) $symbol($version) ]($style)'
-format = '[$symbol]($style)'
+format = 'via [(${virtualenv})$symbol]($style)'
 
 
 [docker_context]

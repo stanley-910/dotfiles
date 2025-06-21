@@ -5,7 +5,7 @@
             "complex_modifications": {
                 "rules": [
                     {
-                        "description": "ctrl+w to delete word backward in specified apps",
+                        "description": "ctrl+w/hjkl/s navigation and editing shortcuts in specified apps",
                         "manipulators": [
                             {
                                 "conditions": [
@@ -36,12 +36,7 @@
                                     }
                                 ],
                                 "type": "basic"
-                            }
-                        ]
-                    },
-                    {
-                        "description": "ctrl+hjkl remapped to arrow keys in specified apps",
-                        "manipulators": [
+                            },
                             {
                                 "conditions": [
                                     {
@@ -142,6 +137,7 @@
                                 "to": [{ "key_code": "right_arrow" }],
                                 "type": "basic"
                             },
+
                             {
                                 "conditions": [
                                     {
@@ -161,35 +157,10 @@
                                     }
                                 ],
                                 "from": {
-                                    "key_code": "g",
+                                    "key_code": "s",
                                     "modifiers": { "mandatory": ["control"] }
                                 },
-                                "to": [{ "key_code": "home" }],
-                                "type": "basic"
-                            },
-                            {
-                                "conditions": [
-                                    {
-                                        "bundle_identifiers": [
-                                            "^com.apple.Safari",
-                                            "^org.mozilla.firefox",
-                                            "^com.google.Chrome",
-                                            "^com.apple.Preview",
-                                            "^com.spotify.client",
-                                            "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.Maps",
-                                            "^com.tinyspeck.slackmacgap",
-                                            "^app.zen-browser.zen"
-                                        ],
-                                        "type": "frontmost_application_if"
-                                    }
-                                ],
-                                "from": {
-                                    "key_code": "g",
-                                    "modifiers": { "mandatory": ["control", "shift"] }
-                                },
-                                "to": [{ "key_code": "end" }],
+                                "to": [{ "key_code": "return_or_enter" }],
                                 "type": "basic"
                             }
                         ]
@@ -795,6 +766,22 @@
                                     }
                                 },
                                 "to": [{ "key_code": "right_arrow" }],
+                                "type": "basic"
+                            }
+                        ]
+                    },
+                    {
+                        "description": "left_option (caps lock) + \\ to escape",
+                        "manipulators": [
+                            {
+                                "from": {
+                                    "key_code": "backslash",
+                                    "modifiers": {
+                                        "mandatory": ["left_option"],
+                                        "optional": ["any"]
+                                    }
+                                },
+                                "to": [{ "key_code": "escape" }],
                                 "type": "basic"
                             }
                         ]

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+cat << 'EOF'
+Git Menu        
+
+h  :  Open Remote Repository
+p  :  Open Pull Requests By Current User
+
+Press key to execute
+EOF
+
+# Keep the popup open until a key is pressed
+read -n 1 -s key
+
+# Execute the corresponding action based on key pressed
+case "$key" in
+    h)
+        ~/.config/scripts/open_remote.sh
+        ;;
+    p)
+        ~/.config/scripts/open_pulls.sh
+        ;;
+    *)
+        echo "Invalid option: $key"
+        ;;
+esac 
