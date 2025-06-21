@@ -218,7 +218,7 @@ autoload edit-command-line; zle -N edit-command-line
 # ==============================================================================
 
 # History settings
-setopt SHARE_HISTORY              # Share history between sessions
+# setopt SHARE_HISTORY              # Remove share history between tmux sessions
 setopt HIST_EXPIRE_DUPS_FIRST     # Expire duplicate entries first
 HISTFILE=$HOME/.zhistory          # History file location
 SAVEHIST=1000                     # Number of entries to save
@@ -300,7 +300,6 @@ alias ll='lsd -al'        # List all with details and icons
 alias v="nvim"            # Quick nvim access
 alias vim="nvim"          # Use neovim instead of vim
 alias t="tmux"            # Quick tmux access
-alias icat='kitten icat'  # Display images in terminal
 
 # Git shortcuts
 alias ga='git add'
@@ -416,12 +415,18 @@ ta() {
 }
 
 # Tmux session completion
-function _ta() {
+_ta() {
     local sessions
     sessions=(${(f)"$(tmux ls 2>/dev/null | cut -d: -f1)"})
     _arguments '1:session:($sessions)' && return 0 # only allow one session to attach onto
 }
 compdef _ta ta
+
+# echo OSC 133 escape sequence so tmux can navigate between prompts 
+# https://tanutaran.medium.com/tmux-jump-between-prompt-output-with-osc-133-shell-integration-standard-84241b2defb5
+preexec () {
+  echo -n "\\e]133;A\\e\\" # this is what was recognized by tmux with ghostty
+}
 
 # ==============================================================================
 # EXTERNAL TOOL INITIALIZATION
@@ -449,4 +454,3 @@ export LESSOPEN='|~/.config/scripts/.lessfilter %s'
 
 # Remove fastfetch from startup and make it an alias
 alias sysinfo='fastfetch'
-
