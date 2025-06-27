@@ -13,6 +13,7 @@
 !/jetbrains/
 !/cursor/
 !/tmux/
+tmux/*/
 !/karabiner/
 !/scripts/
 
