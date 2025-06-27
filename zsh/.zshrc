@@ -57,6 +57,7 @@
 # ==============================================================================
 # ENVIRONMENT SETUP
 # ==============================================================================
+zmodload zsh/zprof
 
 # Initialize Homebrew environment (macOS package manager)
 eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -74,12 +75,15 @@ stty -ixon
 # COMPLETION SYSTEM
 # ==============================================================================
 
-# Lazy load completions
+
+# Optimized completion loading - only run once
 autoload -Uz compinit
-for dump in ~/.zcompdump(N.mh+24); do
-  compinit
-done
-compinit -C
+if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.mh+24) ]]; then
+  compinit  # Rebuild if dump is older than 24 hours
+else
+  compinit -C  # Skip security check for faster loading
+fi
+
 
 # Include hidden files in completions
 _comp_options+=(globdots)
@@ -237,12 +241,21 @@ source ~/.zsh/fzf-tab/fzf-tab.plugin.zsh
 # fzf-tab configuration
 zstyle ':fzf-tab:*' fzf-flags '--bind=alt-s:toggle+down'  # Alt+S: Multi-select
 zstyle ':fzf-tab:*' switch-group '<' '>'                  # Switch groups with < >
+zstyle ':fzf-tab:complete:git-checkout:*' fzf-preview '' # Disable preview for git checkout
 zstyle ':fzf-tab:*' fzf-bindings \
     'ctrl-s:accept' \
     'ctrl-n:preview-down' \
     'ctrl-p:preview-up'
 zstyle ':fzf-tab:*' accept-line 'ctrl-e'                    # Enter: Accept & Execute
 zstyle ':fzf-tab:*' continuous-trigger 'ctrl-d'
+zstyle ':fzf-tab:*' fzf-min-height 20                       # Minimum height for the preview window
+zstyle ':fzf-tab:*' fzf-pad 4                               # Padding around the preview window
+zstyle ':fzf-tab:*' fzf-command ftb-tmux-popup
+zstyle ':fzf-tab:*' popup-min-size 80 20
+zstyle ':fzf-tab:*' popup-border none
+
+# Add -E flag to allow external keys
+zstyle ':fzf-tab:*' popup-extra-args '-E'
 
 # Preview configuration for different commands
 zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -T --icons --no-permissions --no-user --no-time --level=2 --color=always $realpath' # Display two directories deep
@@ -259,21 +272,38 @@ source <(fzf --zsh)
 bindkey '^S' autosuggest-accept  # Ctrl+S: Accept suggestion
 
 # FZF Configuration
-export FZF_DEFAULT_COMMAND="find . -maxdepth 1"
+if command -v fd > /dev/null; then
+  export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git --exclude node_modules --exclude .DS_Store"
+else
+  export FZF_DEFAULT_COMMAND="find . -type f -not -path '*/\.git/*' -not -path '*/node_modules/*' -not -name '.DS_Store'"
+fi
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+
+# Basic FZF options without preview
 export FZF_DEFAULT_OPTS="
 --layout=reverse
 --info=inline
 --height=80%
 --multi
---preview-window=:hidden
---preview '([[ -f {} ]] && (bat --style=numbers --color=always {} || cat {})) || ([[ -d {} ]] && (tree -C {} | less)) || echo {} 2> /dev/null | head -200'
---bind '?:toggle-preview'
 --bind 'ctrl-a:select-all'
+--bind 'ctrl-s:accept'
 --bind 'ctrl-y:execute-silent(echo {+} | pbcopy)'
 --bind 'ctrl-e:execute(echo {+} | xargs -o nvim)'
 --bind 'ctrl-v:execute(code {+})'
 --bind ctrl-d:down,ctrl-q:up
+"
+
+# File-specific preview configuration
+export FZF_CTRL_T_OPTS="
+--preview-window=:hidden
+--preview '([[ -f {} ]] && (bat --style=numbers --color=always {} || cat {})) || ([[ -d {} ]] && (tree -C {} | less)) || echo {} 2> /dev/null | head -200'
+--bind '?:toggle-preview'
+"
+
+# ALT-C directory preview
+export FZF_ALT_C_OPTS="
+--preview 'tree -C {} | head -200'
+--bind '?:toggle-preview'
 "
 
 # ==============================================================================
@@ -281,7 +311,7 @@ export FZF_DEFAULT_OPTS="
 # ==============================================================================
 
 # Node.js (Homebrew installation)
-# export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
+export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
 
 # Python (local installation)
 export PATH="/usr/local/opt/python/libexec/bin:$PATH"
@@ -444,7 +474,7 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
 
 # Ruby version manager (rbenv)
-eval "$(rbenv init - --no-rehash zsh)"
+# eval "$(rbenv init - --no-rehash zsh)"
 
 # TheFuck command correction
 eval $(thefuck --alias)
