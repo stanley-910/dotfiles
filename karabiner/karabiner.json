@@ -661,63 +661,6 @@
                                 "from": { "key_code": "l" },
                                 "to": [{ "key_code": "right_arrow" }],
                                 "type": "basic"
-                            },
-                            {
-                                "conditions": [
-                                    {
-                                        "name": "hjkl_arrow_keys_mode",
-                                        "type": "variable_if",
-                                        "value": 1
-                                    },
-                                    {
-                                        "bundle_identifiers": [
-                                            "^com.apple.Safari",
-                                            "^org.mozilla.firefox",
-                                            "^com.google.Chrome",
-                                            "^com.apple.Preview",
-                                            "^com.spotify.client",
-                                            "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.maps",
-                                            "^com.tinyspeck.slackmacgap",
-                                            "^app.zen-browser.zen"
-                                        ],
-                                        "type": "frontmost_application_if"
-                                    }
-                                ],
-                                "from": { "key_code": "g" },
-                                "to": [{ "key_code": "home" }],
-                                "type": "basic"
-                            },
-                            {
-                                "conditions": [
-                                    {
-                                        "name": "hjkl_arrow_keys_mode",
-                                        "type": "variable_if",
-                                        "value": 1
-                                    },
-                                    {
-                                        "bundle_identifiers": [
-                                            "^com.apple.Safari",
-                                            "^org.mozilla.firefox",
-                                            "^com.google.Chrome",
-                                            "^com.apple.Preview",
-                                            "^com.spotify.client",
-                                            "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.maps",
-                                            "^com.tinyspeck.slackmacgap",
-                                            "^app.zen-browser.zen"
-                                        ],
-                                        "type": "frontmost_application_if"
-                                    }
-                                ],
-                                "from": {
-                                    "key_code": "g",
-                                    "modifiers": { "mandatory": ["shift"] }
-                                },
-                                "to": [{ "key_code": "end" }],
-                                "type": "basic"
                             }
                         ]
                     },

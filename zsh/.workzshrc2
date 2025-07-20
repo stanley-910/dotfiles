@@ -222,7 +222,7 @@ autoload edit-command-line; zle -N edit-command-line
 # ==============================================================================
 
 # History settings
-# setopt SHARE_HISTORY              # Share history between sessions (disabled for tmux)
+# setopt SHARE_HISTORY              # Remove share history between sessions (disabled for tmux)
 setopt HIST_EXPIRE_DUPS_FIRST     # Expire duplicate entries first
 HISTFILE=$HOME/.zhistory          # History file location
 SAVEHIST=1000                     # Number of entries to save
