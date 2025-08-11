@@ -1,4 +1,4 @@
-macos-titlebar-style = tabs
+macos-titlebar-style = hidden
 macos-titlebar-proxy-icon = hidden
 theme = vesper
 window-padding-x = 6

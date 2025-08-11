@@ -23,11 +23,10 @@
 #[░▒▓](#2e3440)\
 # ---------------------------------------------------------------
 format = """
-$character\
 $directory\
 $git_branch\
 $git_status\
-$python
+$character\
 """
 
 # $username\
@@ -171,8 +170,8 @@ format = '[ $time ]($style)'
 	
 [character]
 # success_symbol = '[✦](green)'
-success_symbol = '[ ✦](#6272a4)'
-error_symbol = '[ ✦](red)'
+success_symbol = '[✦](#6272a4)'
+error_symbol = '[✦](red)'
 # success_symbol = '[ λ](#6272a4)'
 # error_symbol = '[ λ](red)'
 # style = "bg:#6272a4"

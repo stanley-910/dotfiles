@@ -20,8 +20,7 @@
                                             "^com.apple.finder",
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
-                                            "^app.zen-browser.zen",
-                                            "^com.todoist.mac.Todoist"
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -51,8 +50,7 @@
                                             "^com.apple.finder",
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
-                                            "^app.zen-browser.zen",
-                                            "^com.todoist.mac.Todoist"
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -77,8 +75,7 @@
                                             "^com.apple.finder",
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
-                                            "^app.zen-browser.zen",
-                                            "^com.todoist.mac.Todoist"
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -103,8 +100,7 @@
                                             "^com.apple.finder",
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
-                                            "^app.zen-browser.zen",
-                                            "^com.todoist.mac.Todoist"
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -129,8 +125,7 @@
                                             "^com.apple.finder",
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
-                                            "^app.zen-browser.zen",
-                                            "^com.todoist.mac.Todoist"
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -155,8 +150,7 @@
                                             "^com.apple.finder",
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
-                                            "^app.zen-browser.zen",
-                                            "^com.todoist.mac.Todoist"
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -166,68 +160,6 @@
                                     "modifiers": { "mandatory": ["control"] }
                                 },
                                 "to": [{ "key_code": "return_or_enter" }],
-                                "type": "basic"
-                            },
-                            {
-                                "conditions": [
-                                    {
-                                        "bundle_identifiers": [
-                                            "^com.apple.Safari",
-                                            "^org.mozilla.firefox",
-                                            "^com.google.Chrome",
-                                            "^com.apple.Preview",
-                                            "^com.spotify.client",
-                                            "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.Maps",
-                                            "^com.tinyspeck.slackmacgap",
-                                            "^app.zen-browser.zen",
-                                            "^com.todoist.mac.Todoist"
-                                        ],
-                                        "type": "frontmost_application_if"
-                                    }
-                                ],
-                                "from": {
-                                    "key_code": "h",
-                                    "modifiers": { "mandatory": ["left_option"] }
-                                },
-                                "to": [
-                                    {
-                                        "key_code": "left_arrow",
-                                        "modifiers": ["left_option"]
-                                    }
-                                ],
-                                "type": "basic"
-                            },
-                            {
-                                "conditions": [
-                                    {
-                                        "bundle_identifiers": [
-                                            "^com.apple.Safari",
-                                            "^org.mozilla.firefox",
-                                            "^com.google.Chrome",
-                                            "^com.apple.Preview",
-                                            "^com.spotify.client",
-                                            "^com.actualbudget.actual",
-                                            "^com.apple.finder",
-                                            "^com.apple.Maps",
-                                            "^com.tinyspeck.slackmacgap",
-                                            "^app.zen-browser.zen",
-                                            "^com.todoist.mac.Todoist"
-                                        ],
-                                        "type": "frontmost_application_if"
-                                    }
-                                ],
-                                "from": {
-                                    "key_code": "l",
-                                    "modifiers": { "mandatory": ["left_option"] }
-                                },
-                                "to": [
-                                    {
-                                        "key_code": "right_arrow",
-                                        "modifiers": ["left_option"]
-                                    }
-                                ],
                                 "type": "basic"
                             }
                         ]
@@ -584,8 +516,7 @@
                                             "^com.apple.finder",
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
-                                            "^app.zen-browser.zen",
-                                            "^com.todoist.mac.Todoist"
+                                            "^app.zen-browser.zen"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -773,6 +704,10 @@
                             "to": [{ "apple_vendor_top_case_key_code": "keyboard_fn" }]
                         },
                         {
+                            "from": { "key_code": "right_option" },
+                            "to": [{ "key_code": "right_shift" }]
+                        },
+                        {
                             "from": { "key_code": "right_shift" },
                             "to": [{ "key_code": "escape" }]
                         }
@@ -797,12 +732,6 @@
             ],
             "name": "Default profile",
             "selected": true,
-            "simple_modifications": [
-                {
-                    "from": { "key_code": "left_option" },
-                    "to": [{ "key_code": "right_command" }]
-                }
-            ],
             "virtual_hid_keyboard": { "keyboard_type_v2": "ansi" }
         }
     ]
