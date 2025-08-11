@@ -1,0 +1,4 @@
+
+nnoremap R .
+
+nnoremap <S-CR> ciW

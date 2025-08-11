@@ -25,6 +25,15 @@ function main () {
           url="$url"
         elif [[ $1 == "p" ]]; then
           url="$url/pulls/$username"
+        elif [[ $1 == "P" ]]; then
+          # Extract JIRA ticket number if present in branch name
+          if [[ $url_branch =~ (SG-[0-9]+) ]]; then
+            ticket="${BASH_REMATCH[1]}"
+            url="$url/pulls?q=is%3Aopen+is%3Apr+author%3A$username+$ticket"
+          else
+            echo "No JIRA ticket number (SG-XXXX) found in branch name: $url_branch"
+            exit 1
+          fi
         else
           echo "Invalid argument: $1"
           exit 1
