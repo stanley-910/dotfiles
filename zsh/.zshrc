@@ -57,7 +57,9 @@
 # ==============================================================================
 # ENVIRONMENT SETUP
 # ==============================================================================
-zmodload zsh/zprof
+
+# Uncomment to use the profiling module  
+zmodload zsh/zprof # run with zprof 
 
 # Initialize Homebrew environment (macOS package manager)
 eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -75,7 +77,6 @@ stty -ixon
 # COMPLETION SYSTEM
 # ==============================================================================
 
-
 # Optimized completion loading - only run once
 autoload -Uz compinit
 if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.mh+24) ]]; then
@@ -83,7 +84,6 @@ if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.mh+24) ]]; then
 else
   compinit -C  # Skip security check for faster loading
 fi
-
 
 # Include hidden files in completions
 _comp_options+=(globdots)
@@ -112,16 +112,17 @@ zmodload zsh/complist
 bindkey -v
 export KEYTIMEOUT=10
 
+GLOBAL_WORDCHARS='*?_.[]~=&;!#$%^(){}<>:,"'"'"
 # Custom word deletion functions
 my-backward-kill-word () {
-    local WORDCHARS='*?_.[]~=&;!#$%^(){}<>:,"'"'"
+    local WORDCHARS=GLOBAL_WORDCHARS
     zle -f kill
     zle backward-kill-word
 }
 zle -N my-backward-kill-word
 
 my-forward-kill-word () {
-    local WORDCHARS='*?_.[]~=&;!#$%^(){}<>:,"'"'"
+    local WORDCHARS=GLOBAL_WORDCHARS
     zle -f kill
     zle kill-word
 }
@@ -192,29 +193,18 @@ bindkey ^f tmux_sessionizer
 # CURSOR CONFIGURATION
 # ==============================================================================
 
-# Change cursor shape based on vi mode
-function zle-keymap-select {
-  if [[ ${KEYMAP} == vicmd ]] || [[ $1 = 'block' ]]; then
-    echo -ne '\e[1 q'  # Block cursor for command mode
-  elif [[ ${KEYMAP} == main ]] || [[ ${KEYMAP} == viins ]] || 
-       [[ ${KEYMAP} = '' ]] || [[ $1 = 'beam' ]]; then
-    echo -ne '\e[5 q'  # Beam cursor for insert mode
-  fi
-}
-zle -N zle-keymap-select
-
 # Initialize line editor in insert mode with beam cursor
 zle-line-init() {
     zle -K viins
-    echo -ne "\e[5 q"
+    echo -ne "\e[1 q"
 }
 zle -N zle-line-init
 
 # Set beam cursor on startup and for each new prompt
-echo -ne '\e[5 q'
-preexec() { echo -ne '\e[5 q' ;}
+echo -ne '\e[1 q'
+preexec() { echo -ne '\e[1 q' ;}
 
-# Load edit-command-line function
+# Load vim edit-command-line function
 autoload edit-command-line; zle -N edit-command-line
 
 # ==============================================================================
@@ -222,7 +212,7 @@ autoload edit-command-line; zle -N edit-command-line
 # ==============================================================================
 
 # History settings
-# setopt SHARE_HISTORY              # Remove share history between tmux sessions
+# setopt SHARE_HISTORY              # Share history between sessions (disabled for tmux)
 setopt HIST_EXPIRE_DUPS_FIRST     # Expire duplicate entries first
 HISTFILE=$HOME/.zhistory          # History file location
 SAVEHIST=1000                     # Number of entries to save
@@ -247,7 +237,7 @@ zstyle ':fzf-tab:*' fzf-bindings \
     'ctrl-n:preview-down' \
     'ctrl-p:preview-up'
 zstyle ':fzf-tab:*' accept-line 'ctrl-e'                    # Enter: Accept & Execute
-zstyle ':fzf-tab:*' continuous-trigger 'ctrl-d'
+zstyle ':fzf-tab:*' continuous-trigger 'ctrl-space'
 zstyle ':fzf-tab:*' fzf-min-height 20                       # Minimum height for the preview window
 zstyle ':fzf-tab:*' fzf-pad 4                               # Padding around the preview window
 zstyle ':fzf-tab:*' fzf-command ftb-tmux-popup
@@ -452,6 +442,7 @@ _ta() {
 }
 compdef _ta ta
 
+
 # echo OSC 133 escape sequence so tmux can navigate between prompts 
 # https://tanutaran.medium.com/tmux-jump-between-prompt-output-with-osc-133-shell-integration-standard-84241b2defb5
 preexec () {
@@ -463,10 +454,17 @@ preexec () {
 # ==============================================================================
 
 # Starship prompt
+# Check that the function `starship_zle-keymap-select()` is defined to fix vim mode enable.
+# xref: https://github.com/starship/starship/issues/3418
+if [[ "${widgets[zle-keymap-select]#user:}" == "starship_zle-keymap-select" || \
+      "${widgets[zle-keymap-select]#user:}" == "starship_zle-keymap-select-wrapped" ]]; then
+    zle -N zle-keymap-select "";
+fi
+
 eval "$(starship init zsh)"
 
 # OCaml package manager (opam)
-[[ ! -r '/Users/stanley/.opam/opam-init/init.zsh' ]] || source '/Users/stanley/.opam/opam-init/init.zsh' > /dev/null 2> /dev/null
+# [[ ! -r '/Users/stanley/.opam/opam-init/init.zsh' ]] || source '/Users/stanley/.opam/opam-init/init.zsh' > /dev/null 2> /dev/null
 
 # Node Version Manager (nvm)
 export NVM_DIR="$HOME/.nvm"
@@ -484,3 +482,32 @@ export LESSOPEN='|~/.config/scripts/.lessfilter %s'
 
 # Remove fastfetch from startup and make it an alias
 alias sysinfo='fastfetch'
+
+export PYENV_ROOT="$HOME/.pyenv"
+[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init - zsh)"
+
+
+# Function to detect if we're running in an integrated terminal
+function is_integrated_terminal() {
+  local parent_process
+  # Get the parent process name
+  parent_process=$(ps -o comm= -p $PPID)
+  
+  # Check for common IDE terminal processes
+  [[ "$parent_process" =~ "Cursor" ]] || \
+  [[ "$parent_process" =~ "webstorm" ]]
+}
+
+if [[ -z $TMUX ]] && ! is_integrated_terminal; then
+  # Get the most recently active detached session
+  LAST_SESSION=$(tmux ls -F "#{session_activity} #{session_name}" 2>/dev/null | grep -v attached | sort -r | head -n1 | cut -d' ' -f2)
+  if [[ -n $LAST_SESSION ]]; then
+     exec tmux attach -d -t "$LAST_SESSION"
+  else
+     exec tmux
+  fi
+fi
+
+
+

@@ -7,17 +7,39 @@ set rnu
 " Show a few lines of context around the cursor. Note that this makes the
 " text scroll if you mouse-click near the start or end of the window.
 set scrolloff=5
-
+set visualbell
+set noerrorbells
+set showmode
 " Do incremental searching.
 set incsearch
+
 
 " Don't use Ex mode, use Q for formatting.
 map Q gq
 imap kj <Esc>l
-nmap ; :
+imap jk <Esc>
 set timeoutlen=1000
+" To get a list of Actions run `:actionlist `
+let mapleader = "\<SPACE>"
+set ignorecase smartcase
+set smartcase
+set hlsearch
+set nohls
+set mini-ai
+
+set easymotion
+set quickscope
+
+set functiontextobj
+set argtextobj
+
+set ideajoin
 
 " Basic movement enhancements
+nnoremap <C-j> 8j
+nnoremap <C-k> 8k
+vnoremap <C-j> 8j
+vnoremap <C-k> 8k
 nnoremap H ^
 vnoremap H ^
 nnoremap L $
@@ -27,11 +49,10 @@ vnoremap <M-S-H> H
 nnoremap <M-S-L> L
 vnoremap <M-S-L> L
 
-inoremap <M-K> <Esc>k
-inoremap <M-J> <Esc>j
 
 inoremap <M-S-O> <C-o>O
 inoremap <M-O> <C-o>o
+inoremap <M-p> <C-o>P
 inoremap <C-h> <Left>
 inoremap <C-j> <Down>
 inoremap <C-k> <Up>
@@ -49,6 +70,8 @@ inoremap <C-b> <C-a>
 
 inoremap <M-S-A> <C-o>A
 inoremap <M-S-I> <C-o>I
+
+inoremap <M-S-C> <C-o>C
 
 
 " Visual mode word selection
@@ -69,8 +92,8 @@ cnoremap <M-f> <Down>
 nnoremap <CR> ciw
 inoremap <M-d> <space><Esc>ce
 
-nnoremap <C-u> <C-u>zz
-nnoremap <C-d> <C-d>zz
+" nnoremap <C-u> <C-u>zz
+" nnoremap <C-d> <C-d>zz
 nnoremap n nzzzv
 nnoremap N Nzzzv
 nnoremap zl 15zl
@@ -81,51 +104,95 @@ nnoremap gr gd[{V%::s/<C-R>///gc<left><left><left>
 " For global replace
 nnoremap gR gD:%s/<C-R>///gc<left><left><left>
 
-vnoremap J :m '>+1<CR>gv=gv
-vnoremap K :m '<-2<CR>gv=gv
-
-
-nnoremap <C-q> <C-o>
-nnoremap <C-e> <C-i>
-
 
 " Inner text objects
-nnoremap ri" vi"P
-nnoremap ri' vi'P
-nnoremap ri` vi`P
+nnoremap xi" vi"P
+nnoremap xi' vi'P
+nnoremap xi` vi`P
 
 " Brackets
-nnoremap ri( vi(P
-nnoremap ri{ vi{P
-nnoremap ri[ vi[P
-nnoremap ri< vi<P
+nnoremap xi( vi(P
+nnoremap xi{ vi{P
+nnoremap xi[ vi[P
+nnoremap xi< vi<P
 
 " Words
-nnoremap riw viwP
-nnoremap riW viWP
+nnoremap xiw viwP
+nnoremap xiW viWP
 
 " Paragraphs and blocks
-nnoremap rip vipP
-nnoremap rib vibP
+nnoremap xip vipP
+nnoremap xib vibP
 
 " Around text objects
-nnoremap ra" va"P
-nnoremap ra' va'P
-nnoremap ra` va`P
+nnoremap xa" va"P
+nnoremap xa' va'P
+nnoremap xa` va`P
 
 " Around brackets
-nnoremap ra( va(P
-nnoremap ra{ va{P
-nnoremap ra[ va[P
-nnoremap ra< va<P
+nnoremap xa( va(P
+nnoremap xa{ va{P
+nnoremap xa[ va[P
+nnoremap xa< va<P
 
 " Around words
-nnoremap raw vawP
-nnoremap raW vaWP
+nnoremap xaw vawP
+nnoremap xaW vaWP
 
 " Around paragraphs and blocks
-nnoremap rap vapP
-nnoremap rab vabP
+nnoremap xap vapP
+nnoremap xab vabP
+
+
+" Window Nav
+
+
+
+
+" Buffer nav
+nnoremap <Tab> :action NextTab<CR>
+nnoremap <S-Tab> :action PreviousTab<CR>
+
+nnoremap <leader>v :action SplitVertically<CR>
+
+
+" Better indenting in visual mode
+vnoremap < <gv
+vnoremap > >gv
+
+
+" Rename
+nnoremap <leader>r :action RenameElement<CR>
+
+vnoremap / y/\V<C-R>"<CR>
+
+"macro
+vnoremap @ :norm @
+
+nnoremap ]d :action GotoNextError<CR>
+nnoremap [d :action GotoPreviousError<CR>
+
+nnoremap <M-P> :action ShowErrorDescription<CR>
+
+nnoremap Y y$
+nnoremap X v$P
+nnoremap <C-CR> viw
+vnoremap Y y
+nnoremap <S-CR> ciW
+
+nnoremap <leader>o O<c-c>jo<c-c>
+
+nnoremap <leader>y :%y<CR>
+ 
+nnoremap R .
+
+nnoremap <leader>s /
+nnoremap <leader>S ?
+inoremap M> (() => {});<c-c>F{a<CR>
+
+vnoremap ? :action CommentByLineComment<CR>
+
+nnoremap <leader>b F{a<space><c-c>f}i<space><c-c>
 
 
 
@@ -137,6 +204,10 @@ Plug 'machakann/vim-highlightedyank'
 Plug 'tpope/vim-commentary'
 
 Plug 'tpope/vim-surround'
+Plug 'justinmk/vim-sneak'
+Plug 'michaeljsmith/vim-indent-object'
+
+Plug 'chrisbra/matchit'
 
 "" -- Map IDE actions to IdeaVim -- https://jb.gg/abva4t
 "" Map \r to the Reformat Code action
