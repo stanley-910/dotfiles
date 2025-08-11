@@ -19,4 +19,4 @@ tmux/*/
 
 
 # Explicitly ignore nvim backup files
-nvim.bak/*
+nvim.bak/*/
