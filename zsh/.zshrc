@@ -193,29 +193,18 @@ bindkey ^f tmux_sessionizer
 # CURSOR CONFIGURATION
 # ==============================================================================
 
-# Change cursor shape based on vi mode
-function zle-keymap-select {
-  if [[ ${KEYMAP} == vicmd ]] || [[ $1 = 'block' ]]; then
-    echo -ne '\e[1 q'  # Block cursor for command mode
-  elif [[ ${KEYMAP} == main ]] || [[ ${KEYMAP} == viins ]] || 
-       [[ ${KEYMAP} = '' ]] || [[ $1 = 'beam' ]]; then
-    echo -ne '\e[5 q'  # Beam cursor for insert mode
-  fi
-}
-zle -N zle-keymap-select
-
 # Initialize line editor in insert mode with beam cursor
 zle-line-init() {
     zle -K viins
-    echo -ne "\e[5 q"
+    echo -ne "\e[1 q"
 }
 zle -N zle-line-init
 
 # Set beam cursor on startup and for each new prompt
-echo -ne '\e[5 q'
-preexec() { echo -ne '\e[5 q' ;}
+echo -ne '\e[1 q'
+preexec() { echo -ne '\e[1 q' ;}
 
-# Load edit-command-line function
+# Load vim edit-command-line function
 autoload edit-command-line; zle -N edit-command-line
 
 # ==============================================================================
@@ -243,21 +232,12 @@ source ~/.zsh/fzf-tab/fzf-tab.plugin.zsh
 zstyle ':fzf-tab:*' fzf-flags '--bind=alt-s:toggle+down'  # Alt+S: Multi-select
 zstyle ':fzf-tab:*' switch-group '<' '>'                  # Switch groups with < >
 zstyle ':fzf-tab:complete:git-checkout:*' fzf-preview '' # Disable preview for git checkout
-zstyle ':fzf-tab:complete:git-checkout:*' fzf-preview '' # Disable preview for git checkout
 zstyle ':fzf-tab:*' fzf-bindings \
     'ctrl-s:accept' \
     'ctrl-n:preview-down' \
     'ctrl-p:preview-up'
 zstyle ':fzf-tab:*' accept-line 'ctrl-e'                    # Enter: Accept & Execute
-zstyle ':fzf-tab:*' continuous-trigger 'ctrl-d'
-zstyle ':fzf-tab:*' fzf-min-height 20                       # Minimum height for the preview window
-zstyle ':fzf-tab:*' fzf-pad 4                               # Padding around the preview window
-zstyle ':fzf-tab:*' fzf-command ftb-tmux-popup
-zstyle ':fzf-tab:*' popup-min-size 80 20
-zstyle ':fzf-tab:*' popup-border none
-
-# Add -E flag to allow external keys
-zstyle ':fzf-tab:*' popup-extra-args '-E'
+zstyle ':fzf-tab:*' continuous-trigger 'ctrl-space'
 zstyle ':fzf-tab:*' fzf-min-height 20                       # Minimum height for the preview window
 zstyle ':fzf-tab:*' fzf-pad 4                               # Padding around the preview window
 zstyle ':fzf-tab:*' fzf-command ftb-tmux-popup
@@ -287,14 +267,7 @@ if command -v fd > /dev/null; then
 else
   export FZF_DEFAULT_COMMAND="find . -type f -not -path '*/\.git/*' -not -path '*/node_modules/*' -not -name '.DS_Store'"
 fi
-if command -v fd > /dev/null; then
-  export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git --exclude node_modules --exclude .DS_Store"
-else
-  export FZF_DEFAULT_COMMAND="find . -type f -not -path '*/\.git/*' -not -path '*/node_modules/*' -not -name '.DS_Store'"
-fi
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-
-# Basic FZF options without preview
 
 # Basic FZF options without preview
 export FZF_DEFAULT_OPTS="
@@ -303,7 +276,6 @@ export FZF_DEFAULT_OPTS="
 --height=80%
 --multi
 --bind 'ctrl-a:select-all'
---bind 'ctrl-s:accept'
 --bind 'ctrl-s:accept'
 --bind 'ctrl-y:execute-silent(echo {+} | pbcopy)'
 --bind 'ctrl-e:execute(echo {+} | xargs -o nvim)'
@@ -324,25 +296,11 @@ export FZF_ALT_C_OPTS="
 --bind '?:toggle-preview'
 "
 
-# File-specific preview configuration
-export FZF_CTRL_T_OPTS="
---preview-window=:hidden
---preview '([[ -f {} ]] && (bat --style=numbers --color=always {} || cat {})) || ([[ -d {} ]] && (tree -C {} | less)) || echo {} 2> /dev/null | head -200'
---bind '?:toggle-preview'
-"
-
-# ALT-C directory preview
-export FZF_ALT_C_OPTS="
---preview 'tree -C {} | head -200'
---bind '?:toggle-preview'
-"
-
 # ==============================================================================
 # PATH CONFIGURATION
 # ==============================================================================
 
 # Node.js (Homebrew installation)
-export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
 export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
 
 # Python (local installation)
@@ -484,6 +442,7 @@ _ta() {
 }
 compdef _ta ta
 
+
 # echo OSC 133 escape sequence so tmux can navigate between prompts 
 # https://tanutaran.medium.com/tmux-jump-between-prompt-output-with-osc-133-shell-integration-standard-84241b2defb5
 preexec () {
@@ -495,6 +454,13 @@ preexec () {
 # ==============================================================================
 
 # Starship prompt
+# Check that the function `starship_zle-keymap-select()` is defined to fix vim mode enable.
+# xref: https://github.com/starship/starship/issues/3418
+if [[ "${widgets[zle-keymap-select]#user:}" == "starship_zle-keymap-select" || \
+      "${widgets[zle-keymap-select]#user:}" == "starship_zle-keymap-select-wrapped" ]]; then
+    zle -N zle-keymap-select "";
+fi
+
 eval "$(starship init zsh)"
 
 # OCaml package manager (opam)
@@ -542,3 +508,6 @@ if [[ -z $TMUX ]] && ! is_integrated_terminal; then
      exec tmux
   fi
 fi
+
+
+
