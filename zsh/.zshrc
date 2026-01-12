@@ -61,8 +61,8 @@
 # Uncomment to use the profiling module  
 zmodload zsh/zprof # run with zprof 
 
-# Initialize Homebrew environment (macOS package manager)
-eval "$(/opt/homebrew/bin/brew shellenv)"
+# Initialize Homebrew environment (macOS only - not needed on NixOS)
+# eval "$(/opt/homebrew/bin/brew shellenv)"
 
 
 # Show hidden files in glob patterns (files starting with .)
@@ -129,7 +129,12 @@ zle -N my-forward-kill-word
 # Custom yank function that copies to system clipboard
 function vi-yank-xclip {
     zle vi-yank
-    echo "$CUTBUFFER" | pbcopy -i
+    # xclip for Linux (NixOS), pbcopy for macOS
+    if command -v xclip &> /dev/null; then
+        echo "$CUTBUFFER" | xclip -selection clipboard
+    else
+        echo "$CUTBUFFER" | pbcopy -i
+    fi
 }
 zle -N vi-yank-xclip
 
@@ -254,8 +259,12 @@ zstyle ':fzf-tab:complete:ta:*' fzf-preview 'tmux ls | grep -F "${word}:" | sed 
 zstyle ':fzf-tab:complete:*:*' fzf-preview 'less ${(Q)realpath}'
 
 # Other plugins
-source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
-source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+# NOTE: On NixOS, autosuggestions and syntax-highlighting are managed by programs.zsh
+# Only source these manually on macOS or if NixOS modules are disabled
+if [[ ! -f /etc/NIXOS ]]; then
+    source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
+    source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+fi
 source <(fzf --zsh)
 
 # zsh-autosuggestions configuration
@@ -270,6 +279,13 @@ fi
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 
 # Basic FZF options without preview
+# Determine clipboard command based on OS
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    FZF_CLIPBOARD_CMD="pbcopy"
+else
+    FZF_CLIPBOARD_CMD="xclip -selection clipboard"
+fi
+
 export FZF_DEFAULT_OPTS="
 --layout=reverse
 --info=inline
@@ -277,7 +293,7 @@ export FZF_DEFAULT_OPTS="
 --multi
 --bind 'ctrl-a:select-all'
 --bind 'ctrl-s:accept'
---bind 'ctrl-y:execute-silent(echo {+} | pbcopy)'
+--bind 'ctrl-y:execute-silent(echo {+} | $FZF_CLIPBOARD_CMD)'
 --bind 'ctrl-e:execute(echo {+} | xargs -o nvim)'
 --bind 'ctrl-v:execute(code {+})'
 --bind ctrl-d:down,ctrl-q:up
@@ -300,14 +316,14 @@ export FZF_ALT_C_OPTS="
 # PATH CONFIGURATION
 # ==============================================================================
 
-# Node.js (Homebrew installation)
-export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
+# User local binaries (pipx installations, scripts, etc.)
+export PATH="$PATH:$HOME/.local/bin"
 
-# Python (local installation)
-export PATH="/usr/local/opt/python/libexec/bin:$PATH"
-
-# User local binaries (pipx installations)
-export PATH="$PATH:/Users/stanley/.local/bin"
+# macOS-specific paths (Homebrew) - not needed on NixOS
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
+    export PATH="/usr/local/opt/python/libexec/bin:$PATH"
+fi
 
 # ==============================================================================
 # ALIASES
@@ -343,9 +359,14 @@ alias td="tmux detach"
 # System
 alias fastfetch='fastfetch --color-keys "38;5;230" --color-output "38;5;230"'
 
-# IDE aliases
-alias c="open -a 'Cursor.app' ."
-alias ws="open -a 'WebStorm.app' ."
+# IDE aliases (cross-platform)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    alias c="open -a 'Cursor.app' ."
+    alias ws="open -a 'WebStorm.app' ."
+else
+    # Linux/NixOS - use direct command
+    alias c="cursor ."
+fi
 
 alias cd='z'
 
@@ -469,10 +490,13 @@ eval "$(starship init zsh)"
 # OCaml package manager (opam)
 # [[ ! -r '/Users/stanley/.opam/opam-init/init.zsh' ]] || source '/Users/stanley/.opam/opam-init/init.zsh' > /dev/null 2> /dev/null
 
-# Node Version Manager (nvm)
-export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
-[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
+# Node Version Manager (nvm) - macOS only via Homebrew
+# On NixOS, use nix-managed nodejs or nix-shell instead
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+    [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
+fi
 
 # Ruby version manager (rbenv)
 # eval "$(rbenv init - --no-rehash zsh)"
@@ -543,7 +567,8 @@ eval "$(zoxide init zsh)"
 # use nvim as man page reader
 export MANPAGER='nvim +Man!'
 
-# Added by LM Studio CLI (lms)
-export PATH="$PATH:/Users/stanley/.lmstudio/bin"
-# End of LM Studio CLI section
+# Added by LM Studio CLI (lms) - if installed
+if [[ -d "$HOME/.lmstudio/bin" ]]; then
+    export PATH="$PATH:$HOME/.lmstudio/bin"
+fi
 

@@ -1,13 +1,18 @@
-macos-titlebar-style = hidden
-macos-titlebar-proxy-icon = hidden
+# Ghostty Configuration
+# Cross-platform settings (works on both macOS and Linux/NixOS)
+
 theme = IC Orange PPL
 window-padding-x = 6
 window-padding-balance = true
 font-feature = -liga
 font-feature = -calt
 font-feature = -dlig
-macos-option-as-alt = true
 background-opacity = 0.9
 background-blur = true
 confirm-close-surface = false
 
+# macOS-specific settings (ignored on Linux)
+# Uncomment these lines on macOS:
+# macos-titlebar-style = hidden
+# macos-titlebar-proxy-icon = hidden
+# macos-option-as-alt = true
