@@ -1,6 +1,5 @@
 [user]
 	name = Stanley Wang
-	; email = stanley.wang@autodesk.com
 	email = wangstanley910@gmail.com
 
 [filter "lfs"]
@@ -21,6 +20,7 @@
 	sort = -committerdate
 [core]
 	excludesfile = /Users/stanley/.gitignore_global
+	editor = nvim
 [push]
 	autoSetupRemote = true
 [pull]
