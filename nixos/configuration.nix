@@ -8,6 +8,10 @@
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
+      
+      # Custom modules
+      ./power.nix           # Power management and battery optimization
+      ./hyprland.nix        # Hyprland window manager and desktop components
     ];
 
   # Use the systemd-boot EFI boot loader.
@@ -34,11 +38,11 @@
   #   useXkbConfig = true; # use xkb.options in tty.
   # };
 
-  # Enable the X11 windowing system.
-  # services.xserver.enable = true;
+  # Enable the X11 windowing system (for XWayland compatibility)
   services.xserver = {
     enable = true;
-    windowManager.qtile.enable = true;
+    # Using Hyprland (Wayland) instead of X11 window managers
+    # windowManager.qtile.enable = false;
   };
 
 
@@ -65,7 +69,13 @@
   # Define a user account. Don't forget to set a password with 'passwd'.
   users.users.stanley = {
     isNormalUser = true;
-    extraGroups = [ "wheel" ]; # Enable 'sudo' for the user.
+    # Enable 'sudo' and grant permissions for input devices and graphics
+    extraGroups = [ 
+      "wheel"   # Enable sudo for the user
+      "input"   # Required for Hyprland to access input devices (/dev/input/*)
+      "video"   # Required for GPU access and graphics operations
+      "seat"    # Required for seat management (seatd)
+    ];
     shell = pkgs.zsh;          # Set zsh as default shell
     packages = with pkgs; [
       tree
@@ -101,7 +111,6 @@
     ghostty   # GPU-accelerated terminal
     tmux      # Terminal multiplexer
     starship  # Cross-shell prompt
-    thefuck   # Command correction
     
     # Modern CLI replacements
     eza       # Modern ls with git integration

@@ -1,0 +1,15 @@
+# ==============================================================================
+# UWSM Environment Variables - Hyprland Specific
+# ==============================================================================
+# This file is sourced by UWSM ONLY when starting Hyprland.
+# Use this for HYPR* and AQ_* (Aquamarine) prefixed variables.
+# Format: export KEY=VALUE (no comments on the same line as exports)
+
+# Example: Force specific GPU for Hyprland (uncomment if using multiple GPUs)
+# export AQ_DRM_DEVICES=/dev/dri/card0
+
+# Example: Hyprland-specific debugging (uncomment if needed)
+# export HYPRLAND_LOG_WLR=1
+# export HYPRLAND_NO_RT=1
+
+

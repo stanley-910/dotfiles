@@ -1,0 +1,23 @@
+# ==============================================================================
+# UWSM Environment Variables - Common to All Wayland Sessions
+# ==============================================================================
+# This file is sourced by UWSM before starting any Wayland compositor.
+# Format: export KEY=VALUE (no comments on the same line as exports)
+# See: https://wiki.archlinux.org/title/Hyprland#Universal_Wayland_Session_Manager
+
+# Force Electron apps (Cursor, VS Code, Discord, etc.) to use native Wayland
+# This prevents blurry rendering when using fractional scaling
+export NIXOS_OZONE_WL=1
+
+# Cursor/theme settings (uncomment if needed)
+# export XCURSOR_THEME=Adwaita
+# export XCURSOR_SIZE=24
+
+# GTK settings (uncomment if needed)
+# export GTK_THEME=Adwaita:dark
+
+# Qt settings (uncomment if needed)
+# export QT_QPA_PLATFORM=wayland
+# export QT_QPA_PLATFORMTHEME=qt5ct
+
+

@@ -144,7 +144,7 @@ info "Running stow simulation to check for conflicts..."
 echo ""
 
 # Directories to stow (NixOS-compatible configs)
-STOW_DIRS=(zsh tmux ghostty starship scripts git nvim)
+STOW_DIRS=(zsh tmux ghostty starship scripts git nvim hypr)
 
 # Simulate stow
 for dir in "${STOW_DIRS[@]}"; do
