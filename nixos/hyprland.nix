@@ -4,7 +4,7 @@
 # Basic Hyprland installation. Add more features incrementally.
 # Import this in configuration.nix via: imports = [ ./hyprland.nix ];
 
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, rose-pine-hyprcursor, ... }:
 
 {
   # --------------------------------------------------------------------------
@@ -48,8 +48,15 @@
   };
 
   # --------------------------------------------------------------------------
-  # Minimal packages needed to run Hyprland
+  # Essential Hyprland packages
   # --------------------------------------------------------------------------
   environment.systemPackages = with pkgs; [
+    # Multimedia controls for laptop function keys
+    brightnessctl  # Control screen brightness (requires video group)
+    playerctl      # Control media players (play/pause/next/prev)
+  ] ++ [
+    # Rose Pine Hyprcursor - from flake input (not in nixpkgs)
+    # This provides the proper Hyprcursor format theme
+    rose-pine-hyprcursor.packages.${pkgs.system}.default
   ];
 }

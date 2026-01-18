@@ -55,13 +55,17 @@
   # Enable CUPS to print documents.
   # services.printing.enable = true;
 
-  # Enable sound.
-  # services.pulseaudio.enable = true;
-  # OR
-  # services.pipewire = {
-  #   enable = true;
-  #   pulse.enable = true;
-  # };
+  # Enable sound with PipeWire (modern audio server, replaces PulseAudio)
+  # PipeWire provides low-latency audio and is the standard for Wayland
+  # wpctl command (from wireplumber) is used in Hyprland keybinds
+  services.pipewire = {
+    enable = true;
+    pulse.enable = true;  # PulseAudio compatibility layer
+    alsa = {
+      enable = true;      # ALSA support
+      support32Bit = true;  # 32-bit app support
+    };
+  };
 
   # Enable touchpad support (enabled default in most desktopManager).
   # services.libinput.enable = true;
@@ -99,7 +103,11 @@
   # You can use https://search.nixos.org/ to find more packages (and options).
 
   # Allow unfree packages
-  nixpkgs.config.allowUnfree = true;
+  nixpkgs.config.allowUnfree = true; # Allows for usage of packages that are not free and open source
+  
+  # Enable flakes and the new nix command interface
+  # These are "experimental" but widely adopted and stable in practice
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
   environment.systemPackages = with pkgs; [
     # Core editors and tools
     vim       # Do not forget to add an editor to edit configuration.nix!

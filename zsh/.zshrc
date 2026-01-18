@@ -359,6 +359,9 @@ alias td="tmux detach"
 # System
 alias fastfetch='fastfetch --color-keys "38;5;230" --color-output "38;5;230"'
 
+alias nixswitch='sudo nixos-rebuild switch --flake ~/dotfiles/nixos#nixos'
+alias nixupdate='cd ~/dotfiles/nixos && nix flake update && cd -'
+
 # IDE aliases (cross-platform)
 if [[ "$OSTYPE" == "darwin"* ]]; then
     alias c="open -a 'Cursor.app' ."
