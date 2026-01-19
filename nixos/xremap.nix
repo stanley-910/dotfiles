@@ -12,15 +12,12 @@
   # Enable uinput kernel module
   # --------------------------------------------------------------------------
   # xremap needs uinput to intercept and emit keyboard events
-  boot.kernelModules = [ "uinput" ];
-  
-  # --------------------------------------------------------------------------
-  # Grant user access to uinput device
-  # --------------------------------------------------------------------------
   # Allow non-root users in the 'input' group to access /dev/uinput
-  services.udev.extraRules = ''
-    KERNEL=="uinput", GROUP="input", TAG+="uaccess"
-  '';
+  hardware.uinput.enable = true;
+  users.groups.uinput.members = [ "stanley" ];
+  # users.groups.input.members = [ "stanley" ];
+
+
   
   # --------------------------------------------------------------------------
   # Configure xremap service
@@ -34,11 +31,13 @@
     # User mode works better with Hyprland and per-application remapping
     serviceMode = "user";
     
-    # userName = "stanley";  # Required if serviceMode = "user"
+    # Specify which user to run the service as (required for user mode)
+    userName = "stanley";
     
     # Enable Wayland wlroots support (Hyprland is a wlroots compositor)
     # This allows xremap to detect active application windows for per-app remapping
     withWlroots = true;
+
     
     # --------------------------------------------------------------------------
     # Key remapping configuration
@@ -46,14 +45,48 @@
     # Define your key remaps here using YAML-like syntax
     # See: https://github.com/xremap/xremap#configuration
     config = {
-      # Example 1: Swap Caps Lock and Escape (common for vim users)
+      # Dual-function Caps Lock: Alt when held, Escape when tapped
+      # This is incredibly useful - you get Escape in a easy-to-reach position
+      # while still having a left-side Alt for shortcuts
       modmap = [
         {
-          name = "Swap Caps Lock and Escape";
+          name = "Caps Lock as Alt/Escape (dual function)";
           remap = {
-            "CapsLock" = "Esc";
-            "Esc" = "CapsLock";
+            "CapsLock" = "Ctrl_L";
+            "Shift_R" = "Esc";
           };
+        }
+      ];
+      keymap = [
+        {
+          name = "Enter app launcher mode";
+          remap = {
+            # Super+D enters the "app_launcher" mode
+            "Super-d" = {
+              set_mode = "app_launcher";
+            };
+          };
+        }
+        {
+          name = "App launcher mode bindings";
+          remap = {
+            # Launch firefox and auto-exit mode
+            # Array syntax = sequence of actions (like the Emacs example)
+            "f" = [
+              { launch = ["firefox"]; }
+              { set_mode = "default"; }
+            ];
+            # Launch Cursor editor and auto-exit mode
+            "c" = [
+              { launch = ["cursor"]; }
+              { set_mode = "default"; }
+            ];
+            # Manual exit if needed
+            "Esc" = {
+              set_mode = "default";
+            };
+          };
+          mode = "app_launcher";  # This keymap is only active in this mode
         }
       ];
       
@@ -72,5 +105,18 @@
       #   }
       # ];
     };
+  };
+
+  # --------------------------------------------------------------------------
+  # Extend xremap service PATH to find applications
+  # --------------------------------------------------------------------------
+  # This allows using short names like "firefox" instead of full paths
+  # in the launch commands above
+  systemd.user.services.xremap = {
+    path = with pkgs; [
+      firefox
+      code-cursor
+      # Add more apps here as needed
+    ];
   };
 }

@@ -242,7 +242,7 @@ zstyle ':fzf-tab:*' fzf-bindings \
     'ctrl-n:preview-down' \
     'ctrl-p:preview-up'
 zstyle ':fzf-tab:*' accept-line 'ctrl-e'                    # Enter: Accept & Execute
-zstyle ':fzf-tab:*' continuous-trigger 'ctrl-space'
+zstyle ':fzf-tab:*' continuous-trigger 'ctrl-d'         # Doesn't work nixOS, tmux prefix is C-Space
 zstyle ':fzf-tab:*' fzf-min-height 20                       # Minimum height for the preview window
 zstyle ':fzf-tab:*' fzf-pad 4                               # Padding around the preview window
 zstyle ':fzf-tab:*' fzf-command ftb-tmux-popup
@@ -360,6 +360,7 @@ alias td="tmux detach"
 alias fastfetch='fastfetch --color-keys "38;5;230" --color-output "38;5;230"'
 
 alias nixswitch='sudo nixos-rebuild switch --flake ~/dotfiles/nixos#nixos'
+alias nixtest='sudo nixos-rebuild switch --flake ~/dotfiles/nixos#nixos' --no-reexec
 alias nixupdate='cd ~/dotfiles/nixos && nix flake update && cd -'
 
 # IDE aliases (cross-platform)

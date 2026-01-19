@@ -18,10 +18,62 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
+  # Security settings
+  security.sudo.wheelNeedsPassword = false;
+
+
+
   networking.hostName = "nixos"; # Define your hostname.
 
-  # Configure network connections interactively with nmcli or nmtui.
-  networking.networkmanager.enable = true;
+  # ===========================================================================
+  # NetworkManager Configuration
+  # ===========================================================================
+  # Enables NetworkManager for network connections (use nmcli or nmtui).
+  # Includes declarative WPA2-Enterprise profile for McGill WiFi.
+  #
+  # SECRETS SETUP (required before connecting):
+  #   1. Create secrets directory: sudo mkdir -p /etc/nixos/secrets
+  #   2. Create wifi.env file: sudo nvim /etc/nixos/secrets/wifi.env
+  #   3. Add your credentials:
+  #        MCGILL_USERNAME=firstname.lastname@mail.mcgill.ca
+  #        MCGILL_PASSWORD=your_mcgill_password
+  #   4. Secure the file: sudo chmod 600 /etc/nixos/secrets/wifi.env -rw-------
+  # ===========================================================================
+  networking.networkmanager = {
+    enable = true;
+    
+    # Load WiFi credentials from secrets file (not tracked in git)
+    ensureProfiles.environmentFiles = [ "/etc/nixos/secrets/wifi.env" ];
+    
+    # Declarative WiFi profiles
+    ensureProfiles.profiles = {
+      # McGill WPA2-Enterprise WiFi (PEAP/MSCHAPv2)
+      "wpa.mcgill.ca" = {
+        connection = {
+          id = "wpa.mcgill.ca";
+          type = "wifi";
+        };
+        wifi = {
+          mode = "infrastructure";
+          ssid = "wpa.mcgill.ca";
+        };
+        wifi-security = {
+          key-mgmt = "wpa-eap";
+        };
+        # 802.1X authentication settings for WPA2-Enterprise
+        "802-1x" = {
+          eap = "peap;";
+          identity = "$MCGILL_USERNAME";   # Loaded from /etc/nixos/secrets/wifi.env
+          password = "$MCGILL_PASSWORD";   # Loaded from /etc/nixos/secrets/wifi.env
+          phase2-auth = "mschapv2";
+          # NixOS bundles all CA certs together (no individual .pem files)
+          ca-cert = "/etc/ssl/certs/ca-bundle.crt";
+        };
+        ipv4.method = "auto";
+        ipv6.method = "auto";
+      };
+    };
+  };
 
   # Set your time zone.
   time.timeZone = "America/New_York";
@@ -75,10 +127,11 @@
     isNormalUser = true;
     # Enable 'sudo' and grant permissions for input devices and graphics
     extraGroups = [ 
-      "wheel"   # Enable sudo for the user
-      "input"   # Required for Hyprland to access input devices (/dev/input/*)
-      "video"   # Required for GPU access and graphics operations
-      "seat"    # Required for seat management (seatd)
+      "wheel"          # Enable sudo for the user
+      "input"          # Required for Hyprland to access input devices (/dev/input/*)
+      "video"          # Required for GPU access and graphics operations
+      "seat"           # Required for seat management (seatd)
+      "networkmanager" # Required for WPA2-Enterprise (802.1X) WiFi authentication
     ];
     shell = pkgs.zsh;          # Set zsh as default shell
     packages = with pkgs; [
