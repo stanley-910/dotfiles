@@ -540,4 +540,23 @@
       "alt-cmd-<": "zed::OpenKeymapFile",
     },
   },
+  {
+    // override defauly cmd-g implementation
+    "bindings": {
+      "cmd-g": "git_panel::ToggleFocus",
+    },
+  },
+
+  {
+    "context": "(GitPanel && ChangesList)",
+    "bindings": {
+      "cmd-g": "workspace::CloseActiveDock",
+    },
+  },
+  {
+    "context": "Workspace",
+    "bindings": {
+      "cmd-k": null,
+    },
+  },
 ]

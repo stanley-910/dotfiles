@@ -39,10 +39,10 @@ set argtextobj
 set ideajoin
 
 " Basic movement enhancements
-"nnoremap <C-j> 8j
-"nnoremap <C-k> 8k
-"vnoremap <C-j> 8j
-"vnoremap <C-k> 8k
+nnoremap <C-j> 8j
+nnoremap <C-k> 8k
+vnoremap <C-j> 8j
+vnoremap <C-k> 8k
 nnoremap H ^
 vnoremap H ^
 nnoremap L $
@@ -189,6 +189,9 @@ nnoremap <leader>o O<c-c>jo<c-c>
 nnoremap <leader>y :%y<CR>
  
 nnoremap R .
+
+nnoremap gs :action GotoSymbol<Cr>
+
 
 nnoremap <leader>s /
 nnoremap <leader>S ?
