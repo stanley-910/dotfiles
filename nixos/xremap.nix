@@ -15,7 +15,7 @@
   # Allow non-root users in the 'input' group to access /dev/uinput
   hardware.uinput.enable = true;
   users.groups.uinput.members = [ "stanley" ];
-  # users.groups.input.members = [ "stanley" ];
+  users.groups.input.members = [ "stanley" ];
 
 
   
