@@ -35,9 +35,11 @@
       url = "github:xremap/nix-flake";
       inputs.nixpkgs.follows = "nixpkgs";  # Use same nixpkgs as system
     };
+    
+    # Noctalia - Custom package
     noctalia = {
       url = "github:noctalia-dev/noctalia-shell";
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nixpkgs.follows = "nixpkgs";  # Use same nixpkgs as system
     };
   };
 
@@ -78,7 +80,6 @@
         # Access in modules with: { config, pkgs, rose-pine-hyprcursor, ... }:
         specialArgs = {
           inherit rose-pine-hyprcursor;
-          inherit noctalia;
           inherit xremap-flake;
           inherit inputs;
 
