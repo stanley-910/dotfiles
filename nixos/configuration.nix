@@ -22,6 +22,8 @@
   # Security settings
   security.sudo.wheelNeedsPassword = false;
 
+  hardware.bluetooth.enable = true;
+
 
 
   networking.hostName = "nixos"; # Define your hostname.
