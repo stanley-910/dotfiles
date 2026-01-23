@@ -12,6 +12,7 @@
       # Custom modules
       ./power.nix           # Power management and battery optimization
       ./hyprland.nix        # Hyprland window manager and desktop components
+      ./scripts.nix         # Custom shell scripts made globally accessible
     ];
 
   # Use the systemd-boot EFI boot loader.
@@ -29,7 +30,7 @@
   # NetworkManager Configuration
   # ===========================================================================
   # Enables NetworkManager for network connections (use nmcli or nmtui).
-  # Includes declarative WPA2-Enterprise profile for McGill WiFi.
+  # Includes declarative WPA2-Enterprise profiles for McGill WiFi and eduroam.
   #
   # SECRETS SETUP (required before connecting):
   #   1. Create secrets directory: sudo mkdir -p /etc/nixos/secrets
@@ -38,6 +39,8 @@
   #        MCGILL_USERNAME=firstname.lastname@mail.mcgill.ca
   #        MCGILL_PASSWORD=your_mcgill_password
   #   4. Secure the file: sudo chmod 600 /etc/nixos/secrets/wifi.env -rw-------
+  #
+  # NOTE: The same credentials work for both wpa.mcgill.ca and eduroam.
   # ===========================================================================
   networking.networkmanager = {
     enable = true;
@@ -67,6 +70,35 @@
           password = "$MCGILL_PASSWORD";   # Loaded from /etc/nixos/secrets/wifi.env
           phase2-auth = "mschapv2";
           # NixOS bundles all CA certs together (no individual .pem files)
+          ca-cert = "/etc/ssl/certs/ca-bundle.crt";
+        };
+        ipv4.method = "auto";
+        ipv6.method = "auto";
+      };
+      
+      # Eduroam - International academic WiFi network
+      # Uses same McGill credentials as wpa.mcgill.ca
+      "eduroam" = {
+        connection = {
+          id = "eduroam";
+          type = "wifi";
+        };
+        wifi = {
+          mode = "infrastructure";
+          ssid = "eduroam";
+        };
+        wifi-security = {
+          key-mgmt = "wpa-eap";
+        };
+        # 802.1X authentication settings
+        "802-1x" = {
+          eap = "peap;";
+          # For eduroam, identity must be in full email format
+          identity = "$MCGILL_USERNAME";   # Should be firstname.lastname@mcgill.ca
+          password = "$MCGILL_PASSWORD";
+          phase2-auth = "mschapv2";
+          # Anonymous identity helps with initial connection (optional but recommended)
+          anonymous-identity = "anonymous@mcgill.ca";
           ca-cert = "/etc/ssl/certs/ca-bundle.crt";
         };
         ipv4.method = "auto";

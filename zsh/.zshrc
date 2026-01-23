@@ -359,7 +359,7 @@ alias td="tmux detach"
 # System
 alias fastfetch='fastfetch --color-keys "38;5;230" --color-output "38;5;230"'
 
-alias nixswitch='sudo nixos-rebuild switch --flake ~/dotfiles/nixos#nixos'
+# alias nixswitch='sudo nixos-rebuild switch --flake ~/dotfiles/nixos#nixos'
 alias nixtest='sudo nixos-rebuild switch --flake ~/dotfiles/nixos#nixos' --no-reexec
 alias nixupdate='cd ~/dotfiles/nixos && nix flake update && cd -'
 
