@@ -48,6 +48,26 @@
   };
 
   # --------------------------------------------------------------------------
+  # Laptop docking configuration
+  # --------------------------------------------------------------------------
+  # Allow system to stay awake with lid closed ONLY when external monitors connected
+  # This enables "docked mode" - close lid and use only external displays
+  # Will still suspend normally when on battery or AC without external monitors
+  services.logind = {
+    lidSwitchDocked = "ignore";  # Don't suspend when external monitors detected
+    # lidSwitch defaults to "suspend" - will suspend on battery
+    # lidSwitchExternalPower defaults to "suspend" - will suspend on AC without dock
+  };
+
+  # Enable USB devices to wake the system from suspend
+  # This allows keyboard/mouse to wake your ThinkPad without opening the lid
+  services.udev.extraRules = ''
+    # Enable wake for all USB devices (keyboards, mice, hubs)
+    # Change "enabled" to "disabled" for specific devices if they cause unwanted wakes
+    ACTION=="add", SUBSYSTEM=="usb", DRIVER=="usb", ATTR{power/wakeup}="enabled"
+  '';
+
+  # --------------------------------------------------------------------------
   # Essential Hyprland packages
   # --------------------------------------------------------------------------
   environment.systemPackages = with pkgs; [
