@@ -15,7 +15,7 @@
   # Allow non-root users in the 'input' group to access /dev/uinput
   hardware.uinput.enable = true;
   users.groups.uinput.members = [ "stanley" ];
-  users.groups.input.members = [ "stanley" ];
+  users.groups.input.members = [ "stanley" ]; # this may allow xremap to start on boot? 
 
 
   
@@ -60,7 +60,7 @@
       keymap = [
         {
           name = "Enter app launcher mode";
-          remap = {
+          remap = {  
             # Super+D enters the "app_launcher" mode
             "Super-d" = {
               set_mode = "app_launcher";
@@ -74,16 +74,16 @@
             # Array syntax = sequence of actions (like the Emacs example)
             "f" = [
               { launch = ["firefox"]; }
-              { set_mode = "default"; }
+              # { set_mode = "default"; }
             ];
             # Launch Cursor editor and auto-exit mode
             "c" = [
               { launch = ["cursor"]; }
-              { set_mode = "default"; }
+              # { set_mode = "default"; }
             ];
             "g" = [
               { launch = ["ghostty"]; }
-              { set_mode = "default"; }
+              # { set_mode = "default"; }
             ];
             # Manual exit if needed
             "Esc" = {
@@ -124,7 +124,6 @@
     environment = {
       # /run/current-system/sw/bin = system packages (environment.systemPackages)
       # /etc/profiles/per-user/<user>/bin = user-specific packages
-      # /home/<user>/.nix-profile/bin = home-manager packages (if used)
       PATH = lib.mkForce "/run/current-system/sw/bin:/etc/profiles/per-user/${config.services.xremap.userName}/bin:/home/${config.services.xremap.userName}/.nix-profile/bin";
     };
   };

@@ -35,12 +35,16 @@
       url = "github:xremap/nix-flake";
       inputs.nixpkgs.follows = "nixpkgs";  # Use same nixpkgs as system
     };
+    noctalia = {
+      url = "github:noctalia-dev/noctalia-shell";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   # --------------------------------------------------------------------------
   # Outputs - What this flake produces
   # --------------------------------------------------------------------------
-  outputs = { self, nixpkgs, rose-pine-hyprcursor, xremap-flake, ... }@inputs:
+  outputs = { self, nixpkgs, rose-pine-hyprcursor, xremap-flake, noctalia, ... }@inputs:
     let
       # System architecture - change to "aarch64-linux" for ARM systems
       system = "x86_64-linux";
@@ -74,6 +78,10 @@
         # Access in modules with: { config, pkgs, rose-pine-hyprcursor, ... }:
         specialArgs = {
           inherit rose-pine-hyprcursor;
+          inherit noctalia;
+          inherit xremap-flake;
+          inherit inputs;
+
         };
       };
     };

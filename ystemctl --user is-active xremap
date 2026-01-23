@@ -1,0 +1,21 @@
+[0;1;32m●[0m xremap.service - xremap user service
+     Loaded: loaded (]8;;file://nixos/home/stanley/.config/systemd/user/xremap.service\/home/stanley/.config/systemd/user/xremap.service]8;;\; [0;1;32menabled[0m; preset: ignored)
+     Active: [0;1;32mactive (running)[0m since Fri 2026-01-23 15:14:45 EST; 12min ago
+ Invocation: 04314048d9154fbda7c94ef18ee7f564
+   Main PID: 1987 (xremap)
+      Tasks: 1[0;38;5;245m (limit: 18782)[0m
+     Memory: 110.4M (peak: 192.6M)
+        CPU: 13.945s
+     CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/xremap.service
+             └─[0;38;5;245m1987 /nix/store/1m7y4z5cn5c9a1ld7awis54dhkvqgmjg-xremap-0.14.8/bin/xremap /nix/store/kgyy6h1j0bfm7d1gjn64p545ckr7g543-config.yml[0m
+
+Jan 23 15:18:00 nixos xremap[1987]: mode: app_launcher
+Jan 23 15:18:00 nixos xremap[1987]: mode: default
+Jan 23 15:18:33 nixos xremap[1987]: mode: app_launcher
+Jan 23 15:18:33 nixos xremap[1987]: mode: app_launcher
+Jan 23 15:18:33 nixos xremap[1987]: mode: app_launcher
+Jan 23 15:18:33 nixos xremap[1987]: mode: app_launcher
+Jan 23 15:18:33 nixos xremap[1987]: mode: app_launcher
+Jan 23 15:18:33 nixos xremap[1987]: mode: app_launcher
+Jan 23 15:18:33 nixos xremap[1987]: mode: app_launcher
+Jan 23 15:18:34 nixos xremap[1987]: mode: default
