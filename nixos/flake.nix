@@ -64,6 +64,7 @@
           ./power.nix
           ./hyprland.nix
           ./xremap.nix
+          ./modules/keyd.nix
           
           # Import xremap NixOS module - provides services.xremap option
           xremap-flake.nixosModules.default

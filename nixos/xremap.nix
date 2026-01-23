@@ -24,7 +24,7 @@
   # --------------------------------------------------------------------------
   services.xremap = {
     # Enable the xremap service (required since recent commits default to false)
-    enable = true;
+    enable = false;
     
     # Service mode - run as user service (better for Wayland/per-user sessions)
     # Options: "system" or "user"
