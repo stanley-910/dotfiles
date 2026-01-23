@@ -81,6 +81,10 @@
               { launch = ["cursor"]; }
               { set_mode = "default"; }
             ];
+            "g" = [
+              { launch = ["ghostty"]; }
+              { set_mode = "default"; }
+            ];
             # Manual exit if needed
             "Esc" = {
               set_mode = "default";
@@ -108,15 +112,20 @@
   };
 
   # --------------------------------------------------------------------------
-  # Extend xremap service PATH to find applications
+  # Extend xremap service environment
   # --------------------------------------------------------------------------
-  # This allows using short names like "firefox" instead of full paths
-  # in the launch commands above
+  # Set PATH to include system and user packages from NixOS
+  # This gives xremap access to all installed packages without listing them
+  # twice (cleaner and more maintainable than manual path management)
+  # 
+  # lib.mkForce overrides the default PATH that xremap module sets
+  # (which only includes basic coreutils, grep, sed, etc.)
   systemd.user.services.xremap = {
-    path = with pkgs; [
-      firefox
-      code-cursor
-      # Add more apps here as needed
-    ];
+    environment = {
+      # /run/current-system/sw/bin = system packages (environment.systemPackages)
+      # /etc/profiles/per-user/<user>/bin = user-specific packages
+      # /home/<user>/.nix-profile/bin = home-manager packages (if used)
+      PATH = lib.mkForce "/run/current-system/sw/bin:/etc/profiles/per-user/${config.services.xremap.userName}/bin:/home/${config.services.xremap.userName}/.nix-profile/bin";
+    };
   };
 }

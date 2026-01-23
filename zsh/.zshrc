@@ -541,15 +541,15 @@ function is_integrated_terminal() {
   [[ "$parent_process" =~ "zed" ]]
 }
 
-# if [[ -z $TMUX ]] && ! is_integrated_terminal; then
-#   # Get the most recently active detached session
-#   LAST_SESSION=$(tmux ls -F "#{session_activity} #{session_name}" 2>/dev/null | grep -v attached | sort -r | head -n1 | cut -d' ' -f2)
-#   if [[ -n $LAST_SESSION ]]; then
-#      exec tmux attach -d -t "$LAST_SESSION"
-#   else
-#      exec tmux
-#   fi
-# fi
+if [[ -z $TMUX ]] && ! is_integrated_terminal; then
+  # Get the most recently active detached session
+  LAST_SESSION=$(tmux ls -F "#{session_activity} #{session_name}" 2>/dev/null | grep -v attached | sort -r | head -n1 | cut -d' ' -f2)
+  if [[ -n $LAST_SESSION ]]; then
+     exec tmux attach -d -t "$LAST_SESSION"
+  else
+     exec tmux
+  fi
+fi
 
 # yazi function
 function y() {
