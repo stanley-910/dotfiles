@@ -532,6 +532,25 @@ function y() {
   rm -f -- "$tmp"
 }
 
+# Wrapper for mkdir that adds 'cd' to history for autosuggestions
+# After creating a directory, the next command suggestion will be 'cd <dirname>'
+mkdir() {
+    # Run the actual mkdir command with all provided arguments
+    command mkdir "$@"
+    local exit_code=$?
+    
+    # If mkdir succeeded (exit code 0) and we have arguments
+    if [[ $exit_code -eq 0 && $# -gt 0 ]]; then
+        # Get the last argument (the directory name)
+        local dir="${@: -1}"
+        
+        # Add 'cd' command to history so it appears in autosuggestions
+        # The history entry is timestamped with current time
+        print -s "cd $dir"
+    fi
+    
+    return $exit_code
+}
 
 mkf() {
     mkdir -p "$(dirname "$1")" && touch "$1"

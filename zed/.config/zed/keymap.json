@@ -494,6 +494,7 @@
       "j": ["workspace::SendKeystrokes", "g j"],
     },
   },
+  // Math mode typst, iff <==>
   {
     "context": "Editor && vim_mode == insert && (extension == typ)",
     "bindings": {
@@ -501,8 +502,20 @@
       "cmd-b": ["workspace::SendKeystrokes", "* * left"],
       "k m": ["workspace::SendKeystrokes", "$ $ left"],
       "d m": ["workspace::SendKeystrokes", "$ space space $ left left"],
+      "I F F": ["workspace::SendKeystrokes", "< = = >"],
     },
   },
+  // {
+  //   "context": "Editor && vim_mode == normal && (extension == typ)",
+  //   "bindings": {
+  //     // "c i m": ["workspace::SendKeystrokes", "F $ l c t $"],
+  //     // "c a m": ["workspace::SendKeystrokes", "F $ c f $"],
+  //     // "v i m": ["workspace::SendKeystrokes", "F $ l v t $"],
+  //     // "v a m": ["workspace::SendKeystrokes", "F $ v f $"],
+  //     // "d i m": ["workspace::SendKeystrokes", "F $ l d t $"],
+  //     // "d a m": ["workspace::SendKeystrokes", "F $ d f $"],
+  //   },
+  // },
   {
     "context": "Editor && vim_mode == insert && (extension == c)",
     "bindings": {
