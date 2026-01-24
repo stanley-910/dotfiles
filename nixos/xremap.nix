@@ -61,7 +61,7 @@
             only: "Logitech USB Receiver"
           remap:
             Shift_L: Esc
-      
+
       keymap:
         - name: "Enter app launcher mode"
           remap:
@@ -96,7 +96,7 @@
     environment = {
       # /run/current-system/sw/bin = system packages (environment.systemPackages)
       # /etc/profiles/per-user/<user>/bin = user-specific packages
-        PATH = lib.mkForce "/run/current-system/sw/bin:/etc/profiles/per-user/${config.services.xremap.userName}/bin:/home/${config.services.xremap.userName}/.nix-profile/bin";
+      PATH = lib.mkForce "/run/current-system/sw/bin:/etc/profiles/per-user/${config.services.xremap.userName}/bin:/home/${config.services.xremap.userName}/.nix-profile/bin";
       # Enable debug logging to see key events
       RUST_LOG = "debug";
     };
