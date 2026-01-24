@@ -3,6 +3,7 @@
 set -e # exit on error
 
 pushd ~/dotfiles/nixos/
+nixfmt -- **/*.nix
 git diff -U0 *.nix
 echo "NixOS Rebuilding..."
 sudo nixos-rebuild switch --flake ~/dotfiles/nixos#nixos &>nixos-switch.log || ( cat nixos-switch.log | grep --color error && exit 1 )
