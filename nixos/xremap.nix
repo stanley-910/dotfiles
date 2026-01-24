@@ -151,4 +151,30 @@
       ExecStart = "${pkgs.systemd}/bin/systemctl --user -M ${config.services.xremap.userName}@ restart xremap.service";
     };
   };
+
+  # --------------------------------------------------------------------------
+  # Restart xremap when USB input devices reconnect (e.g., dock replug)
+  # --------------------------------------------------------------------------
+  # When USB devices are hot-plugged (like reconnecting a dock), xremap may not
+  # detect the new input devices. This udev rule triggers a delayed restart.
+  # The delay (3s) allows the device to fully initialize before xremap grabs it.
+  services.udev.extraRules = ''
+    # Restart xremap when USB input devices (keyboards) are added
+    # SUBSYSTEM="input" catches keyboard devices
+    # ENV{ID_INPUT_KEYBOARD}="1" filters to only keyboard devices
+    ACTION=="add", SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1", RUN+="${pkgs.systemd}/bin/systemctl --no-block restart xremap-usb-restart.service"
+  '';
+
+  # Service triggered by udev to restart xremap after USB keyboard reconnect
+  systemd.services.xremap-usb-restart = {
+    description = "Restart xremap after USB keyboard reconnect";
+    
+    serviceConfig = {
+      Type = "oneshot";
+      # Small delay to let the device fully initialize
+      ExecStartPre = "${pkgs.coreutils}/bin/sleep 2";
+      # Restart the user's xremap service
+      ExecStart = "${pkgs.systemd}/bin/systemctl --user -M ${config.services.xremap.userName}@ restart xremap.service";
+    };
+  };
 }
