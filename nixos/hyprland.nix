@@ -89,21 +89,16 @@
   # --------------------------------------------------------------------------
   # Automatic monitor configuration based on connected displays and lid state.
   # Replaces shikane with Hyprland-native monitor profile management.
-  # Config installed to: /etc/xdg/hyprdynamicmonitors/
+  # Config managed via stow at: ~/.config/hyprdynamicmonitors/
+  # This allows the TUI to create/edit profiles directly
   services.hyprdynamicmonitors = {
     enable = true;
     # Run as user service (better for per-user Hyprland sessions)
     mode = "user";
-    # Don't install example config - we provide our own
+    # Don't install NixOS-managed config - user manages via stow
     installExamples = false;
     # Enable lid event detection for open/closed lid profile switching
     # Disable power events since we don't use AC/battery conditions
     extraFlags = [ "--enable-lid-events" "--disable-power-events" ];
-    # Provide our config file (relative to this nix file)
-    configFile = ../hyprdynamicmonitors/.config/hyprdynamicmonitors/config.toml;
-    # Install hyprconfigs directory with monitor profiles
-    extraFiles = {
-      "xdg/hyprdynamicmonitors/hyprconfigs" = ../hyprdynamicmonitors/.config/hyprdynamicmonitors/hyprconfigs;
-    };
   };
 }
