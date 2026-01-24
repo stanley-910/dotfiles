@@ -22,7 +22,7 @@
     # Main nixpkgs repository - use unstable for latest packages
     # You can switch to "nixos-25.11" for stable if preferred
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    
+    hyprdynamicmonitors.url = "github:fiffeek/hyprdynamicmonitors";
     # Rose Pine Hyprcursor theme 
     rose-pine-hyprcursor = {
       url = "github:ndom91/rose-pine-hyprcursor";
@@ -46,7 +46,7 @@
   # --------------------------------------------------------------------------
   # Outputs - What this flake produces
   # --------------------------------------------------------------------------
-  outputs = { self, nixpkgs, rose-pine-hyprcursor, xremap-flake, noctalia, ... }@inputs:
+  outputs = { self, nixpkgs, rose-pine-hyprcursor, xremap-flake, noctalia, hyprdynamicmonitors, ... }@inputs:
     let
       # System architecture - change to "aarch64-linux" for ARM systems
       system = "x86_64-linux";

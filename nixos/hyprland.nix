@@ -70,24 +70,6 @@
   '';
 
   # --------------------------------------------------------------------------
-  # Shikane - Dynamic display configuration daemon
-  # --------------------------------------------------------------------------
-  # Automatically detects and configures displays based on profiles
-  # Config: ~/.config/shikane/config.toml (managed via stow)
-  systemd.user.services.shikane = {
-    description = "Dynamic display configuration for Wayland";
-    wantedBy = [ "graphical-session.target" ];
-    partOf = [ "graphical-session.target" ];
-    after = [ "graphical-session.target" ];
-    serviceConfig = {
-      Type = "simple";
-      ExecStart = "${pkgs.shikane}/bin/shikane";
-      Restart = "on-failure";
-      RestartSec = 1;
-    };
-  };
-
-  # --------------------------------------------------------------------------
   # Essential Hyprland packages
   # --------------------------------------------------------------------------
   environment.systemPackages = with pkgs; [
@@ -95,7 +77,7 @@
     brightnessctl  # Control screen brightness (requires video group)
     playerctl      # Control media players (play/pause/next/prev)
     nwg-displays   # Display manager for Hyprland
-    libnotify      # Notification library (provides notify-send for shikane)
+    libnotify      # Notification library for Hyprland
   ] ++ [
     # Rose Pine Hyprcursor - from flake input (not in nixpkgs)
     # This provides the proper Hyprcursor format theme

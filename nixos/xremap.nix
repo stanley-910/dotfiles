@@ -129,4 +129,24 @@
       PATH = lib.mkForce "/run/current-system/sw/bin:/etc/profiles/per-user/${config.services.xremap.userName}/bin:/home/${config.services.xremap.userName}/.nix-profile/bin";
     };
   };
+
+  # --------------------------------------------------------------------------
+  # Restart xremap after suspend/resume
+  # --------------------------------------------------------------------------
+  # When the system wakes from suspend, input devices are re-initialized by the kernel.
+  # xremap needs to reconnect to these devices, so we restart the service.
+  # This systemd service runs after waking from suspend and restarts xremap for the user.
+  systemd.services.xremap-resume = {
+    description = "Restart xremap after suspend/resume";
+    # Run this service after the system wakes from suspend
+    after = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" ];
+    wantedBy = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" ];
+    
+    serviceConfig = {
+      Type = "oneshot";
+      # Restart the user's xremap service
+      # We use systemctl --user to target the user service
+      ExecStart = "${pkgs.systemd}/bin/systemctl --user -M ${config.services.xremap.userName}@ restart xremap.service";
+    };
+  };
 }

@@ -19,7 +19,6 @@
 # Use case: Working on the go, battery-powered, traveling
 [[profile]]
 name = "laptop-only"
-exec = ["notify-send 'Shikane' 'Laptop only mode'"]
     
     [[profile.output]]
     search = "eDP-1"                    # Built-in laptop display
@@ -36,36 +35,29 @@ exec = ["notify-send 'Shikane' 'Laptop only mode'"]
 # Note: This disables the laptop screen for maximum performance on externals
 [[profile]]
 name = "docked-clamshell"
-exec = [
-    "notify-send 'Shikane' 'Docked mode - laptop screen disabled'",
-    # Optional: Move workspaces to specific monitors
-    # "hyprctl dispatch moveworkspacetomonitor 1 HDMI-A-1",
-    # "hyprctl dispatch moveworkspacetomonitor 2 HDMI-A-1",
-    # "hyprctl dispatch moveworkspacetomonitor 3 DP-2"
-]
     
     # Laptop screen - DISABLED when docked
     [[profile.output]]
     search = "eDP-1"
     enable = false
     
-    # LG UltraGear - Main center monitor (1440p)
-    [[profile.output]]
-    search = ["n=HDMI-A-1", "s=409MXCR5B443"]  # Match by name AND serial
-    enable = true
-    mode = "2560x1440@59.95Hz"
-    position = "0,0"                            # Center position (reference point)
-    scale = 1.0
-    # adaptive_sync = true                      # Uncomment for gaming (VRR)
-    
-    # ASUS VG249 - Secondary monitor (vertical, 120Hz)
+    # ASUS VG249 - LEFT monitor (vertical, 120Hz)
     [[profile.output]]
     search = ["n=DP-2", "s=SCLMTF105933"]      # Match by name AND serial
     enable = true
     mode = "1920x1080@120Hz"
-    position = "2560,0"                         # Right of LG monitor
+    position = "0,0"                            # Leftmost position
     scale = 1.0
-    transform = "90"                            # Vertical orientation (90° clockwise)
+    transform = "90"                            # Vertical orientation (90° clockwise = 1080 wide x 1920 tall)
+    
+    # LG UltraGear - Main center/right monitor (1440p)
+    [[profile.output]]
+    search = ["n=HDMI-A-1", "s=409MXCR5B443"]  # Match by name AND serial
+    enable = true
+    mode = "2560x1440@59.95Hz"
+    position = "1080,0"                         # Right of DP-2 (vertical width is 1080)
+    scale = 1.0
+    # adaptive_sync = true                      # Uncomment for gaming (VRR)
 
 # ------------------------------------------------------------------------------
 # Profile 3: Extended Desktop (Laptop + Externals)
@@ -73,34 +65,34 @@ exec = [
 # When: External monitors connected, laptop lid open
 # Use case: Maximum screen real estate, laptop as additional display
 # Note: Laptop screen stays enabled for 3-monitor setup
+# Layout: [DP-2 Vertical] [LG Center] [Laptop Right]
 [[profile]]
 name = "extended-triple"
-exec = ["notify-send 'Shikane' 'Triple monitor mode enabled'"]
     
-    # Laptop screen - LEFT of main monitor
-    [[profile.output]]
-    search = "eDP-1"
-    enable = true
-    mode = "1920x1080@60Hz"
-    position = "0,360"                          # Vertically centered to LG
-    scale = 1.0
-    
-    # LG UltraGear - Main CENTER monitor (1440p)
-    [[profile.output]]
-    search = ["n=HDMI-A-1", "s=409MXCR5B443"]
-    enable = true
-    mode = "2560x1440@59.95Hz"
-    position = "1920,0"                         # After laptop screen
-    scale = 1.0
-    
-    # ASUS VG249 - RIGHT monitor (vertical, 120Hz)
+    # ASUS VG249 - LEFT monitor (vertical, 120Hz)
     [[profile.output]]
     search = ["n=DP-2", "s=SCLMTF105933"]
     enable = true
     mode = "1920x1080@120Hz"
-    position = "4480,0"                         # Right of LG (1920+2560=4480)
+    position = "0,0"                            # Leftmost position
     scale = 1.0
-    transform = "90"                            # Vertical orientation
+    transform = "90"                            # Vertical orientation (1080 wide x 1920 tall)
+    
+    # LG UltraGear - CENTER monitor (1440p)
+    [[profile.output]]
+    search = ["n=HDMI-A-1", "s=409MXCR5B443"]
+    enable = true
+    mode = "2560x1440@59.95Hz"
+    position = "1080,0"                         # After DP-2 vertical (1080 wide)
+    scale = 1.0
+    
+    # Laptop screen - RIGHT of LG monitor
+    [[profile.output]]
+    search = "eDP-1"
+    enable = true
+    mode = "1920x1080@60Hz"
+    position = "3640,360"                       # After DP-2 + LG (1080+2560=3640), centered vertically
+    scale = 1.0
 
 # ==============================================================================
 # Notes:
