@@ -74,6 +74,9 @@
           
           # Import xremap NixOS module - provides services.xremap option
           xremap-flake.nixosModules.default
+          
+          # Import HyprDynamicMonitors NixOS module - provides services.hyprdynamicmonitors option
+          hyprdynamicmonitors.nixosModules.default
         ];
         
         # Make flake inputs available to your modules via specialArgs
@@ -82,7 +85,6 @@
           inherit rose-pine-hyprcursor;
           inherit xremap-flake;
           inherit inputs;
-
         };
       };
     };
