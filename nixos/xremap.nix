@@ -72,8 +72,8 @@
             only = [ "Logitech USB Receiver" ];
           };
           remap = {
-            "Super_L" = "Alt_L";
-            "Alt_L" = "Super_L";
+            "LEFTMETA" = "LEFTALT";
+            "LEFTALT" = "LEFTMETA";
           };
         }
       ];
