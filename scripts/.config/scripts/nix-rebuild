@@ -14,4 +14,4 @@ git commit -am "generation $gen"
 
 popd # back to where you were
 
-echo "NixOS Rebuild Success!"
+notify-send -e "NixOS Rebuild Success!"
