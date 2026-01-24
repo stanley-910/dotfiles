@@ -60,8 +60,8 @@
           device:
             only: "Logitech USB Receiver"
           remap:
-            LEFTMETA: LEFTALT
-            LEFTALT: LEFTMETA
+            KEY_LEFTMETA: KEY_LEFTALT
+            KEY_LEFTALT: KEY_LEFTMETA
       
       keymap:
         - name: "Enter app launcher mode"
