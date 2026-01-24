@@ -56,7 +56,6 @@
             CapsLock: Ctrl_L
             Shift_R: Esc
         
-        - name: "Swap Super and Alt on Logitech keyboard"
           device:
             only: "Logitech USB Receiver"
           remap:
