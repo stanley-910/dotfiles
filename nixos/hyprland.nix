@@ -74,6 +74,7 @@
     # Multimedia controls for laptop function keys
     brightnessctl  # Control screen brightness (requires video group)
     playerctl      # Control media players (play/pause/next/prev)
+    nwg-displays   # Display manager for Hyprland
   ] ++ [
     # Rose Pine Hyprcursor - from flake input (not in nixpkgs)
     # This provides the proper Hyprcursor format theme
