@@ -187,6 +187,11 @@
 
   programs.firefox.enable = true;
 
+  programs.neovim = {
+    enable = true;
+    defaultEditor = true;
+  };
+
   # List packages installed in system profile. -- Package manager
   # You can use https://search.nixos.org/ to find more packages (and options).
 
