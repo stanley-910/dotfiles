@@ -58,13 +58,14 @@
         
         - name: "Swap Super and Alt on Logitech keyboards"
           device:
-            only: "ids:0x46d:0xc548"  # Target by vendor/product ID (more stable than event paths)
+            only: "Logitech USB Receiver"  # Target by vendor/product ID (more stable than event paths)
           remap:
             KEY_LEFTMETA: KEY_LEFTALT
             KEY_LEFTALT: KEY_LEFTMETA
 
 
     '';
+    # only: "ids:0x46d:0xc548"  # Target by vendor/product ID (more stable than event paths)
   };
   # Old config attribute set removed - using yamlConfig instead
 
