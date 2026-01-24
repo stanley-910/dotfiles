@@ -48,88 +48,41 @@
       "Logitech USB Receiver" # External keyboard via dock
     ];
 
-    # --------------------------------------------------------------------------
-    # Key remapping configuration
-    # --------------------------------------------------------------------------
-    # Define your key remaps here using YAML-like syntax
-    # See: https://github.com/xremap/xremap#configuration
-    config = {
-      # Dual-function Caps Lock: Alt when held, Escape when tapped
-      # This is incredibly useful - you get Escape in a easy-to-reach position
-      # while still having a left-side Alt for shortcuts
-      modmap = [
-        {
-          name = "Caps Lock as Alt/Escape (dual function)";
-          remap = {
-            "CapsLock" = "Ctrl_L";
-            "Shift_R" = "Esc";
-          };
-        }
-        # Device-specific: Swap Super and Left Alt keys for Logitech keyboard only
-        {
-          name = "Swap Super and Alt on Logitech keyboard";
-          device = {
-            only = [ "Logitech USB Receiver" ];
-          };
-          remap = {
-            "LEFTMETA" = "LEFTALT";
-            "LEFTALT" = "LEFTMETA";
-          };
-        }
-      ];
-      keymap = [
-        {
-          name = "Enter app launcher mode";
-          remap = {
-            # Super+D enters the "app_launcher" mode
-            "Super-d" = {
-              set_mode = "app_launcher";
-            };
-          };
-        }
-        {
-          name = "App launcher mode bindings";
-          remap = {
-            # Launch firefox and auto-exit mode
-            # Array syntax = sequence of actions (like the Emacs example)
-            "f" = [
-              { launch = [ "firefox" ]; }
-              # { set_mode = "default"; }
-            ];
-            # Launch Cursor editor and auto-exit mode
-            "c" = [
-              { launch = [ "cursor" ]; }
-              # { set_mode = "default"; }
-            ];
-            "g" = [
-              { launch = [ "ghostty" ]; }
-              # { set_mode = "default"; }
-            ];
-            # Manual exit if needed
-            "Esc" = {
-              set_mode = "default";
-            };
-          };
-          mode = "app_launcher"; # This keymap is only active in this mode
-        }
-      ];
-
-      # Example 2: Per-application remapping
-      # Uncomment and customize as needed
-      # keymap = [
-      #   {
-      #     name = "Firefox shortcuts";
-      #     application = {
-      #       only = [ "firefox" ];  # Only active in Firefox
-      #     };
-      #     remap = {
-      #       "C-n" = "Down";      # Ctrl+N -> Down arrow
-      #       "C-p" = "Up";        # Ctrl+P -> Up arrow
-      #     };
-      #   }
-      # ];
-    };
+    # Use yamlConfig for raw YAML to avoid Nix conversion issues
+    yamlConfig = ''
+      modmap:
+        - name: "Caps Lock as Ctrl, Right Shift as Esc"
+          remap:
+            CapsLock: Ctrl_L
+            Shift_R: Esc
+        
+        - name: "Swap Super and Alt on Logitech keyboard"
+          device:
+            only: "Logitech USB Receiver"
+          remap:
+            LEFTMETA: LEFTALT
+            LEFTALT: LEFTMETA
+      
+      keymap:
+        - name: "Enter app launcher mode"
+          remap:
+            Super-d:
+              set_mode: app_launcher
+        
+        - name: "App launcher mode bindings"
+          mode: app_launcher
+          remap:
+            f:
+              - launch: ["firefox"]
+            c:
+              - launch: ["cursor"]
+            g:
+              - launch: ["ghostty"]
+            Esc:
+              set_mode: default
+    '';
   };
+  # Old config attribute set removed - using yamlConfig instead
 
   # --------------------------------------------------------------------------
   # Extend xremap service environment
