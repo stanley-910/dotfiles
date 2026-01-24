@@ -56,25 +56,8 @@
             "Shift_R" = "Esc";
           };
         }
-        # Device-specific: Swap Alt and Meta keys for Logitech keyboard
-        # Change "Logitech USB Receiver" to match your specific keyboard name
-        # from the output of: cat /proc/bus/input/devices
-        {
-          name = "Swap Alt and Meta for specific keyboard";
-          device = {
-            # Target only this specific keyboard
-            # Use the exact name from /proc/bus/input/devices
-            only = [ "Logitech USB Receiver" ];
-          };
-          remap = {
-            # Swap left Alt with left Meta (Super/Windows key)
-            "Alt_L" = "Super_L";
-            "Super_L" = "Alt_L";
-            # Swap right Alt with right Meta (Super/Windows key)
-            "Alt_R" = "Super_R";
-            "Super_R" = "Alt_R";
-          };
-        }
+        # Device-specific: Swap Alt and Meta keys for Logitech keyboard only
+        # Using event14 which corresponds to the Logitech USB Receiver keyboard
       ];
       keymap = [
         {

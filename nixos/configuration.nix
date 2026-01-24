@@ -197,6 +197,7 @@
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   environment.systemPackages = with pkgs; [
     inputs.noctalia.packages.${pkgs.stdenv.hostPlatform.system}.default
+    shikane
     # Core editors and tools
     vim       # Do not forget to add an editor to edit configuration.nix!
     neovim    # Modern vim-based editor
