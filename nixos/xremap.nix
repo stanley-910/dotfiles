@@ -37,7 +37,13 @@
     # Enable Wayland wlroots support (Hyprland is a wlroots compositor)
     # This allows xremap to detect active application windows for per-app remapping
     withWlroots = true;
-
+    
+    # Target specific devices by name - fixes reconnect detection issues
+    # These are grabbed explicitly instead of auto-detection
+    deviceNames = [
+      "AT Translated Set 2 keyboard"  # Built-in laptop keyboard
+      "Logitech USB Receiver"          # External keyboard via dock
+    ];
     
     # --------------------------------------------------------------------------
     # Key remapping configuration
@@ -155,25 +161,20 @@
   # --------------------------------------------------------------------------
   # Restart xremap when USB input devices reconnect (e.g., dock replug)
   # --------------------------------------------------------------------------
-  # When USB devices are hot-plugged (like reconnecting a dock), xremap may not
-  # detect the new input devices. This udev rule triggers a delayed restart.
-  # The delay (3s) allows the device to fully initialize before xremap grabs it.
+  # --watch doesn't reliably catch all device reconnects, so we use udev as backup.
+  # The delay allows the device to fully initialize before xremap grabs it.
   services.udev.extraRules = ''
-    # Restart xremap when USB input devices (keyboards) are added
-    # SUBSYSTEM="input" catches keyboard devices
-    # ENV{ID_INPUT_KEYBOARD}="1" filters to only keyboard devices
-    ACTION=="add", SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1", RUN+="${pkgs.systemd}/bin/systemctl --no-block restart xremap-usb-restart.service"
+    # Restart xremap when USB keyboards are added
+    ACTION=="add", SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1", RUN+="${pkgs.systemd}/bin/systemctl --no-block start xremap-usb-restart.service"
   '';
 
   # Service triggered by udev to restart xremap after USB keyboard reconnect
   systemd.services.xremap-usb-restart = {
     description = "Restart xremap after USB keyboard reconnect";
-    
     serviceConfig = {
       Type = "oneshot";
-      # Small delay to let the device fully initialize
+      # Delay to let device initialize
       ExecStartPre = "${pkgs.coreutils}/bin/sleep 2";
-      # Restart the user's xremap service
       ExecStart = "${pkgs.systemd}/bin/systemctl --user -M ${config.services.xremap.userName}@ restart xremap.service";
     };
   };
