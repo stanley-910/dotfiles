@@ -56,10 +56,12 @@
             CapsLock: Ctrl_L
             Shift_R: Esc
         
+        - name: "Swap Super and Alt on Logitech keyboards"
           device:
-            only: "Logitech USB Receiver"
+            only: "ids:0x46d:0xc548"  # Target by vendor/product ID (more stable than event paths)
           remap:
-            Shift_L: Esc
+            KEY_LEFTMETA: KEY_LEFTALT
+            KEY_LEFTALT: KEY_LEFTMETA
 
       keymap:
         - name: "Enter app launcher mode"
