@@ -49,8 +49,6 @@
             leftmeta = "leftalt";
             leftalt = "leftmeta";
 
-            # Logitech-specific: Left Shift becomes Esc
-            leftshift = "esc";
           };
         };
       };
