@@ -62,24 +62,8 @@
           remap:
             KEY_LEFTMETA: KEY_LEFTALT
             KEY_LEFTALT: KEY_LEFTMETA
+      
 
-      keymap:
-        - name: "Enter app launcher mode"
-          remap:
-            Super-d:
-              set_mode: app_launcher
-        
-        - name: "App launcher mode bindings"
-          mode: app_launcher
-          remap:
-            f:
-              - launch: ["firefox"]
-            c:
-              - launch: ["cursor"]
-            g:
-              - launch: ["ghostty"]
-            Esc:
-              set_mode: default
     '';
   };
   # Old config attribute set removed - using yamlConfig instead
@@ -97,7 +81,7 @@
     environment = {
       # /run/current-system/sw/bin = system packages (environment.systemPackages)
       # /etc/profiles/per-user/<user>/bin = user-specific packages
-      PATH = lib.mkForce "/run/current-system/sw/bin:/etc/profiles/per-user/${config.services.xremap.userName}/bin:/home/${config.services.xremap.userName}/.nix-profile/bin";
+      # PATH = lib.mkForce "/run/current-system/sw/bin:/etc/profiles/per-user/${config.services.xremap.userName}/bin:/home/${config.services.xremap.userName}/.nix-profile/bin";
       # Enable debug logging to see key events
       RUST_LOG = "debug";
     };
@@ -146,3 +130,20 @@
   #   };
   # };
 }
+      # keymap:
+      #   - name: "Enter app launcher mode"
+      #     remap:
+      #       Super-d:
+      #         set_mode: app_launcher
+        
+      #   - name: "App launcher mode bindings"
+      #     mode: app_launcher
+      #     remap:
+      #       f:
+      #         - launch: ["firefox"]
+      #       c:
+      #         - launch: ["cursor"]
+      #       g:
+      #         - launch: ["ghostty"]
+      #       Esc:
+      #         set_mode: default
