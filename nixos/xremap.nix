@@ -62,6 +62,7 @@
           remap:
             KEY_LEFTMETA: KEY_LEFTALT
             KEY_LEFTALT: KEY_LEFTMETA
+            Shift_L: Esc
 
 
     '';
@@ -70,7 +71,43 @@
   # Old config attribute set removed - using yamlConfig instead
 
   # --------------------------------------------------------------------------
-  # Extend xremap service environment
+  # Auto-update user service symlinks on rebuild
+  # --------------------------------------------------------------------------
+  # NixOS doesn't automatically update user service symlinks during rebuild.
+  # This activation script ensures the xremap service always uses the latest
+  # config from the Nix store by updating symlinks and reloading the service.
+  #
+  # References:
+  # - https://nixos.org/manual/nixos/unstable/
+  # - Known limitation: user services need manual activation
+  system.activationScripts.xremap-user-service-update = lib.mkIf (config.services.xremap.enable && config.services.xremap.serviceMode == "user") {
+    text = ''
+      # Update user service symlinks for xremap
+      USER_HOME="/home/${config.services.xremap.userName}"
+      SYSTEMD_USER_DIR="$USER_HOME/.config/systemd/user"
+      
+      # Get the new service file from the system profile
+      NEW_SERVICE_FILE="/nix/var/nix/profiles/system/etc/systemd/user/xremap.service"
+      
+      if [ -L "$NEW_SERVICE_FILE" ]; then
+        # Update the main service symlink
+        mkdir -p "$SYSTEMD_USER_DIR"
+        ln -sf "$(readlink -f "$NEW_SERVICE_FILE")" "$SYSTEMD_USER_DIR/xremap.service"
+        
+        # Update the wants directory symlink
+        mkdir -p "$SYSTEMD_USER_DIR/graphical-session.target.wants"
+        ln -sf "$(readlink -f "$NEW_SERVICE_FILE")" "$SYSTEMD_USER_DIR/graphical-session.target.wants/xremap.service"
+        
+        # Reload and restart the service for the user
+        # Use systemctl --user -M to target the user's systemd instance
+        ${pkgs.systemd}/bin/systemctl --user -M ${config.services.xremap.userName}@ daemon-reload 2>/dev/null || true
+        ${pkgs.systemd}/bin/systemctl --user -M ${config.services.xremap.userName}@ try-restart xremap.service 2>/dev/null || true
+      fi
+    '';
+  };
+
+  # --------------------------------------------------------------------------
+  # Extend xremap service environment (optional)
   # --------------------------------------------------------------------------
   # Set PATH to include system and user packages from NixOS
   # This gives xremap access to all installed packages without listing them
