@@ -62,7 +62,7 @@
           remap:
             KEY_LEFTMETA: KEY_LEFTALT
             KEY_LEFTALT: KEY_LEFTMETA
-      
+
 
     '';
   };
@@ -77,15 +77,15 @@
   #
   # lib.mkForce overrides the default PATH that xremap module sets
   # (which only includes basic coreutils, grep, sed, etc.)
-  systemd.user.services.xremap = {
-    environment = {
-      # /run/current-system/sw/bin = system packages (environment.systemPackages)
-      # /etc/profiles/per-user/<user>/bin = user-specific packages
-      # PATH = lib.mkForce "/run/current-system/sw/bin:/etc/profiles/per-user/${config.services.xremap.userName}/bin:/home/${config.services.xremap.userName}/.nix-profile/bin";
-      # Enable debug logging to see key events
-      RUST_LOG = "debug";
-    };
-  };
+  # systemd.user.services.xremap = {
+  #   environment = {
+  #     # /run/current-system/sw/bin = system packages (environment.systemPackages)
+  #     # /etc/profiles/per-user/<user>/bin = user-specific packages
+  #     # PATH = lib.mkForce "/run/current-system/sw/bin:/etc/profiles/per-user/${config.services.xremap.userName}/bin:/home/${config.services.xremap.userName}/.nix-profile/bin";
+  #     # Enable debug logging to see key events
+  #     RUST_LOG = "debug";
+  #   };
+  # };
 
   # --------------------------------------------------------------------------
   # Restart xremap after suspend/resume
@@ -95,29 +95,29 @@
   # We verified that manually restarting xremap fixes this, so we automate it here.
   #
   # This system service runs after waking from sleep and restarts the user's xremap service.
-  systemd.services.xremap-resume = {
-    description = "Restart xremap after suspend/resume";
-    # Trigger after the system wakes from sleep
-    wantedBy = [ "sleep.target" ];
-    after = [ "sleep.target" ];
+  # systemd.services.xremap-resume = {
+  #   description = "Restart xremap after suspend/resume";
+  #   # Trigger after the system wakes from sleep
+  #   wantedBy = [ "sleep.target" ];
+  #   after = [ "sleep.target" ];
 
-    serviceConfig = {
-      Type = "oneshot";
-      # Restart the user's xremap service
-      # -M targets a specific user's systemd instance
-      ExecStart = "${pkgs.systemd}/bin/systemctl --user -M ${config.services.xremap.userName}@ restart xremap.service";
-    };
-  };
+  #   serviceConfig = {
+  #     Type = "oneshot";
+  #     # Restart the user's xremap service
+  #     # -M targets a specific user's systemd instance
+  #     ExecStart = "${pkgs.systemd}/bin/systemctl --user -M ${config.services.xremap.userName}@ restart xremap.service";
+  #   };
+  # };
 
   # --------------------------------------------------------------------------
   # Restart xremap when USB input devices reconnect (e.g., dock replug)
   # --------------------------------------------------------------------------
   # --watch doesn't reliably catch all device reconnects, so we use udev as backup.
   # The delay allows the device to fully initialize before xremap grabs it.
-  services.udev.extraRules = ''
-    # Restart xremap when USB keyboards are added
-    ACTION=="add", SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1", RUN+="${pkgs.systemd}/bin/systemctl --no-block start xremap-usb-restart.service"
-  '';
+  # services.udev.extraRules = ''
+  #   # Restart xremap when USB keyboards are added
+  #   ACTION=="add", SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1", RUN+="${pkgs.systemd}/bin/systemctl --no-block start xremap-usb-restart.service"
+  # '';
 
   # Service triggered by udev to restart xremap after USB keyboard reconnect
   # systemd.services.xremap-usb-restart = {
@@ -130,20 +130,20 @@
   #   };
   # };
 }
-      # keymap:
-      #   - name: "Enter app launcher mode"
-      #     remap:
-      #       Super-d:
-      #         set_mode: app_launcher
-        
-      #   - name: "App launcher mode bindings"
-      #     mode: app_launcher
-      #     remap:
-      #       f:
-      #         - launch: ["firefox"]
-      #       c:
-      #         - launch: ["cursor"]
-      #       g:
-      #         - launch: ["ghostty"]
-      #       Esc:
-      #         set_mode: default
+# keymap:
+#   - name: "Enter app launcher mode"
+#     remap:
+#       Super-d:
+#         set_mode: app_launcher
+
+#   - name: "App launcher mode bindings"
+#     mode: app_launcher
+#     remap:
+#       f:
+#         - launch: ["firefox"]
+#       c:
+#         - launch: ["cursor"]
+#       g:
+#         - launch: ["ghostty"]
+#       Esc:
+#         set_mode: default
