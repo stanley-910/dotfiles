@@ -229,6 +229,8 @@
     # GUI applications
     btop        # System monitor
     code-cursor # AI-powered code editor
+
+    nixfmt-rfc-style
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
