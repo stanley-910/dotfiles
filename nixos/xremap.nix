@@ -169,13 +169,13 @@
   '';
 
   # Service triggered by udev to restart xremap after USB keyboard reconnect
-  systemd.services.xremap-usb-restart = {
-    description = "Restart xremap after USB keyboard reconnect";
-    serviceConfig = {
-      Type = "oneshot";
-      # Delay to let device initialize
-      ExecStartPre = "${pkgs.coreutils}/bin/sleep 2";
-      ExecStart = "${pkgs.systemd}/bin/systemctl --user -M ${config.services.xremap.userName}@ restart xremap.service";
-    };
-  };
+  # systemd.services.xremap-usb-restart = {
+  #   description = "Restart xremap after USB keyboard reconnect";
+  #   serviceConfig = {
+  #     Type = "oneshot";
+  #     # Delay to let device initialize
+  #     ExecStartPre = "${pkgs.coreutils}/bin/sleep 2";
+  #     ExecStart = "${pkgs.systemd}/bin/systemctl --user -M ${config.services.xremap.userName}@ restart xremap.service";
+  #   };
+  # };
 }
