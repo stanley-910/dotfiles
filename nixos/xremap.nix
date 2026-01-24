@@ -65,8 +65,17 @@
             "Shift_R" = "Esc";
           };
         }
-        # Device-specific: Swap Alt and Meta keys for Logitech keyboard only
-        # Using event14 which corresponds to the Logitech USB Receiver keyboard
+        # Device-specific: Swap Super and Left Alt keys for Logitech keyboard only
+        {
+          name = "Swap Super and Alt on Logitech keyboard";
+          device = {
+            only = [ "Logitech USB Receiver" ];
+          };
+          remap = {
+            "Super_L" = "Alt_L";
+            "Alt_L" = "Super_L";
+          };
+        }
       ];
       keymap = [
         {

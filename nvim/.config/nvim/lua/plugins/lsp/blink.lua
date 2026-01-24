@@ -35,7 +35,9 @@ return {
     },
 
 
-    fuzzy = { implementation = "prefer_rust_with_warning" }
+    -- Use Lua implementation to avoid needing Rust nightly and pre-built binaries
+    -- This prevents the "No fuzzy matching library found" warning on startup
+    fuzzy = { implementation = "lua" }
   },
   opts_extend = { "sources.default" }
 }
