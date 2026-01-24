@@ -4,7 +4,13 @@
 # Basic Hyprland installation. Add more features incrementally.
 # Import this in configuration.nix via: imports = [ ./hyprland.nix ];
 
-{ config, lib, pkgs, rose-pine-hyprcursor, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  rose-pine-hyprcursor,
+  ...
+}:
 
 {
   # --------------------------------------------------------------------------
@@ -15,7 +21,7 @@
     # UWSM provides better systemd integration for Wayland compositors
     # When using a display manager (SDDM), select "Hyprland (uwsm-managed)"
     withUWSM = true;
-    xwayland.enable = true;  # Enable XWayland for X11 app compatibility
+    xwayland.enable = true; # Enable XWayland for X11 app compatibility
   };
 
   # --------------------------------------------------------------------------
@@ -25,7 +31,7 @@
   # It will present "Hyprland (uwsm-managed)" as a session option
   services.displayManager.sddm = {
     enable = true;
-    wayland.enable = true;  # Enable Wayland support for SDDM itself
+    wayland.enable = true; # Enable Wayland support for SDDM itself
   };
 
   # --------------------------------------------------------------------------
@@ -55,7 +61,7 @@
   # Will still suspend normally when on battery or AC without external monitors
   services.logind.settings = {
     Login = {
-      HandleLidSwitchDocked = "ignore";  # Don't suspend when external monitors detected
+      HandleLidSwitchDocked = "ignore"; # Don't suspend when external monitors detected
       # HandleLidSwitch defaults to "suspend" - will suspend on battery
       # HandleLidSwitchExternalPower defaults to "suspend" - will suspend on AC without dock
     };
@@ -72,17 +78,20 @@
   # --------------------------------------------------------------------------
   # Essential Hyprland packages
   # --------------------------------------------------------------------------
-  environment.systemPackages = with pkgs; [
-    # Multimedia controls for laptop function keys
-    brightnessctl  # Control screen brightness (requires video group)
-    playerctl      # Control media players (play/pause/next/prev)
-    nwg-displays   # Display manager for Hyprland
-    libnotify      # Notification library for Hyprland
-  ] ++ [
-    # Rose Pine Hyprcursor - from flake input (not in nixpkgs)
-    # This provides the proper Hyprcursor format theme
-    rose-pine-hyprcursor.packages.${pkgs.system}.default
-  ];
+  environment.systemPackages =
+    with pkgs;
+    [
+      # Multimedia controls for laptop function keys
+      brightnessctl # Control screen brightness (requires video group)
+      playerctl # Control media players (play/pause/next/prev)
+      nwg-displays # Display manager for Hyprland
+      libnotify # Notification library for Hyprland
+    ]
+    ++ [
+      # Rose Pine Hyprcursor - from flake input (not in nixpkgs)
+      # This provides the proper Hyprcursor format theme
+      rose-pine-hyprcursor.packages.${pkgs.system}.default
+    ];
 
   # --------------------------------------------------------------------------
   # HyprDynamicMonitors Service
@@ -99,12 +108,16 @@
     installExamples = false;
     # Enable lid event detection for open/closed lid profile switching
     # Disable power events since we don't use AC/battery conditions
-    extraFlags = [ "--enable-lid-events" "--disable-power-events" ];
+    extraFlags = [
+      "--enable-lid-events"
+      "--disable-power-events"
+    ];
     # Provide our config file (relative to this nix file)
     configFile = ../hyprdynamicmonitors/.config/hyprdynamicmonitors/config.toml;
     # Install hyprconfigs directory with monitor profiles
     extraFiles = {
-      "xdg/hyprdynamicmonitors/hyprconfigs" = ../hyprdynamicmonitors/.config/hyprdynamicmonitors/hyprconfigs;
+      "xdg/hyprdynamicmonitors/hyprconfigs" =
+        ../hyprdynamicmonitors/.config/hyprdynamicmonitors/hyprconfigs;
     };
   };
 }

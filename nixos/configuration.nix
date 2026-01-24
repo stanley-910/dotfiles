@@ -2,18 +2,24 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ config, lib, pkgs, inputs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  inputs,
+  ...
+}:
 
 {
-  imports =
-    [ # Include the results of the hardware scan.
-      ./hardware-configuration.nix
-      
-      # Custom modules
-      ./power.nix           # Power management and battery optimization
-      ./hyprland.nix        # Hyprland window manager and desktop components
-      ./scripts.nix         # Custom shell scripts made globally accessible
-    ];
+  imports = [
+    # Include the results of the hardware scan.
+    ./hardware-configuration.nix
+
+    # Custom modules
+    ./power.nix # Power management and battery optimization
+    ./hyprland.nix # Hyprland window manager and desktop components
+    ./scripts.nix # Custom shell scripts made globally accessible
+  ];
 
   # Use the systemd-boot EFI boot loader.
   boot.loader.systemd-boot.enable = true;
@@ -23,8 +29,6 @@
   security.sudo.wheelNeedsPassword = false;
 
   hardware.bluetooth.enable = true;
-
-
 
   networking.hostName = "nixos"; # Define your hostname.
 
@@ -46,10 +50,10 @@
   # ===========================================================================
   networking.networkmanager = {
     enable = true;
-    
+
     # Load WiFi credentials from secrets file (not tracked in git)
     ensureProfiles.environmentFiles = [ "/etc/nixos/secrets/wifi.env" ];
-    
+
     # Declarative WiFi profiles
     ensureProfiles.profiles = {
       # McGill WPA2-Enterprise WiFi (PEAP/MSCHAPv2)
@@ -68,8 +72,8 @@
         # 802.1X authentication settings for WPA2-Enterprise
         "802-1x" = {
           eap = "peap;";
-          identity = "$MCGILL_USERNAME";   # Loaded from /etc/nixos/secrets/wifi.env
-          password = "$MCGILL_PASSWORD";   # Loaded from /etc/nixos/secrets/wifi.env
+          identity = "$MCGILL_USERNAME"; # Loaded from /etc/nixos/secrets/wifi.env
+          password = "$MCGILL_PASSWORD"; # Loaded from /etc/nixos/secrets/wifi.env
           phase2-auth = "mschapv2";
           # NixOS bundles all CA certs together (no individual .pem files)
           ca-cert = "/etc/ssl/certs/ca-bundle.crt";
@@ -77,7 +81,7 @@
         ipv4.method = "auto";
         ipv6.method = "auto";
       };
-      
+
       # Eduroam - International academic WiFi network
       # Uses same McGill credentials as wpa.mcgill.ca
       "eduroam" = {
@@ -96,7 +100,7 @@
         "802-1x" = {
           eap = "peap;";
           # For eduroam, identity must be in full email format
-          identity = "$MCGILL_USERNAME";   # Should be firstname.lastname@mcgill.ca
+          identity = "$MCGILL_USERNAME"; # Should be firstname.lastname@mcgill.ca
           password = "$MCGILL_PASSWORD";
           phase2-auth = "mschapv2";
           # Anonymous identity helps with initial connection (optional but recommended)
@@ -131,9 +135,6 @@
     # windowManager.qtile.enable = false;
   };
 
-
-  
-
   # Configure keymap in X11
   # services.xserver.xkb.layout = "us";
   # services.xserver.xkb.options = "eurosign:e,caps:escape";
@@ -146,10 +147,10 @@
   # wpctl command (from wireplumber) is used in Hyprland keybinds
   services.pipewire = {
     enable = true;
-    pulse.enable = true;  # PulseAudio compatibility layer
+    pulse.enable = true; # PulseAudio compatibility layer
     alsa = {
-      enable = true;      # ALSA support
-      support32Bit = true;  # 32-bit app support
+      enable = true; # ALSA support
+      support32Bit = true; # 32-bit app support
     };
   };
 
@@ -160,14 +161,14 @@
   users.users.stanley = {
     isNormalUser = true;
     # Enable 'sudo' and grant permissions for input devices and graphics
-    extraGroups = [ 
-      "wheel"          # Enable sudo for the user
-      "input"          # Required for Hyprland to access input devices (/dev/input/*)
-      "video"          # Required for GPU access and graphics operations
-      "seat"           # Required for seat management (seatd)
+    extraGroups = [
+      "wheel" # Enable sudo for the user
+      "input" # Required for Hyprland to access input devices (/dev/input/*)
+      "video" # Required for GPU access and graphics operations
+      "seat" # Required for seat management (seatd)
       "networkmanager" # Required for WPA2-Enterprise (802.1X) WiFi authentication
     ];
-    shell = pkgs.zsh;          # Set zsh as default shell
+    shell = pkgs.zsh; # Set zsh as default shell
     packages = with pkgs; [
       tree
     ];
@@ -179,9 +180,9 @@
   # Enable and configure zsh system-wide (NixOS-native plugin management)
   programs.zsh = {
     enable = true;
-    enableCompletion = true;           # Enables vendor completions from Nixpkgs
-    autosuggestions.enable = true;     # zsh-autosuggestions (no manual clone needed)
-    syntaxHighlighting.enable = true;  # zsh-syntax-highlighting (no manual clone needed)
+    enableCompletion = true; # Enables vendor completions from Nixpkgs
+    autosuggestions.enable = true; # zsh-autosuggestions (no manual clone needed)
+    syntaxHighlighting.enable = true; # zsh-syntax-highlighting (no manual clone needed)
   };
 
   programs.firefox.enable = true;
@@ -191,43 +192,46 @@
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true; # Allows for usage of packages that are not free and open source
-  
+
   # Enable flakes and the new nix command interface
   # These are "experimental" but widely adopted and stable in practice
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
   environment.systemPackages = with pkgs; [
     inputs.noctalia.packages.${pkgs.stdenv.hostPlatform.system}.default
     inputs.hyprdynamicmonitors.packages.${system}.default
     # Core editors and tools
-    vim       # Do not forget to add an editor to edit configuration.nix!
-    neovim    # Modern vim-based editor
+    vim # Do not forget to add an editor to edit configuration.nix!
+    neovim # Modern vim-based editor
     wget
     git
-    
+
     # Terminal and shell tools
-    ghostty   # GPU-accelerated terminal
-    tmux      # Terminal multiplexer
-    starship  # Cross-shell prompt
-    
+    ghostty # GPU-accelerated terminal
+    tmux # Terminal multiplexer
+    starship # Cross-shell prompt
+
     # Modern CLI replacements
-    eza       # Modern ls with git integration
-    bat       # Modern cat with syntax highlighting
-    fd        # Modern find
-    ripgrep   # Fast grep alternative
-    fzf       # Fuzzy finder
-    zoxide    # Smart cd replacement
-    
+    eza # Modern ls with git integration
+    bat # Modern cat with syntax highlighting
+    fd # Modern find
+    ripgrep # Fast grep alternative
+    fzf # Fuzzy finder
+    zoxide # Smart cd replacement
+
     # Utilities
-    stow      # Symlink manager for dotfiles
+    stow # Symlink manager for dotfiles
     fastfetch # System info display
-    yazi      # Terminal file manager
-    tree      # Directory tree viewer
-    jq        # JSON processor
-    ffmpeg    # Media processing
-    xclip     # Clipboard tool (replaces pbcopy on macOS)
-    
+    yazi # Terminal file manager
+    tree # Directory tree viewer
+    jq # JSON processor
+    ffmpeg # Media processing
+    xclip # Clipboard tool (replaces pbcopy on macOS)
+
     # GUI applications
-    btop        # System monitor
+    btop # System monitor
     code-cursor # AI-powered code editor
 
     nixfmt-rfc-style
@@ -277,4 +281,3 @@
   system.stateVersion = "25.11"; # Did you read the comment?
 
 }
-

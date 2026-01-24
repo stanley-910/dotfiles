@@ -4,15 +4,20 @@
 # This module handles power management, battery optimization, and related settings.
 # Import this in configuration.nix via: imports = [ ./power.nix ];
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   powerManagement.enable = true;
-  
+
   # --------------------------------------------------------------------------
   # TLP - Advanced Power Management for Linux
   # --------------------------------------------------------------------------
-  # TLP is a feature-rich command-line utility for Linux, saving laptop battery 
+  # TLP is a feature-rich command-line utility for Linux, saving laptop battery
   # power without the need to understand every technical detail.
   services.tlp = {
     enable = true;
@@ -69,7 +74,6 @@
   # Power-related packages
   # --------------------------------------------------------------------------
   environment.systemPackages = with pkgs; [
-    powertop       # Power consumption analyzer
+    powertop # Power consumption analyzer
   ];
 }
-

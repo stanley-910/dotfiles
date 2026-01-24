@@ -5,7 +5,12 @@
 # Great for customizing keyboard layouts, creating custom shortcuts, etc.
 # Import this in configuration.nix via: imports = [ ./xremap.nix ];
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # --------------------------------------------------------------------------
@@ -15,36 +20,34 @@
   # Allow non-root users in the 'input' group to access /dev/uinput
   hardware.uinput.enable = true;
   users.groups.uinput.members = [ "stanley" ];
-  users.groups.input.members = [ "stanley" ]; # this may allow xremap to start on boot? 
+  users.groups.input.members = [ "stanley" ]; # this may allow xremap to start on boot?
 
-
-  
   # --------------------------------------------------------------------------
   # Configure xremap service
   # --------------------------------------------------------------------------
   services.xremap = {
     # Enable the xremap service (required since recent commits default to false)
     enable = true;
-    
+
     # Service mode - run as user service (better for Wayland/per-user sessions)
     # Options: "system" or "user"
     # User mode works better with Hyprland and per-application remapping
     serviceMode = "user";
-    
+
     # Specify which user to run the service as (required for user mode)
     userName = "stanley";
-    
+
     # Enable Wayland wlroots support (Hyprland is a wlroots compositor)
     # This allows xremap to detect active application windows for per-app remapping
     withWlroots = true;
-    
+
     # Target specific devices by name - fixes reconnect detection issues
     # These are grabbed explicitly instead of auto-detection
     deviceNames = [
-      "AT Translated Set 2 keyboard"  # Built-in laptop keyboard
-      "Logitech USB Receiver"          # External keyboard via dock
+      "AT Translated Set 2 keyboard" # Built-in laptop keyboard
+      "Logitech USB Receiver" # External keyboard via dock
     ];
-    
+
     # --------------------------------------------------------------------------
     # Key remapping configuration
     # --------------------------------------------------------------------------
@@ -68,7 +71,7 @@
       keymap = [
         {
           name = "Enter app launcher mode";
-          remap = {  
+          remap = {
             # Super+D enters the "app_launcher" mode
             "Super-d" = {
               set_mode = "app_launcher";
@@ -81,16 +84,16 @@
             # Launch firefox and auto-exit mode
             # Array syntax = sequence of actions (like the Emacs example)
             "f" = [
-              { launch = ["firefox"]; }
+              { launch = [ "firefox" ]; }
               # { set_mode = "default"; }
             ];
             # Launch Cursor editor and auto-exit mode
             "c" = [
-              { launch = ["cursor"]; }
+              { launch = [ "cursor" ]; }
               # { set_mode = "default"; }
             ];
             "g" = [
-              { launch = ["ghostty"]; }
+              { launch = [ "ghostty" ]; }
               # { set_mode = "default"; }
             ];
             # Manual exit if needed
@@ -98,10 +101,10 @@
               set_mode = "default";
             };
           };
-          mode = "app_launcher";  # This keymap is only active in this mode
+          mode = "app_launcher"; # This keymap is only active in this mode
         }
       ];
-      
+
       # Example 2: Per-application remapping
       # Uncomment and customize as needed
       # keymap = [
@@ -125,7 +128,7 @@
   # Set PATH to include system and user packages from NixOS
   # This gives xremap access to all installed packages without listing them
   # twice (cleaner and more maintainable than manual path management)
-  # 
+  #
   # lib.mkForce overrides the default PATH that xremap module sets
   # (which only includes basic coreutils, grep, sed, etc.)
   systemd.user.services.xremap = {
@@ -142,14 +145,14 @@
   # When the system wakes from suspend, input devices get re-initialized by the kernel.
   # xremap loses connection to these devices (causing "No such device" errors).
   # We verified that manually restarting xremap fixes this, so we automate it here.
-  # 
+  #
   # This system service runs after waking from sleep and restarts the user's xremap service.
   systemd.services.xremap-resume = {
     description = "Restart xremap after suspend/resume";
     # Trigger after the system wakes from sleep
     wantedBy = [ "sleep.target" ];
     after = [ "sleep.target" ];
-    
+
     serviceConfig = {
       Type = "oneshot";
       # Restart the user's xremap service
