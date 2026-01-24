@@ -53,10 +53,12 @@
   # Allow system to stay awake with lid closed ONLY when external monitors connected
   # This enables "docked mode" - close lid and use only external displays
   # Will still suspend normally when on battery or AC without external monitors
-  services.logind = {
-    lidSwitchDocked = "ignore";  # Don't suspend when external monitors detected
-    # lidSwitch defaults to "suspend" - will suspend on battery
-    # lidSwitchExternalPower defaults to "suspend" - will suspend on AC without dock
+  services.logind.settings = {
+    Login = {
+      HandleLidSwitchDocked = "ignore";  # Don't suspend when external monitors detected
+      # HandleLidSwitch defaults to "suspend" - will suspend on battery
+      # HandleLidSwitchExternalPower defaults to "suspend" - will suspend on AC without dock
+    };
   };
 
   # Enable USB devices to wake the system from suspend
@@ -68,6 +70,24 @@
   '';
 
   # --------------------------------------------------------------------------
+  # Shikane - Dynamic display configuration daemon
+  # --------------------------------------------------------------------------
+  # Automatically detects and configures displays based on profiles
+  # Config: ~/.config/shikane/config.toml (managed via stow)
+  systemd.user.services.shikane = {
+    description = "Dynamic display configuration for Wayland";
+    wantedBy = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+    after = [ "graphical-session.target" ];
+    serviceConfig = {
+      Type = "simple";
+      ExecStart = "${pkgs.shikane}/bin/shikane";
+      Restart = "on-failure";
+      RestartSec = 1;
+    };
+  };
+
+  # --------------------------------------------------------------------------
   # Essential Hyprland packages
   # --------------------------------------------------------------------------
   environment.systemPackages = with pkgs; [
@@ -75,6 +95,7 @@
     brightnessctl  # Control screen brightness (requires video group)
     playerctl      # Control media players (play/pause/next/prev)
     nwg-displays   # Display manager for Hyprland
+    libnotify      # Notification library (provides notify-send for shikane)
   ] ++ [
     # Rose Pine Hyprcursor - from flake input (not in nixpkgs)
     # This provides the proper Hyprcursor format theme
