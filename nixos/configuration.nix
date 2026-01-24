@@ -227,7 +227,6 @@
     yazi # Terminal file manager
     tree # Directory tree viewer
     jq # JSON processor
-    xremap # Key remapper (for --list-devices, --device-details flags)
     ffmpeg # Media processing
     xclip # Clipboard tool (replaces pbcopy on macOS)
 
@@ -235,7 +234,7 @@
     btop # System monitor
     code-cursor # AI-powered code editor
 
-    nixfmt-rfc-style
+    nixfmt
     gnumake
   ];
 

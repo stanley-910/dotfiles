@@ -29,13 +29,6 @@
       inputs.nixpkgs.follows = "nixpkgs"; # Use same nixpkgs as system
     };
 
-    # xremap - Key remapper for Linux supporting X11 and Wayland
-    # Allows per-application key remapping with modifier support
-    xremap-flake = {
-      url = "github:xremap/nix-flake";
-      inputs.nixpkgs.follows = "nixpkgs"; # Use same nixpkgs as system
-    };
-
     # Noctalia - Custom package
     noctalia = {
       url = "github:noctalia-dev/noctalia-shell";
@@ -51,7 +44,6 @@
       self,
       nixpkgs,
       rose-pine-hyprcursor,
-      xremap-flake,
       noctalia,
       hyprdynamicmonitors,
       ...
@@ -78,11 +70,8 @@
           ./hardware-configuration.nix
           ./power.nix
           ./hyprland.nix
-          ./xremap.nix
+          ./keyd.nix
           ./scripts.nix
-
-          # Import xremap NixOS module - provides services.xremap option
-          xremap-flake.nixosModules.default
 
           # Import HyprDynamicMonitors NixOS module - provides services.hyprdynamicmonitors option
           hyprdynamicmonitors.nixosModules.default
@@ -92,7 +81,6 @@
         # Access in modules with: { config, pkgs, rose-pine-hyprcursor, ... }:
         specialArgs = {
           inherit rose-pine-hyprcursor;
-          inherit xremap-flake;
           inherit inputs;
         };
       };
