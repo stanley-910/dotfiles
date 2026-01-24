@@ -133,19 +133,21 @@
   # --------------------------------------------------------------------------
   # Restart xremap after suspend/resume
   # --------------------------------------------------------------------------
-  # When the system wakes from suspend, input devices are re-initialized by the kernel.
-  # xremap needs to reconnect to these devices, so we restart the service.
-  # This systemd service runs after waking from suspend and restarts xremap for the user.
+  # When the system wakes from suspend, input devices get re-initialized by the kernel.
+  # xremap loses connection to these devices (causing "No such device" errors).
+  # We verified that manually restarting xremap fixes this, so we automate it here.
+  # 
+  # This system service runs after waking from sleep and restarts the user's xremap service.
   systemd.services.xremap-resume = {
     description = "Restart xremap after suspend/resume";
-    # Run this service after the system wakes from suspend
-    after = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" ];
-    wantedBy = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" ];
+    # Trigger after the system wakes from sleep
+    wantedBy = [ "sleep.target" ];
+    after = [ "sleep.target" ];
     
     serviceConfig = {
       Type = "oneshot";
       # Restart the user's xremap service
-      # We use systemctl --user to target the user service
+      # -M targets a specific user's systemd instance
       ExecStart = "${pkgs.systemd}/bin/systemctl --user -M ${config.services.xremap.userName}@ restart xremap.service";
     };
   };
