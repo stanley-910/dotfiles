@@ -235,6 +235,7 @@
     code-cursor # AI-powered code editor
 
     nixfmt-rfc-style
+    gnumake
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
