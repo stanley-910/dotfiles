@@ -229,7 +229,6 @@ set -o ignoreeof
 source ~/.zsh/fzf-tab/fzf-tab.plugin.zsh
 
 # fzf-tab configuration
-zstyle ':fzf-tab:*' fzf-flags '--bind=alt-s:toggle+down'  # Alt+S: Multi-select
 zstyle ':fzf-tab:*' switch-group '<' '>'                  # Switch groups with < >
 zstyle ':fzf-tab:complete:git-checkout:*' fzf-preview '' # Disable preview for git checkout
 zstyle ':fzf-tab:*' fzf-bindings \
@@ -246,12 +245,19 @@ zstyle ':fzf-tab:*' popup-border none
 
 # Add -E flag to allow external keys
 zstyle ':fzf-tab:*' popup-extra-args '-E'
-
+# Disable preview by default and hide preview window
+# individually add multiselect, since fzf-flags overrides 
+zstyle ':fzf-tab:complete:*:*' fzf-preview ''
+zstyle ':fzf-tab:complete:*:*' fzf-flags '--bind=alt-s:toggle+down' '--preview-window=hidden'
+# Only show preview window for specific commands with useful content
 # Preview configuration for different commands
+zstyle ':fzf-tab:complete:(cd|z):*' fzf-flags '--bind=alt-s:toggle+down' '--preview-window=right:50%'
 zstyle ':fzf-tab:complete:(cd|z):*' fzf-preview 'eza -T --all --git-ignore --icons --no-permissions --no-user --no-time --level=2 --color=always $realpath' # Display two directories deep
+zstyle ':fzf-tab:complete:(vim|cat|less|nano|cp|mv):*' fzf-flags '--bind=alt-s:toggle+down' '--preview-window=right:50%'
 zstyle ':fzf-tab:complete:(vim|cat|less|nano|cp|mv):*' fzf-preview 'bat --style=plain --color=always --line-range :50 $realpath 2>/dev/null || cat $realpath 2>/dev/null || eza -1 --icons --no-permissions --no-user --no-time --no-filesize --color=always $realpath'
+zstyle ':fzf-tab:complete:ta:*' fzf-flags '--bind=alt-s:toggle+down' '--preview-window=right:50%'
 zstyle ':fzf-tab:complete:ta:*' fzf-preview 'tmux ls | grep -F "${word}:" | sed "s/^.*: //"' # substitute session name with empty replacement
-zstyle ':fzf-tab:complete:*:*' fzf-preview 'less ${(Q)realpath}'
+# zstyle ':fzf-tab:complete:*:*' fzf-preview 'less ${(Q)realpath}'
 
 # Other plugins
 source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
