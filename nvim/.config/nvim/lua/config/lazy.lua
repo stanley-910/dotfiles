@@ -31,6 +31,10 @@ require("lazy").setup({
   -- Configure any other settings here. See the documentation for more details.
   -- colorscheme that will be used when installing plugins.
   -- install = { colorscheme = { "habamax" } },
-  -- automatically check for plugin updates
-  checker = { enabled = true },
+  -- Check for plugin updates but don't notify on startup (use :Lazy to view updates)
+  -- This prevents the "Press ENTER to continue" popup when opening nvim
+  checker = { 
+    enabled = true,
+    notify = false,  -- Silently check for updates, view them with :Lazy
+  },
 })
