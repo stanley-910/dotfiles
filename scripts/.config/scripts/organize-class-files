@@ -66,14 +66,33 @@ mkdir -p "$COURSES_DIR" 2>/dev/null
 
 # ------------------------ Helpers / Detection -------------------------------
 # stdout: SUBJECT-### or empty if none
+# If BATCH_SUBJECT is set, it will be used for standalone numbers
 detect_course_code() {
     _fname="$1"
+    # First try to detect full course code with subject
     _code=$(printf "%s" "$_fname" | grep -Eio '(MATH|COMP|PHIL|LING)[ _-]?[0-9]{3}' | head -n 1)
-    [ -z "$_code" ] && return 1
-    _subj=$(printf "%s" "$_code" | sed -E 's/([A-Za-z]+).*/\1/' | tr '[:lower:]' '[:upper:]')
-    _num=$(printf "%s" "$_code" | grep -Eo '[0-9]{3}' | head -n 1)
-    [ -n "$_subj" ] && [ -n "$_num" ] || return 1
-    printf "%s-%s" "$_subj" "$_num"
+    if [ -n "$_code" ]; then
+        _subj=$(printf "%s" "$_code" | sed -E 's/([A-Za-z]+).*/\1/' | tr '[:lower:]' '[:upper:]')
+        _num=$(printf "%s" "$_code" | grep -Eo '[0-9]{3}' | head -n 1)
+        [ -n "$_subj" ] && [ -n "$_num" ] || return 1
+        printf "%s-%s" "$_subj" "$_num"
+        return 0
+    fi
+    
+    # If no full code found, try standalone 3-digit number
+    _num=$(printf "%s" "$_fname" | grep -Eo '[0-9]{3}' | head -n 1)
+    if [ -n "$_num" ] && [ -n "$BATCH_SUBJECT" ]; then
+        printf "%s-%s" "$BATCH_SUBJECT" "$_num"
+        return 0
+    fi
+    
+    # If we have a number but no BATCH_SUBJECT, signal that we need a prompt
+    if [ -n "$_num" ]; then
+        printf "NEEDS_SUBJECT-%s" "$_num"
+        return 2
+    fi
+    
+    return 1
 }
 
 slugify() {
@@ -231,11 +250,38 @@ else
         _filtered=$(mktemp)
         while IFS= read -r -d '' _f; do
             _b=$(basename "$_f")
-            echo "$_b" | grep -Eq "$REGEX_FILTER" && printf "%s\0" "$_f" >> "$_filtered"
+            printf "%s" "$_b" | grep -Eq "$REGEX_FILTER" && printf "%s\0" "$_f" >> "$_filtered"
         done < "$_files_tmp"
         mv "$_filtered" "$_files_tmp"
     fi
 fi
+
+# Check if we need to prompt for a batch subject code
+BATCH_SUBJECT=""
+_needs_subject=0
+while IFS= read -r -d '' _f; do
+    _b=$(basename "$_f")
+    _c=$(detect_course_code "$_b")
+    _rc=$?
+    if [ "$_rc" -eq 2 ]; then
+        _needs_subject=1
+        break
+    fi
+done < "$_files_tmp"
+
+if [ "$_needs_subject" -eq 1 ]; then
+    print_info "Detected files with course numbers but no subject prefix."
+    printf "${BOLD}Enter subject code (e.g., COMP, MATH, PHIL, LING): ${NC}" > /dev/tty
+    if IFS= read -r _input < /dev/tty; then
+        BATCH_SUBJECT=$(printf "%s" "$_input" | tr '[:lower:]' '[:upper:]' | sed -E 's/[^A-Z]//g')
+        if [ -n "$BATCH_SUBJECT" ]; then
+            print_ok "Using subject code: $BATCH_SUBJECT"
+        else
+            print_warn "No valid subject entered. Files without subject prefix will be skipped."
+        fi
+    fi
+fi
+export BATCH_SUBJECT
 
 # Pre-count how many files will be processed
 _total=0
@@ -243,6 +289,8 @@ while IFS= read -r -d '' _f; do
     _b=$(basename "$_f")
     _c=$(detect_course_code "$_b") || _c=""
     [ -z "$_c" ] && continue
+    # Skip files that still need a subject (means BATCH_SUBJECT wasn't provided)
+    printf "%s" "$_c" | grep -q "^NEEDS_SUBJECT-" && continue
     _total=$((_total + 1))
 done < "$_files_tmp"
 
@@ -251,6 +299,8 @@ while IFS= read -r -d '' _file; do
     _basefile=$(basename "$_file")
     _code=$(detect_course_code "$_basefile") || _code=""
     [ -z "$_code" ] && continue
+    # Skip files that still need a subject (means BATCH_SUBJECT wasn't provided)
+    printf "%s" "$_code" | grep -q "^NEEDS_SUBJECT-" && continue
 
     _idx=$((_idx + 1))
 

@@ -26,7 +26,6 @@ let mapleader = "\<SPACE>"
 set ignorecase smartcase
 set smartcase
 set hlsearch
-set nohls
 set mini-ai
 set dial
 
@@ -39,10 +38,14 @@ set argtextobj
 set ideajoin
 
 " Basic movement enhancements
-nnoremap <C-j> 8j
-nnoremap <C-k> 8k
-vnoremap <C-j> 8j
-vnoremap <C-k> 8k
+" Camel case remaps
+map w [w
+map e ]w
+map b [b
+nnoremap <C-j> ]m
+nnoremap <C-k> [m
+vnoremap <C-j> ]m
+vnoremap <C-k> [m
 nnoremap H ^
 vnoremap H ^
 nnoremap L $
@@ -202,6 +205,8 @@ nnoremap <leader>b F{a<space><c-c>f}i<space><c-c>
 
 
 inoremap <C-i> <C-a>
+
+vnoremap <leader>a :!align :<CR>
 
 " --- Enable IdeaVim plugins https://jb.gg/ideavim-plugins
 

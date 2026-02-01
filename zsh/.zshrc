@@ -1,62 +1,5 @@
-# ==============================================================================
-# DEPENDENCIES
-# ==============================================================================
-
-# Terminal Multiplexer
-# brew install tmux
-# mkdir -p ~/.config/tmux
-# git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-
-# Shell Enhancements
-# brew install zsh-autosuggestions zsh-syntax-highlighting
-# git clone https://github.com/zsh-users/zsh-autosuggestions ~/.zsh/zsh-autosuggestions
-# git clone https://github.com/zsh-users/zsh-syntax-highlighting ~/.zsh/zsh-syntax-highlighting
-
-# Fuzzy Finder and Extensions
-# brew install fzf
-# git clone https://github.com/Aloxaf/fzf-tab ~/.zsh/fzf-tab
-
-# Modern CLI Tools
-# brew install eza    # 0.21.4
-# brew install bat    # 0.25.0_1
-
-
-# Classics 
-# brew install tree
-# brew install rg     # 14.1.1
-
-
-# Development Tools
-# brew install starship         # Cross-shell prompt 
-# brew install thefuck         # Command correction
-# brew install fastfetch       # System info display
-
-# Node.js Setup (Optional)
-# brew install node@20
-# npm install -g npm@latest
-# npm install -g yarn
-
-# Python Setup (Optional)
-# brew install python@3.11
-# pip3 install --user pipx
-# pipx ensurepath
-
-# Neovim 
-# brew install neovim
-
-# Additional Language Support (Optional)
-# brew install rust
-# brew install go
-# brew install opam      # OCaml package manager
-# brew install rbenv     # Ruby version manager
-
-# After Installation Steps:
-# 1. Run 'compaudit' and fix any permissions issues
-# 2. Install tmux plugins: Press prefix + I (capital i) in tmux
-# 3. Reload shell: 'source ~/.zshrc'
-# ==============================================================================
-# ENVIRONMENT SETUP
-# ==============================================================================
+export EDITOR=nvim
+export VISUAL=nvim
 
 # Uncomment to use the profiling module  
 zmodload zsh/zprof # run with zprof 
@@ -144,6 +87,10 @@ function retry_command {
 }
 zle -N retry_command
 
+bindkey ' ' magic-space
+# ?!string!
+# !*
+# !!
 # retry failed command with most likely output
 bindkey '^[r' retry_command
 
@@ -167,6 +114,7 @@ bindkey -M vicmd 'y' vi-yank-xclip    # y: Yank to system clipboard
 bindkey -M viins '^C' vi-cmd-mode     # Ctrl+C: Enter command mode
 bindkey '^?' backward-delete-char     # Backspace: Delete character backward
 bindkey '^v' edit-command-line        # Ctrl+V: Edit command in $EDITOR
+
 
 # Menu selection navigation
 bindkey -M menuselect '^[[Z' reverse-menu-complete  # Shift+Tab: Previous item
@@ -355,6 +303,26 @@ alias ws="open -a 'WebStorm.app' ."
 
 alias cd='z'
 
+
+# Global aliases
+# Redirect stderr to /dev/null
+alias -g NE='2>/dev/null'
+
+# Redirect stdout to /dev/null
+alias -g NO='>/dev/null'
+
+# Redirect both stdout and stderr to /dev/null
+alias -g NUL='>/dev/null 2>&1'
+
+# Pipe to jq
+alias -g J='| jq'
+
+# Copy output to clipboard (macOS)
+alias -g C='| pbcopy'
+
+# Copy output to clipboard (Linux with xclip)
+# alias -g C='| xclip -selection clipboard'
+
 # ==============================================================================
 # CUSTOM FUNCTIONS
 # ==============================================================================
@@ -458,6 +426,55 @@ preexec () {
   echo -n "\\e]133;A\\e\\" # this is what was recognized by tmux with ghostty
 }
 
+# zmv - batch rename/move
+# Enable zmv
+autoload -Uz zmv
+
+# Usage examples:
+# zmv '(*).log' '$1.txt'           # Rename .log to .txt
+# zmv -w '*.log' '*.txt'           # Same thing, simpler syntax
+# zmv -n '(*).log' '$1.txt'        # Dry run (preview changes)
+# zmv -i '(*).log' '$1.txt'        # Interactive mode (confirm each)
+
+# Hook that runs when changing into a directory 
+chpwd() { 
+  ls
+}
+
+chpwd() {
+  if [[ -d .venv ]]; then
+    source .venv/bin/activate
+  fi
+}
+# To merge hooks, use add-zsh-hook
+autoload -Uz add-zsh-hook
+function auto_ls() { 
+	ls
+}
+
+# Merging hooks
+# Then Define separate functions
+function auto_venv() {
+  # If already in a virtualenv, do nothing
+  if [[ -n "$VIRTUAL_ENV" && "$PWD" != *"${VIRTUAL_ENV:h}"* ]]; then
+    deactivate
+    return  
+  fi
+
+  [[ -n "$VIRTUAL_ENV" ]] && return
+
+  local dir="$PWD"
+  while [[ "$dir" != "/" ]]; do
+    if [[ -f "$dir/.venv/bin/activate" ]]; then
+      source "$dir/.venv/bin/activate"
+      return
+    fi
+    dir="${dir:h}"
+  done
+}
+add-zsh-hook chpwd auto_ls
+add-zsh-hook chpwd auto_venv
+
 # ==============================================================================
 # EXTERNAL TOOL INITIALIZATION
 # ==============================================================================
@@ -497,29 +514,11 @@ alias sysinfo='fastfetch'
 # eval "$(pyenv init - zsh)"
 
 
-# Function to detect if we're running in an integrated terminal
-function is_integrated_terminal() {
-  # use env var I inject into osX cursor term process
-  if [[ -n "$CURSOR_TERM" ]]; then
-    return 0
-  fi
-  if [ "$ZED" = "1" ]; then
-    return 0
-  fi
 
-
-  local parent_process
-  # Get the parent process name
-  parent_process=$(ps -o comm= -p $PPID)
-  
-  # Check for common IDE terminal processes
-  [[ "$parent_process" =~ "Cursor" ]] || \
-  [[ "$parent_process" =~ "webstorm" ]]
-  [[ "$parent_process" =~ "clion" ]]
-  [[ "$parent_process" =~ "zed" ]]
-}
-
-if [[ -z $TMUX ]] && ! is_integrated_terminal; then
+if [[ -z $TMUX ]] && \
+   [[ "$TERM_PROGRAM" != "vscode" ]] && \
+   [[ "$TERM_PROGRAM" != "zed" ]] && \
+   [[ "$TERMINAL_EMULATOR" != "JetBrains-JediTerm" ]]; then
   # Get the most recently active detached session
   LAST_SESSION=$(tmux ls -F "#{session_activity} #{session_name}" 2>/dev/null | grep -v attached | sort -r | head -n1 | cut -d' ' -f2)
   if [[ -n $LAST_SESSION ]]; then
@@ -528,6 +527,7 @@ if [[ -z $TMUX ]] && ! is_integrated_terminal; then
      exec tmux
   fi
 fi
+
 
 # yazi function
 function y() {

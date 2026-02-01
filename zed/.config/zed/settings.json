@@ -145,8 +145,8 @@
   "buffer_font_family": "JetBrainsMono Nerd Font Mono",
   "base_keymap": "JetBrains",
   "vim_mode": true,
-  "ui_font_size": 14.0,
-  "buffer_font_size": 11.0,
+  "ui_font_size": 22.0,
+  "buffer_font_size": 15.0,
   "buffer_font_features": { "calt": false },
   "theme": {
     "mode": "dark",
