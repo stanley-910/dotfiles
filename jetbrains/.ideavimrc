@@ -192,6 +192,7 @@ nnoremap <leader>o O<c-c>jo<c-c>
 nnoremap <leader>y :%y<CR>
  
 nnoremap R .
+nnoremap <leader>R R
 
 nnoremap gs :action GotoSymbol<Cr>
 
@@ -207,6 +208,10 @@ nnoremap <leader>b F{a<space><c-c>f}i<space><c-c>
 inoremap <C-i> <C-a>
 
 vnoremap <leader>a :!align :<CR>
+
+nnoremap gD :action SplitVertically<CR>:action GotoDeclaration<CR>
+nnoremap gI :action GotoImplementation<CR>
+nnoremap gS :action GotoSuperMethod<CR>
 
 " --- Enable IdeaVim plugins https://jb.gg/ideavim-plugins
 

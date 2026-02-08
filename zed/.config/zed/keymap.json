@@ -572,4 +572,10 @@
       "cmd-k": null,
     },
   },
+  {
+    "context": "(Editor && mode == full)",
+    "bindings": {
+      "cmd-j": null
+    }
+  }
 ]

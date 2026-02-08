@@ -3,6 +3,7 @@ macos-titlebar-proxy-icon = hidden
 theme = IC Orange PPL
 window-padding-x = 6
 window-padding-balance = true
+window-save-state = always
 font-feature = -liga
 font-feature = -calt
 font-feature = -dlig

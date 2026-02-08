@@ -441,16 +441,16 @@ chpwd() {
   ls
 }
 
-chpwd() {
-  if [[ -d .venv ]]; then
-    source .venv/bin/activate
-  fi
-}
+# chpwd() {
+#   if [[ -d .venv ]]; then
+#     source .venv/bin/activate
+#   fi
+# }
 # To merge hooks, use add-zsh-hook
 autoload -Uz add-zsh-hook
-function auto_ls() { 
-	ls
-}
+# function auto_ls() { 
+# 	ls
+# }
 
 # Merging hooks
 # Then Define separate functions
@@ -472,7 +472,7 @@ function auto_venv() {
     dir="${dir:h}"
   done
 }
-add-zsh-hook chpwd auto_ls
+# add-zsh-hook chpwd auto_ls
 add-zsh-hook chpwd auto_venv
 
 # ==============================================================================

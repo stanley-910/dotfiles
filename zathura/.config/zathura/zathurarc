@@ -22,10 +22,17 @@ map u scroll full-up
 
 
 # smooth scroll
-map j feedkeys "<C-Down>"
-map k feedkeys "<C-Up>"
-map h feedkeys "<C-Left>"
-map l feedkeys "<C-Right>"
+# These don't work any more? 
+map j PageDown
+map k PageUp
+# map h feedkeys "<C-Left>"
+# map l feedkeys "<C-Right>"
+# map j scroll down 100000
+# map k scroll up 100000
+# map h scroll left 1000
+# map l scroll right 1000
+
+
 
 
 map - zoom out
