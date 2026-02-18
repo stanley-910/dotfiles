@@ -14,7 +14,10 @@ set showmode
 set incsearch
 
 set hightlightedyank
-
+"set peekaboo
+set NERDTree
+set vim-paragraph-motion
+set anyobject
 
 " Don't use Ex mode, use Q for formatting.
 map Q gq
@@ -29,19 +32,19 @@ set hlsearch
 set mini-ai
 set dial
 
-"set easymotion
-set quickscope
+"set quickscope - not using
 
-set functiontextobj
-set argtextobj
+"don't need with anyobject
+"set functiontextobj
+"set argtextobj
 
 set ideajoin
 
 " Basic movement enhancements
 " Camel case remaps
-map w [w
-map e ]w
-map b [b
+"map w [w
+"map e ]w
+"map b [b
 nnoremap <C-j> ]m
 nnoremap <C-k> [m
 vnoremap <C-j> ]m
@@ -91,8 +94,8 @@ nnoremap <M-e> viw
 vnoremap <M-e> e
 
 " Command mode history
-cnoremap <M-e> <Up>
-cnoremap <M-f> <Down>
+cnoremap <C-k> <Up>
+cnoremap <C-j> <Down>
 
 " Basic editing
 nnoremap <CR> ciw
@@ -213,6 +216,10 @@ nnoremap gD :action SplitVertically<CR>:action GotoDeclaration<CR>
 nnoremap gI :action GotoImplementation<CR>
 nnoremap gS :action GotoSuperMethod<CR>
 
+
+nnoremap <M-f> :NERDTreeFind<CR>
+inoremap <M-f> <Esc>:NERDTreeFind<CR>
+
 " --- Enable IdeaVim plugins https://jb.gg/ideavim-plugins
 
 " Highlight copied text
@@ -226,13 +233,13 @@ Plug 'michaeljsmith/vim-indent-object'
 
 Plug 'chrisbra/matchit'
 Plug 'easymotion/vim-easymotion'
+Plug 'tommcdo/vim-exchange'
 
 "" -- Map IDE actions to IdeaVim -- https://jb.gg/abva4t
 "" Map \r to the Reformat Code action
 "map \r <Action>(ReformatCode)
 
-"" Map <leader>d to start debug
-"map <leader>d <Action>(Debug)
+" Map <leader>d to start debug
+map <leader>d <Action>(Debug)
 
-"" Map \b to toggle the breakpoint on the current line
-"map \b <Action>(ToggleLineBreakpoint)
+map <leader>b <Action>(ToggleLineBreakpoint)

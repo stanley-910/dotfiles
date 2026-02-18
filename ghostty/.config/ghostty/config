@@ -11,4 +11,4 @@ macos-option-as-alt = true
 background-opacity = 0.9
 background-blur = true
 confirm-close-surface = false
-
+mouse-hide-while-typing = true

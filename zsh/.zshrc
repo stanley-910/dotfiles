@@ -4,15 +4,17 @@ export VISUAL=nvim
 # Uncomment to use the profiling module  
 zmodload zsh/zprof # run with zprof 
 
-# Initialize Homebrew environment (macOS package manager)
-eval "$(/opt/homebrew/bin/brew shellenv)"
+# # Initialize Homebrew environment (macOS package manager)
+# eval "$(/opt/homebrew/bin/brew shellenv)" -- don't need handling in ~/.zshenv
 
 
 # Show hidden files in glob patterns (files starting with .)
 setopt globdots
 
 # Disable XON/XOFF flow control (allows Ctrl+S to work in other applications)
-stty -ixon
+[[ -t 0 ]] && stty -ixon
+
+# stty -ixon
 
 # ==============================================================================
 # COMPLETION SYSTEM
@@ -138,18 +140,27 @@ bindkey ^f tmux_sessionizer
 # ==============================================================================
 # CURSOR CONFIGURATION
 # ==============================================================================
+if [[ -t 0 ]]; then
+  zle-line-init() {
+      zle -K viins
+      echo -ne "\e[1 q"
+  }
+  zle -N zle-line-init
+  echo -ne '\e[1 q'
+  preexec() { echo -ne '\e[1 q' ;}
+fi
 
 # Initialize line editor in insert mode with beam cursor
-zle-line-init() {
-    zle -K viins
-    echo -ne "\e[1 q"
-}
-zle -N zle-line-init
-
-# Set beam cursor on startup and for each new prompt
-echo -ne '\e[1 q'
-preexec() { echo -ne '\e[1 q' ;}
-
+# zle-line-init() {
+#     zle -K viins
+#     echo -ne "\e[1 q"
+# }
+# zle -N zle-line-init
+#
+# # Set beam cursor on startup and for each new prompt
+# echo -ne '\e[1 q'
+# preexec() { echo -ne '\e[1 q' ;}
+#
 # Load vim edit-command-line function
 autoload edit-command-line; zle -N edit-command-line
 
@@ -262,6 +273,9 @@ export PATH="/usr/local/opt/python/libexec/bin:$PATH"
 
 # User local binaries (pipx installations)
 export PATH="$PATH:/Users/stanley/.local/bin"
+
+# for idea cli 
+export PATH="$PATH:/Applications/IntelliJ IDEA.app/Contents/MacOS"
 
 # ==============================================================================
 # ALIASES
@@ -515,11 +529,11 @@ alias sysinfo='fastfetch'
 
 
 
-if [[ -z $TMUX ]] && \
+# allow proper loading of env variables in zed with -o interactive
+if [[ -o interactive ]] && [[ -t 0 ]] && [[ -z $TMUX ]] && \
    [[ "$TERM_PROGRAM" != "vscode" ]] && \
    [[ "$TERM_PROGRAM" != "zed" ]] && \
    [[ "$TERMINAL_EMULATOR" != "JetBrains-JediTerm" ]]; then
-  # Get the most recently active detached session
   LAST_SESSION=$(tmux ls -F "#{session_activity} #{session_name}" 2>/dev/null | grep -v attached | sort -r | head -n1 | cut -d' ' -f2)
   if [[ -n $LAST_SESSION ]]; then
      exec tmux attach -d -t "$LAST_SESSION"
@@ -527,6 +541,19 @@ if [[ -z $TMUX ]] && \
      exec tmux
   fi
 fi
+
+# if [[ -z $TMUX ]] && \
+#    [[ "$TERM_PROGRAM" != "vscode" ]] && \
+#    [[ "$TERM_PROGRAM" != "zed" ]] && \
+#    [[ "$TERMINAL_EMULATOR" != "JetBrains-JediTerm" ]]; then
+#   # Get the most recently active detached session
+#   LAST_SESSION=$(tmux ls -F "#{session_activity} #{session_name}" 2>/dev/null | grep -v attached | sort -r | head -n1 | cut -d' ' -f2)
+#   if [[ -n $LAST_SESSION ]]; then
+#      exec tmux attach -d -t "$LAST_SESSION"
+#   else
+#      exec tmux
+#   fi
+# fi
 
 
 # yazi function
