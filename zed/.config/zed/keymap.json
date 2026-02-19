@@ -22,7 +22,7 @@
       "ctrl-k": ["workspace::SendKeystrokes", "8 k"],
 
       "space b": ["workspace::SendKeystrokes", ": ls enter"],
-      "ctrl-tab": ["workspace::SendKeystrokes", ": ls enter"],
+      // "ctrl-tab": ["workspace::SendKeystrokes", ": ls enter"],
 
       // sneak motions
       "shift-s": "vim::PushSneakBackward",
@@ -149,6 +149,9 @@
       "enter": ["workspace::SendKeystrokes", "c"],
 
       "s": "vim::PushSneak",
+
+      // delete all empty lines in visually selected area
+      "space d": ["workspace::SendKeystrokes", ": g / ^ \\ s * $ / d enter"],
     },
   },
   {
@@ -503,6 +506,10 @@
       "k m": ["workspace::SendKeystrokes", "$ $ left"],
       "d m": ["workspace::SendKeystrokes", "$ space space $ left left"],
       "I F F": ["workspace::SendKeystrokes", "< = = >"],
+      "ctrl-.": ["workspace::SendKeystrokes", "- >"],
+      "ctrl-/": ["workspace::SendKeystrokes", "epsilon.alt"],
+      // "ctrl-shift-.": ["workspace::SendKeystrokes", "> ="],
+      // "ctrl-shift-,": ["workspace::SendKeystrokes", "> ="],
     },
   },
   // {
@@ -575,7 +582,27 @@
   {
     "context": "(Editor && mode == full)",
     "bindings": {
-      "cmd-j": null
-    }
-  }
+      "cmd-j": null,
+    },
+  },
+  {
+    "context": "(Editor && showing_code_actions)",
+    "bindings": {
+      "tab": "editor::ConfirmCodeAction",
+      "ctrl-s": "editor::ConfirmCodeAction",
+    },
+  },
+  {
+    "context": "(Editor && edit_prediction)",
+    "bindings": {
+      "alt-l": "editor::AcceptEditPrediction",
+    },
+  },
+  {
+    "context": "(Editor && (showing_code_actions || showing_completions))",
+    "bindings": {
+      "ctrl-k": "editor::ContextMenuPrevious",
+      "ctrl-j": "editor::ContextMenuNext",
+    },
+  },
 ]
