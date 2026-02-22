@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+-- luacheck: globals vim
 
 require("config")
 require("config.keymap")
@@ -97,4 +99,7 @@ vim.cmd('packadd! nohlsearch')
 -- default split options affect oil.nvim 
 vim.o.splitright = true
 
+
+-- Theme (generated from zed/.config/zed/themes/custom-theme.json)
+vim.cmd.colorscheme("custom_theme")
 

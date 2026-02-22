@@ -1,0 +1,62 @@
+{
+  "author": "Stanley",
+  "name": "Custom Theme",
+  "themes": [
+    {
+      "name": "Custom Theme",
+      "appearance": "dark",
+      "style": {
+        "accents": ["#d0d0d2"],
+        "background": "#202024",
+        "border": "#505058",
+        "border.variant": "#393941",
+        "element.background": "#393941",
+        "surface.background": "#202024",
+        "editor.background": "#0f0f12",
+        "editor.foreground": "#ffffff",
+        "editor.gutter.background": "#0f0f12",
+        "editor.line_number": "#808086",
+        "editor.active_line.background": "#202024",
+        "editor.active_line_number": "#ffffff",
+        "editor.indent_guide": "#50505850",
+        "editor.indent_guide_active": "#808086",
+        "editor.invisible": "#393941",
+        "editor.highlighted_line.background": "#20202480",
+        "editor.document_highlight.read_background": "#39394180",
+        "editor.document_highlight.write_background": "#ffae4940",
+        "text": "#ffffff",
+        "text.muted": "#d0d0d2",
+        "text.accent": "#d0d0d2",
+        "text.placeholder": "#808086",
+        "success": "#30df81",
+        "warning": "#ffae49",
+        "error": "#fe303a",
+        "info": "#02a9ff",
+        "syntax": {
+          "comment": { "color": "#808086", "font_style": "italic" },
+          "keyword": { "color": "#ffffff", "font_weight": 700 },
+          "keyword.operator": { "color": "#808086" },
+          "operator": { "color": "#808086" },
+          "punctuation": { "color": "#808086" },
+          "function": { "color": "#ffffff", "font_style": "italic" },
+          "function.builtin": { "color": "#ffffff", "font_style": "italic" },
+          "function.method": { "color": "#ffffff", "font_style": "italic" },
+          "type": { "color": "#ffffff", "font_weight": 700 },
+          "type.builtin": { "color": "#ffffff", "font_weight": 700 },
+          "tag": { "color": "#ffffff", "font_weight": 700 },
+          "attribute": { "color": "#ffffff", "font_weight": 700 },
+          "variable": { "color": "#ffffff" },
+          "variable.special": { "color": "#ffffff", "font_weight": 700 },
+          "property": { "color": "#ffffff" },
+          "string": { "color": "#ffae49" },
+          "string.escape": { "color": "#ffae49", "font_weight": 700 },
+          "string.special": { "color": "#ffae49", "font_weight": 700 },
+          "number": { "color": "#ffae49" },
+          "boolean": { "color": "#ffae49", "font_weight": 700 },
+          "constant": { "color": "#ffae49" },
+          "constant.builtin": { "color": "#ffae49", "font_weight": 700 }
+        }
+      }
+    }
+  ]
+}

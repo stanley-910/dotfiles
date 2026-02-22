@@ -219,6 +219,11 @@ nnoremap gS :action GotoSuperMethod<CR>
 
 nnoremap <M-f> :NERDTreeFind<CR>
 inoremap <M-f> <Esc>:NERDTreeFind<CR>
+" open files in explorer pane
+
+nnoremap gy :action GotoTypeDeclaration<CR>
+" on the basis that Cmd-Shift-B maps to go to type implemenation
+
 
 " --- Enable IdeaVim plugins https://jb.gg/ideavim-plugins
 

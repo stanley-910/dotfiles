@@ -7,46 +7,47 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "buffer_line_height": "comfortable",
   "show_signature_help_after_edits": true,
   "remove_trailing_whitespace_on_save": true,
   "auto_update": false,
   "agent": {
     "inline_assistant_model": {
       "provider": "copilot_chat",
-      "model": "claude-3.5-sonnet",
+      "model": "claude-3.5-sonnet"
     },
     "default_profile": "write",
     "default_model": {
       "provider": "copilot_chat",
-      "model": "gpt-4.1",
+      "model": "gpt-4.1"
     },
-    "model_parameters": [],
+    "model_parameters": []
   },
   "icon_theme": {
     "mode": "dark",
     "light": "Colored Zed Icons Theme Dark",
-    "dark": "Colored Zed Icons Theme Dark",
+    "dark": "Colored Zed Icons Theme Dark"
   },
   "restore_on_startup": "last_workspace",
   "scroll_beyond_last_line": "vertical_scroll_margin",
   "git_panel": {
-    "sort_by_path": false,
+    "sort_by_path": false
   },
   "use_system_window_tabs": false,
   "bottom_dock_layout": "contained",
   "preview_tabs": {
     "enable_preview_from_file_finder": false,
-    "enabled": true,
+    "enabled": true
   },
   "tabs": {
     "show_close_button": "hover",
     "show_diagnostics": "all",
     "file_icons": true,
-    "git_status": true,
+    "git_status": true
   },
   "tab_bar": {
     "show_nav_history_buttons": false,
-    "show": true,
+    "show": true
   },
   "title_bar": {
     "show_menus": false,
@@ -55,45 +56,45 @@
     "show_branch_name": true,
     "show_project_items": true,
     "show_onboarding_banner": true,
-    "show_branch_icon": true,
+    "show_branch_icon": true
   },
   "debugger": {
-    "button": true,
+    "button": true
   },
   "terminal": {
     "dock": "bottom",
     "button": true,
     "env": {
-      "ZED": "1",
-    },
+      "ZED": "1"
+    }
   },
   "status_bar": {
     "cursor_position_button": true,
-    "active_language_button": true,
+    "active_language_button": true
   },
   "project_panel": {
     "hide_hidden": false,
     "hide_root": true,
     "sticky_scroll": true,
     "scrollbar": {
-      "show": "never",
+      "show": "never"
     },
     "auto_reveal_entries": true,
     "git_status": true,
     "folder_icons": true,
     "entry_spacing": "standard",
-    "button": true,
+    "button": true
   },
   "search": {
     "button": true,
-    "regex": false,
+    "regex": false
   },
   "use_smartcase_search": true,
   "diagnostics": {
     "button": true,
     "inline": {
-      "enabled": false,
-    },
+      "enabled": false
+    }
   },
   "lsp_document_colors": "inlay",
   "inlay_hints": {
@@ -101,20 +102,20 @@
     "show_parameter_hints": true,
     "show_background": false,
     "show_type_hints": true,
-    "enabled": false,
+    "enabled": false
   },
   // "show_whitespaces": "trailing",
   "show_edit_predictions": false,
   "telemetry": {
     "diagnostics": false,
-    "metrics": false,
+    "metrics": false
   },
   "indent_guides": {
     "background_coloring": "disabled",
     "coloring": "fixed",
     "active_line_width": 2,
     "line_width": 1,
-    "enabled": true,
+    "enabled": true
   },
   "hard_tabs": false,
   "tab_size": 2,
@@ -122,13 +123,13 @@
     "agent_review": true,
     "quick_actions": true,
     "code_actions": true,
-    "breadcrumbs": true,
+    "breadcrumbs": true
   },
   "minimap": {
-    "show": "never",
+    "show": "never"
   },
   "gutter": {
-    "min_line_number_digits": 2,
+    "min_line_number_digits": 2
   },
   "relative_line_numbers": "enabled",
   "auto_signature_help": false,
@@ -140,9 +141,9 @@
   "current_line_highlight": "all",
   "cursor_shape": "bar",
   "ui_font_weight": 400.0,
-  "ui_font_family": "JetBrainsMono Nerd Font",
+  "ui_font_family": "RecMonoLinear Nerd Font",
   "buffer_font_weight": 400.0,
-  "buffer_font_family": "JetBrainsMono Nerd Font Mono",
+  "buffer_font_family": "RecMonoLinear Nerd Font",
   "base_keymap": "JetBrains",
   "vim_mode": true,
   "ui_font_size": 17.0,
@@ -151,22 +152,23 @@
   "theme": {
     "mode": "dark",
     "light": "Gruvbox Light",
-    "dark": "Gruvbox Crisp Highest Contrast",
+    // "dark": "Gruvbox Crisp Highest Contrast",
+    "dark": "Custom Theme"
   },
   "lsp": {
     "tinymist": {
       "settings": {
         "exportPdf": "onSave",
         "outputPath": "$root/assignments/$name",
-        "feature_paths": true,
+        "feature_paths": true
       },
       "initialization_options": {
         "preview": {
           "background": {
-            "enabled": true,
-          },
-        },
-      },
+            "enabled": true
+          }
+        }
+      }
     },
     "clangd": {
       "binary": {
@@ -174,9 +176,9 @@
         "path": "clangd",
         "arguments": [
           // "--header-insertion=never",
-          "--function-arg-placeholders=0",
-        ],
-      },
+          "--function-arg-placeholders=0"
+        ]
+      }
     },
     "jdtls": {
       "settings": {
@@ -197,9 +199,9 @@
         // When these are set, the extension will not download or manage these components
         "jdtls_launcher": "/path/to/your/jdt-language-server/bin/jdtls",
         "lombok_jar": "/path/to/your/lombok.jar",
-        "java_debug_jar": "/path/to/your/com.microsoft.java.debug.plugin.jar",
-      },
-    },
+        "java_debug_jar": "/path/to/your/com.microsoft.java.debug.plugin.jar"
+      }
+    }
   },
 
   "languages": {
@@ -210,8 +212,8 @@
       "formatter": "language_server",
       "use_on_type_format": false,
       "prettier": {
-        "allowed": false,
-      },
+        "allowed": false
+      }
     },
     "Python": {
       "format_on_save": "on",
@@ -220,14 +222,14 @@
           "command": "bash",
           "arguments": [
             "-c",
-            "ruff check --select=I --fix --stdin-filename {buffer_path} | ruff format --stdin-filename {buffer_path}",
-          ],
-        },
-      },
+            "ruff check --select=I --fix --stdin-filename {buffer_path} | ruff format --stdin-filename {buffer_path}"
+          ]
+        }
+      }
     },
     "Typst": {
       "soft_wrap": "preferred_line_length",
-      "preferred_line_length": 120,
-    },
-  },
+      "preferred_line_length": 120
+    }
+  }
 }
