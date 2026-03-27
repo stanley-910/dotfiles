@@ -170,15 +170,6 @@
       "shift shift": "file_finder::Toggle",
     },
   },
-
-  // custom defined
-
-  {
-    "context": "(Editor && (showing_code_actions || showing_completions))",
-    "bindings": {
-      "ctrl-j": "editor::ContextMenuNext",
-    },
-  },
   {
     "bindings": {
       "ctrl-j": "menu::SelectNext",
@@ -194,12 +185,6 @@
     "context": "(((vim_mode == insert || vim_mode == normal) && showing_signature_help) && !showing_completions)",
     "bindings": {
       "ctrl-k": "editor::SignatureHelpPrevious",
-    },
-  },
-  {
-    "context": "(Editor && (showing_code_actions || showing_completions))",
-    "bindings": {
-      "ctrl-k": "editor::ContextMenuPrevious",
     },
   },
   {
@@ -604,5 +589,5 @@
       "ctrl-k": "editor::ContextMenuPrevious",
       "ctrl-j": "editor::ContextMenuNext",
     },
-  },
+  }
 ]

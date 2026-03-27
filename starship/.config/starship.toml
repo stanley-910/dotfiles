@@ -23,12 +23,17 @@
 #[░▒▓](#2e3440)\
 # ---------------------------------------------------------------
 format = """
+$username\
+$hostname\
 $directory\
-$git_branch\
-$git_status\
 $character\
 """
+right_format ="""
+$git_status\
+$git_branch\
+"""
 
+#[ ]($style)\
 # $username\
 # $cmd_duration\
 # $time\
@@ -54,22 +59,36 @@ disabled = false
 
 [username]
 show_always = true
-# style_user = "bg:#2e3440"
 # style_root = "bg:#9A348E"
 # format = '[\[$user\]:: ]($style)'
-format = '[\[s\]: ]($style)'
+format = '[$user]($style)'
+# aliases = { "stanley" = "sw" }
 disabled = false
+# style_user = "fg:#F0C674 bold"
+style_user = "fg:#d6ad5e bold"
 # disabled = true
+
+[hostname]
+ssh_only = false
+trim_at = "."
+aliases = { "Mac" = "m4p", "Stanleys-MacBook-Pro"= "m4p" }
+format = "[@](fg:grey)[$hostname:](fg:grey)"
 
 [os]
 # style = "bg:#9A348E"
 disabled = true # Disabled by default
 
 [directory]
-# style = "bg:#3b4252"
-format = "[$path ]($style)"
-truncation_length = 3 # or any larger number you prefer
+truncation_length = 3
 truncate_to_repo = true
+
+format = "[$before_root_path]($before_repo_root_style)[$repo_root]($repo_root_style)[$path]($style)[$read_only]($read_only_style) "
+
+style = "fg:#8a99ba"
+before_repo_root_style = "fg:#8fbcbb"
+repo_root_style = "fg:#6582bf bold"
+read_only_style = "fg:#bf616a"
+
 # truncation_symbol = ".../"
 # fish_style_pwd_dir_length = 1  # Changes how paths are displayed
 
@@ -82,11 +101,12 @@ truncate_to_repo = true
 symbol = ""
 # style = "bg:#434c5e"
 format = '[$symbol $branch ]($style)'
+style = "fg:#b48ead"
 
 
-# [git_status]
-# # style = "bg:#434c5e"
-# format = '[$all_status$ahead_behind ]($style)'
+[git_status]
+style = "fg:#bf616a"
+format ='([\[$all_status$ahead_behind\]]($style) )'
 
 [c]
 symbol = " "
@@ -170,10 +190,11 @@ format = '[ $time ]($style)'
 	
 [character]
 # success_symbol = '[✦](green)'
-success_symbol = '[✦](#6272a4)'
-error_symbol = '[✦](red)'
-# success_symbol = '[ λ](#6272a4)'
-# error_symbol = '[ λ](red)'
+# success_symbol = '[✦](#6272a4)'
+# error_symbol = '[✦](#ffae49)'
+success_symbol = '[\$](#6272a4 bold)'
+error_symbol = '[\$](#bf616a bold)'
+vimcmd_symbol = '[:](bold green)'
 # style = "bg:#6272a4"
 
 [cmd_duration]

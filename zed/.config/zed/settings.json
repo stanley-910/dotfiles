@@ -105,7 +105,7 @@
     "enabled": false
   },
   // "show_whitespaces": "trailing",
-  "show_edit_predictions": false,
+  "show_edit_predictions": true,
   "telemetry": {
     "diagnostics": false,
     "metrics": false
@@ -143,17 +143,17 @@
   "ui_font_weight": 400.0,
   "ui_font_family": "RecMonoLinear Nerd Font",
   "buffer_font_weight": 400.0,
-  "buffer_font_family": "RecMonoLinear Nerd Font",
+  "buffer_font_family": "Berkeley Mono Dev",
   "base_keymap": "JetBrains",
   "vim_mode": true,
   "ui_font_size": 17.0,
-  "buffer_font_size": 13.0,
+  "buffer_font_size": 16.0,
   "buffer_font_features": { "calt": false },
   "theme": {
     "mode": "dark",
     "light": "Gruvbox Light",
     // "dark": "Gruvbox Crisp Highest Contrast",
-    "dark": "Custom Theme"
+    "dark": "Gruvbox Crisp Highest Contrast"
   },
   "lsp": {
     "tinymist": {

@@ -15,7 +15,36 @@
                                         "optional": ["caps_lock"]
                                     }
                                 },
-                                "to": [{ "key_code": "caps_lock" }],
+                                "to": [
+                                    { "key_code": "caps_lock" },
+                                    {
+                                        "set_notification_message": {
+                                            "id": "shift_escape_caps_lock",
+                                            "text": "Toggled Caps Lock"
+                                        }
+                                    }
+                                ],
+                                "to_delayed_action": {
+                                    "to_if_invoked": [
+                                        {
+                                            "set_notification_message": {
+                                                "id": "shift_escape_caps_lock",
+                                                "text": ""
+                                            }
+                                        }
+                                    ],
+                                    "to_if_canceled": [
+                                        {
+                                            "set_notification_message": {
+                                                "id": "shift_escape_caps_lock",
+                                                "text": ""
+                                            }
+                                        }
+                                    ]
+                                },
+                                "parameters": {
+                                    "basic.to_delayed_action_delay_milliseconds": 1000
+                                },
                                 "type": "basic"
                             }
                         ]
@@ -61,6 +90,150 @@
                                 },
                                 "to": [{ "key_code": "left_option" }],
                                 "to_if_alone": [{ "key_code": "escape" }],
+                                "type": "basic"
+                            }
+                        ]
+                    },
+                    {
+                        "description": "Control + right_shift toggles right_shift between escape and shift",
+                        "manipulators": [
+                            {
+                                "conditions": [
+                                    {
+                                        "name": "right_shift_shift_mode",
+                                        "type": "variable_unless",
+                                        "value": true
+                                    }
+                                ],
+                                "from": {
+                                    "key_code": "right_shift",
+                                    "modifiers": {
+                                        "mandatory": ["control"],
+                                        "optional": ["any"]
+                                    }
+                                },
+                                "to": [
+                                    {
+                                        "set_variable": {
+                                            "name": "right_shift_shift_mode",
+                                            "value": true
+                                        }
+                                    },
+                                    {
+                                        "set_notification_message": {
+                                            "id": "right_shift_shift_mode",
+                                            "text": "Right Shift -> Shift"
+                                        }
+                                    }
+                                ],
+                                "to_delayed_action": {
+                                    "to_if_invoked": [
+                                        {
+                                            "set_notification_message": {
+                                                "id": "right_shift_shift_mode",
+                                                "text": ""
+                                            }
+                                        }
+                                    ],
+                                    "to_if_canceled": [
+                                        {
+                                            "set_notification_message": {
+                                                "id": "right_shift_shift_mode",
+                                                "text": ""
+                                            }
+                                        }
+                                    ]
+                                },
+                                "parameters": {
+                                    "basic.to_delayed_action_delay_milliseconds": 1000
+                                },
+                                "type": "basic"
+                            },
+                            {
+                                "conditions": [
+                                    {
+                                        "name": "right_shift_shift_mode",
+                                        "type": "variable_if",
+                                        "value": true
+                                    }
+                                ],
+                                "from": {
+                                    "key_code": "right_shift",
+                                    "modifiers": {
+                                        "mandatory": ["control"],
+                                        "optional": ["any"]
+                                    }
+                                },
+                                "to": [
+                                    {
+                                        "set_variable": {
+                                            "name": "right_shift_shift_mode",
+                                            "value": false
+                                        }
+                                    },
+                                    {
+                                        "set_notification_message": {
+                                            "id": "right_shift_shift_mode",
+                                            "text": "Right Shift -> Escape"
+                                        }
+                                    }
+                                ],
+                                "to_delayed_action": {
+                                    "to_if_invoked": [
+                                        {
+                                            "set_notification_message": {
+                                                "id": "right_shift_shift_mode",
+                                                "text": ""
+                                            }
+                                        }
+                                    ],
+                                    "to_if_canceled": [
+                                        {
+                                            "set_notification_message": {
+                                                "id": "right_shift_shift_mode",
+                                                "text": ""
+                                            }
+                                        }
+                                    ]
+                                },
+                                "parameters": {
+                                    "basic.to_delayed_action_delay_milliseconds": 1000
+                                },
+                                "type": "basic"
+                            },
+                            {
+                                "conditions": [
+                                    {
+                                        "name": "right_shift_shift_mode",
+                                        "type": "variable_if",
+                                        "value": true
+                                    }
+                                ],
+                                "from": {
+                                    "key_code": "right_shift",
+                                    "modifiers": { "optional": ["any"] }
+                                },
+                                "to": [
+                                    {
+                                        "key_code": "right_shift",
+                                        "lazy": true
+                                    }
+                                ],
+                                "type": "basic"
+                            },
+                            {
+                                "conditions": [
+                                    {
+                                        "name": "right_shift_shift_mode",
+                                        "type": "variable_unless",
+                                        "value": true
+                                    }
+                                ],
+                                "from": {
+                                    "key_code": "right_shift",
+                                    "modifiers": { "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "escape" }],
                                 "type": "basic"
                             }
                         ]
@@ -881,10 +1054,6 @@
                         {
                             "from": { "key_code": "page_up" },
                             "to": [{ "key_code": "right_shift" }]
-                        },
-                        {
-                            "from": { "key_code": "right_shift" },
-                            "to": [{ "key_code": "escape" }]
                         }
                     ]
                 },
@@ -963,10 +1132,6 @@
                 {
                     "from": { "key_code": "left_option" },
                     "to": [{ "key_code": "right_option" }]
-                },
-                {
-                    "from": { "key_code": "right_shift" },
-                    "to": [{ "key_code": "escape" }]
                 }
             ],
             "virtual_hid_keyboard": { "keyboard_type_v2": "ansi" }

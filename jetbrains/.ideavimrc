@@ -32,11 +32,18 @@ set hlsearch
 set mini-ai
 set dial
 
-"set quickscope - not using
+" Map Ctrl+A to increment
+nnoremap <C-a> :DialIncrement<cr>
 
-"don't need with anyobject
-"set functiontextobj
-"set argtextobj
+" Map Ctrl+X to decrement  
+nnoremap <C-x> :DialDecrement<cr>
+" Enable multiple groups
+let g:dial_include = "basic,numbers,dates"
+
+" Enable some categories (basic, numbers, dates, java) and some specific transformations (python:async, markdown:task_item)
+let g:dial_include = "basic,numbers,dates,java,python:async,markdown:task_item"
+"set quickscope 
+
 
 set ideajoin
 
@@ -109,11 +116,11 @@ nnoremap n nzzzv
 nnoremap N Nzzzv
 nnoremap zl 15zl
 nnoremap zh 15zh
-" For local replace
-nnoremap gr gd[{V%::s/<C-R>///gc<left><left><left>
+" For local replace this doesn't really work
+"nnoremap gr gd[{V%::s/<C-R>///gc<left><left><left>
 
-" For global replace
-nnoremap gR gD:%s/<C-R>///gc<left><left><left>
+" For global replace broken
+"nnoremap gR gD:%s/<C-R>///gc<left><left><left>
 
 nnoremap '' ''zz
 " Inner text objects
@@ -248,3 +255,12 @@ Plug 'tommcdo/vim-exchange'
 map <leader>d <Action>(Debug)
 
 map <leader>b <Action>(ToggleLineBreakpoint)
+
+map gh <Action>(TypeHierarchy)
+
+" Basically view jumplist through IDE
+map gr  <Action>(RecentLocations)
+map g;  <Action>(RecentChanges)
+
+
+map <leader>c <Action>(VcsShowCurrentChangeMarker)
