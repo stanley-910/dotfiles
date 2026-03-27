@@ -221,6 +221,30 @@ zstyle ':fzf-tab:complete:ta:*' fzf-preview 'tmux ls | grep -F "${word}:" | sed 
 # Other plugins
 source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
 source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+# zsh-syntax-highlighting colors
+ZSH_HIGHLIGHT_STYLES[command]='fg=#6fa37a,bold' #  green
+ZSH_HIGHLIGHT_STYLES[builtin]='fg=#81a1c1,bold' # light blue
+ZSH_HIGHLIGHT_STYLES[function]='fg=#b48ead'     # also light blue kinda
+ZSH_HIGHLIGHT_STYLES[alias]='fg=#b48ead'        # purple
+ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=#bf616a,bold' #red
+ZSH_HIGHLIGHT_STYLES[path]='none' # disable path underlining
+ZSH_HIGHLIGHT_STYLES[path]='none' # disable path underlining
+ZSH_HIGHLIGHT_STYLES[precommand]='fg=green' # disable command modifier underlining (sudo, builtin)
+
+# Declare the variable
+typeset -A ZSH_HIGHLIGHT_PATTERNS
+
+# To have commands starting with `rm -rf` in red:
+ZSH_HIGHLIGHT_PATTERNS+=('rm -rf *' 'fg=white,bold,bg=red')
+
+
+
+
+
+
+
+source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 source <(fzf --zsh)
 
 # zsh-autosuggestions configuration
@@ -228,9 +252,9 @@ bindkey '^S' autosuggest-accept  # Ctrl+S: Accept suggestion
 
 # FZF Configuration
 if command -v fd > /dev/null; then
-  export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git --exclude node_modules --exclude .DS_Store"
+  export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git --exclude node_modules --exclude .venv --exclude .DS_Store"
 else
-  export FZF_DEFAULT_COMMAND="find . -type f -not -path '*/\.git/*' -not -path '*/node_modules/*' -not -name '.DS_Store'"
+  export FZF_DEFAULT_COMMAND="find . -type f -not -path '*/\.git/*' -not -path '*/node_modules/*' -not -path '*/\.venv/*' -not -name '.DS_Store'"
 fi
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 
@@ -533,6 +557,7 @@ alias sysinfo='fastfetch'
 if [[ -o interactive ]] && [[ -t 0 ]] && [[ -z $TMUX ]] && \
    [[ "$TERM_PROGRAM" != "vscode" ]] && \
    [[ "$TERM_PROGRAM" != "zed" ]] && \
+   [[ "$OPENCODE" != 1 ]] && \
    [[ "$TERMINAL_EMULATOR" != "JetBrains-JediTerm" ]]; then
   LAST_SESSION=$(tmux ls -F "#{session_activity} #{session_name}" 2>/dev/null | grep -v attached | sort -r | head -n1 | cut -d' ' -f2)
   if [[ -n $LAST_SESSION ]]; then
@@ -599,3 +624,7 @@ export MANPAGER='nvim +Man!'
 export PATH="$PATH:/Users/stanley/.lmstudio/bin"
 # End of LM Studio CLI section
 
+
+# Generated for envman. Do not edit.
+[ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
+export PATH="$HOME/.gem/ruby/2.6.0/bin:$PATH"
