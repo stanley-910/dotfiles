@@ -28,7 +28,7 @@ font-family = "Berkeley Mono Def"
 # font-style-italic = "Oblique"
 # font-style-bold-italic = "Bold Oblique"
 # font-synthetic-style = "no-bold"
-keybind = super+w=quit
+# keybind = super+w=quit
 #
 # TODO find out what these do 
 # shell-integration = zsh

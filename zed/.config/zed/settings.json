@@ -7,6 +7,17 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "edit_predictions": {
+    "mode": "subtle"
+  },
+  "context_servers": {
+    "mcp-server-context7": {
+      "enabled": true,
+      "settings": {
+        "context7_api_key": "ctx7sk-1aad9928-1d2d-4392-8448-6371c62ff799"
+      }
+    }
+  },
   "buffer_line_height": "comfortable",
   "show_signature_help_after_edits": true,
   "remove_trailing_whitespace_on_save": true,
@@ -19,7 +30,7 @@
     "default_profile": "write",
     "default_model": {
       "provider": "copilot_chat",
-      "model": "gpt-4.1"
+      "model": "gemini-3.1-pro-preview"
     },
     "model_parameters": []
   },
