@@ -30,9 +30,13 @@ Custom skills live in `~/.agents/skills/` (tracked via `agents` stow package wit
 Model-specific directories symlink back: `~/.claude/skills/<name>` → `../../.agents/skills/<name>`.
 Installed skills (via `npx skills`) and `.skill-lock.json` stay local, untracked.
 
+## Secrets
+
+API keys and tokens go in `~/.secrets/env` (sourced by `.zshenv`, never tracked).
+
 ## What NOT to track
 
-- Secrets / API keys (use env vars in `.zshenv`)
+- Secrets / API keys (put in `~/.secrets/env`)
 - Plugin directories (`~/.tmux/plugins/`, `~/.config/yazi/plugins/`, `~/.config/zed/extensions/`)
 - Auto-generated lock files (`.skill-lock.json`, `Brewfile.lock.json`)
 - Shell history, completion caches

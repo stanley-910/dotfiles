@@ -1,2 +1,3 @@
 # Homebrew Bundle lock file - tracks exact versions installed
 Brewfile.lock.json
+.claude/
