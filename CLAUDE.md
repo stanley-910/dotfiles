@@ -26,9 +26,15 @@ Use `--no-folding` when the app writes runtime data (plugins, extensions, backup
 
 ## Skills management
 
-Custom skills live in `~/.agents/skills/` (tracked via `agents` stow package with `--no-folding`).
+Custom skills live in `dotfiles/agents/.agents/skills/` (tracked via `agents` stow package with `--no-folding`).
 Model-specific directories symlink back: `~/.claude/skills/<name>` → `../../.agents/skills/<name>`.
-Installed skills (via `npx skills`) and `.skill-lock.json` stay local, untracked.
+
+Installed skills (from `/install`) are managed by `.skill-lock.json`, which is also stowed and tracked.
+On a fresh machine: `stow --no-folding agents`, then `/install` to reconcile from the lock file.
+
+## Stow and symlinks
+
+All config files are symlinked from `~/dotfiles/<pkg>/` into `$HOME` via GNU Stow. When editing files, always target the dotfiles source — the symlinks point back here. After adding new files to a stow package, re-run `stow --restow` (or `--adopt -R` if a real file already exists at the target) to establish symlinks. Agents making changes to stowed configs should verify symlinks are intact after file operations.
 
 ## Secrets
 
@@ -38,6 +44,6 @@ API keys and tokens go in `~/.secrets/env` (sourced by `.zshenv`, never tracked)
 
 - Secrets / API keys (put in `~/.secrets/env`)
 - Plugin directories (`~/.tmux/plugins/`, `~/.config/yazi/plugins/`, `~/.config/zed/extensions/`)
-- Auto-generated lock files (`.skill-lock.json`, `Brewfile.lock.json`)
+- Auto-generated lock files (`Brewfile.lock.json`)
 - Shell history, completion caches
 - `.DS_Store` files
