@@ -1,0 +1,39 @@
+# Dotfiles
+
+GNU Stow-managed dotfiles for macOS (Apple Silicon). Each top-level directory is a stow package.
+
+## Stow conventions
+
+**Full directory stow** (`stow --restow -v <pkg>`):
+cursor, fastfetch, ghostty, git, jetbrains, nvim, scripts, starship, zathura, zsh, sioyek, claude
+
+**Selective file stow** (`stow --restow --no-folding -v <pkg>`):
+karabiner, tmux, yazi, zed, agents
+
+Use `--no-folding` when the app writes runtime data (plugins, extensions, backups, installed packages) into the same config directory. This prevents those files from being tracked.
+
+## Package structure
+
+- Home directory targets: `pkg/.filename` (e.g. `git/.gitconfig`)
+- XDG config targets: `pkg/.config/appname/file` (e.g. `ghostty/.config/ghostty/config`)
+- Home dot-directory targets: `pkg/.dirname/` (e.g. `agents/.agents/skills/`)
+
+## Shell config split
+
+- `.zshenv` — runs for ALL shells including non-interactive agent subshells. Contains: Homebrew, Cargo, Node, Python PATHs, EDITOR, API keys (env vars).
+- `.zprofile` — runs for login shells only. Contains: interactive-session PATHs (IDE CLIs, GUI apps).
+- `.zshrc` — runs for interactive shells. Contains: aliases, functions, plugins, completions, keybindings. No PATH exports here.
+
+## Skills management
+
+Custom skills live in `~/.agents/skills/` (tracked via `agents` stow package with `--no-folding`).
+Model-specific directories symlink back: `~/.claude/skills/<name>` → `../../.agents/skills/<name>`.
+Installed skills (via `npx skills`) and `.skill-lock.json` stay local, untracked.
+
+## What NOT to track
+
+- Secrets / API keys (use env vars in `.zshenv`)
+- Plugin directories (`~/.tmux/plugins/`, `~/.config/yazi/plugins/`, `~/.config/zed/extensions/`)
+- Auto-generated lock files (`.skill-lock.json`, `Brewfile.lock.json`)
+- Shell history, completion caches
+- `.DS_Store` files
