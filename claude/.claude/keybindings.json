@@ -1,0 +1,34 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-keybindings.json",
+  "$docs": "https://code.claude.com/docs/en/keybindings",
+  "bindings": [
+    {
+      "context": "Chat",
+      "bindings": {
+        "meta+enter": "chat:newline",
+        "shift+enter": "chat:newline"
+      }
+    },
+    {
+      "context": "Select",
+      "bindings": {
+        "ctrl+j": "select:next",
+        "ctrl+k": "select:previous"
+      }
+    },
+    {
+      "context": "Autocomplete",
+      "bindings": {
+        "ctrl+j": "autocomplete:next",
+        "ctrl+k": "autocomplete:previous",
+        "ctrl+s": "autocomplete:accept"
+      }
+    },
+    {
+      "context": "Global",
+      "bindings": {
+        "ctrl+f": "app:globalSearch"
+      }
+    }
+  ]
+}
