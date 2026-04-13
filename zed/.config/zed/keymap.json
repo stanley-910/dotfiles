@@ -13,7 +13,7 @@
       // Put key bindings here if you want them to work in normal & visual mode.
       // MOVEMENT - works in both normal and visual mode
 
-      "space space": "pane::DeploySearch",
+      "space /": "pane::DeploySearch",
       "shift-r": "vim::Repeat",
 
       "shift-h": ["workspace::SendKeystrokes", "^"], // H goes to first non-whitespace
@@ -168,6 +168,12 @@
     "context": "Workspace",
     "bindings": {
       "shift shift": "file_finder::Toggle",
+    },
+  },
+  {
+    "context": "(Editor && vim_mode == normal)",
+    "bindings": {
+      "space space": "file_finder::Toggle",
     },
   },
   {
@@ -354,7 +360,7 @@
   {
     "context": "Workspace",
     "bindings": {
-      "ctrl ctrl": "task::Spawn",
+      // "ctrl ctrl": "task::Spawn",
     },
   },
   {
@@ -589,5 +595,5 @@
       "ctrl-k": "editor::ContextMenuPrevious",
       "ctrl-j": "editor::ContextMenuNext",
     },
-  }
+  },
 ]

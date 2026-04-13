@@ -12,8 +12,8 @@ font-feature = -liga
 font-feature = -calt
 font-feature = -dlig
 macos-option-as-alt = true
-# background-opacity = 0.9
-# background-blur = true
+background-opacity = 0.95
+background-blur = true
 confirm-close-surface = false
 mouse-hide-while-typing = true
 

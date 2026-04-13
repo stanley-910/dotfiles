@@ -32,6 +32,7 @@ set hlsearch
 set mini-ai
 set dial
 
+"set easymotion " todo fix how this propogates
 " Map Ctrl+A to increment
 nnoremap <C-a> :DialIncrement<cr>
 
@@ -244,7 +245,6 @@ Plug 'justinmk/vim-sneak'
 Plug 'michaeljsmith/vim-indent-object'
 
 Plug 'chrisbra/matchit'
-Plug 'easymotion/vim-easymotion'
 Plug 'tommcdo/vim-exchange'
 
 "" -- Map IDE actions to IdeaVim -- https://jb.gg/abva4t
@@ -264,3 +264,13 @@ map g;  <Action>(RecentChanges)
 
 
 map <leader>c <Action>(VcsShowCurrentChangeMarker)
+
+
+map <leader><leader> <Action>(SearchEverywhere)
+map <leader>/ <Action>(FindInPath)
+
+map <leader>R <Action>(ContextRun)
+
+
+xnoremap <leader>n :norm 
+
