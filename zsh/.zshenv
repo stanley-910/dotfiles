@@ -25,4 +25,4 @@ export PATH="$HOME/.local/bin:$PATH"
 export PATH="$PATH:$HOME/.lmstudio/bin"
 
 # Source local secrets (API keys, tokens) — not tracked by git
-[[ -f ~/.secrets ]] && source ~/.secrets
+[[ -f ~/.secrets/env ]] && source ~/.secrets/env

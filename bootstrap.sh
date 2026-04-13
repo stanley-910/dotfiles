@@ -103,6 +103,9 @@ mkdir -p ~/.config/tmux
 # Local bin directory for custom scripts
 mkdir -p ~/.local/bin
 
+# Agents directory for cross-platform skills
+mkdir -p ~/.agents/skills
+
 # Tmux plugin directory
 mkdir -p ~/.tmux/plugins
 
@@ -166,7 +169,7 @@ fi
 info "Checking for existing dotfiles to backup..."
 
 # List of common dotfiles that might conflict
-DOTFILES_TO_BACKUP=(".zshrc" ".gitconfig" ".tmux.conf")
+DOTFILES_TO_BACKUP=(".zshrc" ".zprofile" ".zshenv" ".gitconfig" ".tmux.conf")
 
 for dotfile in "${DOTFILES_TO_BACKUP[@]}"; do
     if [ -f "$HOME/$dotfile" ] && [ ! -L "$HOME/$dotfile" ]; then
@@ -188,11 +191,11 @@ echo ""
 
 # Directories that should be fully stowed (entire directory symlinked)
 # These should NOT use --no-folding to create directory-level symlinks
-FULL_STOW_DIRS=(cursor fastfetch ghostty git jetbrains nvim scripts starship zathura zsh)
+FULL_STOW_DIRS=(cursor fastfetch ghostty git jetbrains nvim scripts starship sioyek zsh)
 
 # Directories that need selective file stowing (to avoid plugin pollution)
 # These SHOULD use --no-folding to symlink individual files only
-SELECTIVE_STOW_DIRS=(karabiner tmux yazi zed)
+SELECTIVE_STOW_DIRS=(agents claude karabiner tmux yazi zed)
 
 # Simulate full directory stow (no --no-folding, creates directory-level symlinks)
 for dir in "${FULL_STOW_DIRS[@]}"; do
@@ -242,7 +245,42 @@ for dir in "${SELECTIVE_STOW_DIRS[@]}"; do
 done
 
 success "Dotfiles symlinked successfully!"
-#
+
+# ============================================================================
+# Step 7b: Create skill symlinks from model-specific dirs to ~/.agents/skills/
+# ============================================================================
+
+info "Setting up skill symlinks..."
+
+SKILLS_DIR="$HOME/.agents/skills"
+if [ -d "$SKILLS_DIR" ]; then
+    # Claude Code skills
+    mkdir -p "$HOME/.claude/skills"
+    for skill_dir in "$SKILLS_DIR"/*/; do
+        skill_name=$(basename "$skill_dir")
+        target="$HOME/.claude/skills/$skill_name"
+        if [ ! -e "$target" ]; then
+            ln -s "../../.agents/skills/$skill_name" "$target"
+            info "Linked skill to Claude: $skill_name"
+        fi
+    done
+
+    # Cursor skills
+    mkdir -p "$HOME/.cursor/skills"
+    for skill_dir in "$SKILLS_DIR"/*/; do
+        skill_name=$(basename "$skill_dir")
+        target="$HOME/.cursor/skills/$skill_name"
+        if [ ! -e "$target" ]; then
+            ln -s "$SKILLS_DIR/$skill_name" "$target"
+            info "Linked skill to Cursor: $skill_name"
+        fi
+    done
+
+    success "Skill symlinks created!"
+else
+    warn "~/.agents/skills/ not found, skipping skill symlinks"
+fi
+
 # Install yazi plugins if yazi is installed
 if command -v yazi &> /dev/null; then
     info "Installing yazi plugins..."
