@@ -1,20 +1,8 @@
-export EDITOR=nvim
-export VISUAL=nvim
-
-# Uncomment to use the profiling module  
-zmodload zsh/zprof # run with zprof 
-
-# # Initialize Homebrew environment (macOS package manager)
-# eval "$(/opt/homebrew/bin/brew shellenv)" -- don't need handling in ~/.zshenv
-
-
 # Show hidden files in glob patterns (files starting with .)
 setopt globdots
 
 # Disable XON/XOFF flow control (allows Ctrl+S to work in other applications)
 [[ -t 0 ]] && stty -ixon
-
-# stty -ixon
 
 # ==============================================================================
 # COMPLETION SYSTEM
@@ -117,7 +105,6 @@ bindkey -M viins '^C' vi-cmd-mode     # Ctrl+C: Enter command mode
 bindkey '^?' backward-delete-char     # Backspace: Delete character backward
 bindkey '^v' edit-command-line        # Ctrl+V: Edit command in $EDITOR
 
-
 # Menu selection navigation
 bindkey -M menuselect '^[[Z' reverse-menu-complete  # Shift+Tab: Previous item
 
@@ -150,17 +137,6 @@ if [[ -t 0 ]]; then
   preexec() { echo -ne '\e[1 q' ;}
 fi
 
-# Initialize line editor in insert mode with beam cursor
-# zle-line-init() {
-#     zle -K viins
-#     echo -ne "\e[1 q"
-# }
-# zle -N zle-line-init
-#
-# # Set beam cursor on startup and for each new prompt
-# echo -ne '\e[1 q'
-# preexec() { echo -ne '\e[1 q' ;}
-#
 # Load vim edit-command-line function
 autoload edit-command-line; zle -N edit-command-line
 
@@ -177,8 +153,6 @@ HISTSIZE=999                      # Number of entries to keep in memory
 
 # disable Ctrl+D to exit shell
 set -o ignoreeof
-# 
-# unsetopt ignoreeof
 
 # ==============================================================================
 # PLUGIN CONFIGURATION
@@ -216,30 +190,21 @@ zstyle ':fzf-tab:complete:(vim|cat|less|nano|cp|mv):*' fzf-flags '--bind=alt-s:t
 zstyle ':fzf-tab:complete:(vim|cat|less|nano|cp|mv):*' fzf-preview 'bat --style=plain --color=always --line-range :50 $realpath 2>/dev/null || cat $realpath 2>/dev/null || eza -1 --icons --no-permissions --no-user --no-time --no-filesize --color=always $realpath'
 zstyle ':fzf-tab:complete:ta:*' fzf-flags '--bind=alt-s:toggle+down' '--preview-window=right:50%'
 zstyle ':fzf-tab:complete:ta:*' fzf-preview 'tmux ls | grep -F "${word}:" | sed "s/^.*: //"' # substitute session name with empty replacement
-# zstyle ':fzf-tab:complete:*:*' fzf-preview 'less ${(Q)realpath}'
 
 # Other plugins
 source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
-source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
-# zsh-syntax-highlighting colors
+# zsh-syntax-highlighting configuration (styles and patterns must be set BEFORE sourcing)
 ZSH_HIGHLIGHT_STYLES[command]='fg=#6fa37a,bold' #  green
 ZSH_HIGHLIGHT_STYLES[builtin]='fg=#81a1c1,bold' # light blue
 ZSH_HIGHLIGHT_STYLES[function]='fg=#b48ead'     # also light blue kinda
 ZSH_HIGHLIGHT_STYLES[alias]='fg=#b48ead'        # purple
 ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=#bf616a,bold' #red
 ZSH_HIGHLIGHT_STYLES[path]='none' # disable path underlining
-ZSH_HIGHLIGHT_STYLES[path]='none' # disable path underlining
 ZSH_HIGHLIGHT_STYLES[precommand]='fg=green' # disable command modifier underlining (sudo, builtin)
 
-# Declare the variable
 typeset -A ZSH_HIGHLIGHT_PATTERNS
-
-# To have commands starting with `rm -rf` in red:
 ZSH_HIGHLIGHT_PATTERNS+=('rm -rf *' 'fg=white,bold,bg=red')
-
-
-
 
 
 
@@ -286,22 +251,6 @@ export FZF_ALT_C_OPTS="
 "
 
 # ==============================================================================
-# PATH CONFIGURATION
-# ==============================================================================
-
-# Node.js (Homebrew installation)
-export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
-
-# Python (local installation)
-export PATH="/usr/local/opt/python/libexec/bin:$PATH"
-
-# User local binaries (pipx installations)
-export PATH="$PATH:/Users/stanley/.local/bin"
-
-# for idea cli 
-export PATH="$PATH:/Applications/IntelliJ IDEA.app/Contents/MacOS"
-
-# ==============================================================================
 # ALIASES
 # ==============================================================================
 
@@ -340,7 +289,6 @@ alias c="open -a 'Cursor.app' ."
 alias ws="open -a 'WebStorm.app' ."
 
 alias cd='z'
-
 
 # Global aliases
 # Redirect stderr to /dev/null
@@ -475,23 +423,11 @@ autoload -Uz zmv
 # zmv -i '(*).log' '$1.txt'        # Interactive mode (confirm each)
 
 # Hook that runs when changing into a directory 
-chpwd() { 
+chpwd() {
   ls
 }
 
-# chpwd() {
-#   if [[ -d .venv ]]; then
-#     source .venv/bin/activate
-#   fi
-# }
-# To merge hooks, use add-zsh-hook
 autoload -Uz add-zsh-hook
-# function auto_ls() { 
-# 	ls
-# }
-
-# Merging hooks
-# Then Define separate functions
 function auto_venv() {
   # If already in a virtualenv, do nothing
   if [[ -n "$VIRTUAL_ENV" && "$PWD" != *"${VIRTUAL_ENV:h}"* ]]; then
@@ -510,7 +446,6 @@ function auto_venv() {
     dir="${dir:h}"
   done
 }
-# add-zsh-hook chpwd auto_ls
 add-zsh-hook chpwd auto_venv
 
 # ==============================================================================
@@ -527,16 +462,10 @@ fi
 
 eval "$(starship init zsh)"
 
-# OCaml package manager (opam)
-# [[ ! -r '/Users/stanley/.opam/opam-init/init.zsh' ]] || source '/Users/stanley/.opam/opam-init/init.zsh' > /dev/null 2> /dev/null
-
 # Node Version Manager (nvm)
 export NVM_DIR="$HOME/.nvm"
 [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
 [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
-
-# Ruby version manager (rbenv)
-# eval "$(rbenv init - --no-rehash zsh)"
 
 # TheFuck command correction
 eval $(thefuck --alias)
@@ -547,13 +476,7 @@ export LESSOPEN='|~/.config/scripts/.lessfilter %s'
 # Remove fastfetch from startup and make it an alias
 alias sysinfo='fastfetch'
 
-# export PYENV_ROOT="$HOME/.pyenv"
-# [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
-# eval "$(pyenv init - zsh)"
-
-
-
-# allow proper loading of env variables in zed with -o interactive
+# Tmux auto-attach: attach to last detached session or create new
 if [[ -o interactive ]] && [[ -t 0 ]] && [[ -z $TMUX ]] && \
    [[ "$TERM_PROGRAM" != "vscode" ]] && \
    [[ "$TERM_PROGRAM" != "zed" ]] && \
@@ -566,20 +489,6 @@ if [[ -o interactive ]] && [[ -t 0 ]] && [[ -z $TMUX ]] && \
      exec tmux
   fi
 fi
-
-# if [[ -z $TMUX ]] && \
-#    [[ "$TERM_PROGRAM" != "vscode" ]] && \
-#    [[ "$TERM_PROGRAM" != "zed" ]] && \
-#    [[ "$TERMINAL_EMULATOR" != "JetBrains-JediTerm" ]]; then
-#   # Get the most recently active detached session
-#   LAST_SESSION=$(tmux ls -F "#{session_activity} #{session_name}" 2>/dev/null | grep -v attached | sort -r | head -n1 | cut -d' ' -f2)
-#   if [[ -n $LAST_SESSION ]]; then
-#      exec tmux attach -d -t "$LAST_SESSION"
-#   else
-#      exec tmux
-#   fi
-# fi
-
 
 # yazi function
 function y() {
@@ -614,17 +523,10 @@ mkf() {
     mkdir -p "$(dirname "$1")" && touch "$1"
 }
 
-# export PATH="/Applications/Ghostty.app/Contents/MacOS:$PATH"
 eval "$(zoxide init zsh)"
 
 # use nvim as man page reader
 export MANPAGER='nvim +Man!'
 
-# Added by LM Studio CLI (lms)
-export PATH="$PATH:/Users/stanley/.lmstudio/bin"
-# End of LM Studio CLI section
-
-
 # Generated for envman. Do not edit.
 [ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
-export PATH="$HOME/.gem/ruby/2.6.0/bin:$PATH"
