@@ -27,12 +27,10 @@ set timeoutlen=1000
 " To get a list of Actions run `:actionlist `
 let mapleader = "\<SPACE>"
 set ignorecase smartcase
-set smartcase
 set hlsearch
 set mini-ai
 set dial
 
-"set easymotion " todo fix how this propogates
 " Map Ctrl+A to increment
 nnoremap <C-a> :DialIncrement<cr>
 
@@ -43,9 +41,6 @@ let g:dial_include = "basic,numbers,dates"
 
 " Enable some categories (basic, numbers, dates, java) and some specific transformations (python:async, markdown:task_item)
 let g:dial_include = "basic,numbers,dates,java,python:async,markdown:task_item"
-"set quickscope 
-
-
 set ideajoin
 
 " Basic movement enhancements

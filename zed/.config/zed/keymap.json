@@ -331,12 +331,6 @@
       "alt alt": "project_symbols::Toggle",
     },
   },
-  // {
-  //   "context": "Workspace",
-  //   "bindings": {
-  //     "ctrl ctrl": "command_palette::Toggle"
-  //   }
-  // },
   {
     "bindings": {
       "cmd-_": [
@@ -503,17 +497,6 @@
       // "ctrl-shift-,": ["workspace::SendKeystrokes", "> ="],
     },
   },
-  // {
-  //   "context": "Editor && vim_mode == normal && (extension == typ)",
-  //   "bindings": {
-  //     // "c i m": ["workspace::SendKeystrokes", "F $ l c t $"],
-  //     // "c a m": ["workspace::SendKeystrokes", "F $ c f $"],
-  //     // "v i m": ["workspace::SendKeystrokes", "F $ l v t $"],
-  //     // "v a m": ["workspace::SendKeystrokes", "F $ v f $"],
-  //     // "d i m": ["workspace::SendKeystrokes", "F $ l d t $"],
-  //     // "d a m": ["workspace::SendKeystrokes", "F $ d f $"],
-  //   },
-  // },
   {
     "context": "Editor && vim_mode == insert && (extension == c)",
     "bindings": {
@@ -552,7 +535,7 @@
     },
   },
   {
-    // override defauly cmd-g implementation
+    // override default cmd-g implementation
     "bindings": {
       "cmd-g": "git_panel::ToggleFocus",
     },

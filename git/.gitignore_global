@@ -1,4 +1,25 @@
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Editors/IDEs
 .idea/
+.vscode/
+*.swp
+*.swo
+*~
 
+# Environment files
+.env
+.env.local
+.envrc
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Misc
+*.log
+Thumbs.db
