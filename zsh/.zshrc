@@ -273,10 +273,6 @@ alias gch='git checkout'
 alias gr='git remote'
 alias gg='cd "$(git rev-parse --show-toplevel)"'
 
-# Quick navigation
-alias cc='cd ~/Developer/'     # Navigate to development directory
-alias c.="cd ~/.config/"       # Navigate to config directory
-alias cs="cd ~/School/"        # Navigate to school directory
 alias -- -=popd               # Use - as popd shortcut
 
 # tmux aliases
@@ -289,7 +285,46 @@ alias fastfetch='fastfetch --color-keys "38;5;230" --color-output "38;5;230"'
 alias c="open -a 'Cursor.app' ."
 alias ws="open -a 'WebStorm.app' ."
 
-alias cd='z'
+# Claude Code — model tiers (update these when new flagships drop)
+CLAUDE_MODEL_LOW="haiku"
+CLAUDE_MODEL_MID="sonnet"
+CLAUDE_MODEL_HIGH="opus"
+
+# Usage: chud [-n] [-l|-m|-h|-x|-a]    (haiku)
+#        cs   [-n] [-l|-m|-h|-x|-a]    (sonnet)
+#        co   [-n] [-l|-m|-h|-x|-a]    (opus)
+# -n = no thinking, -l/-m/-h/-x/-a = low/medium/high/max/auto effort
+# chain freely: cs -nh = sonnet, no thinking, high effort
+_cc() {
+  local model=$1; shift
+  local flags=()
+  local no_think=0
+  local effort=""
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -*) for (( i=1; i<${#1}; i++ )); do
+            case ${1:$i:1} in
+              n) no_think=1 ;;
+              l) effort="low" ;;
+              m) effort="medium" ;;
+              h) effort="high" ;;
+              x) effort="high" ;;
+              a) effort="auto" ;;
+            esac
+          done ;;
+    esac; shift
+  done
+  [[ -n "$effort" ]] && flags+=(--effort "$effort")
+  if (( no_think )); then
+    CLAUDE_CODE_DISABLE_THINKING=1 claude --model "$model" "${flags[@]}"
+  else
+    claude --model "$model" "${flags[@]}"
+  fi
+}
+
+chud() { _cc "$CLAUDE_MODEL_LOW" "$@"; }
+cs()   { _cc "$CLAUDE_MODEL_MID" "$@"; }
+co()   { _cc "$CLAUDE_MODEL_HIGH" "$@"; }
 
 # Global aliases
 # Redirect stderr to /dev/null
@@ -327,14 +362,15 @@ gasp() {
   git add -A && git commit -m "$*" && git push
 }
 
-# Enhanced cd function with directory stack
+# cd = zoxide + directory stack (so popd / - still works)
 function cd() {
-    if [ $# -eq 0 ]; then
-        set "$HOME"
-    elif [ "$1" = "-" ]; then
-        shift
+    if [[ $# -eq 0 ]]; then
+        pushd "$HOME" >/dev/null
+    elif [[ "$1" == "-" ]]; then
+        popd >/dev/null
+    else
+        pushd "$(zoxide query -- "$@" 2>/dev/null || echo "$1")" >/dev/null
     fi
-    pushd "$@" >/dev/null
 }
 
 # TMUX functions
@@ -524,7 +560,9 @@ mkf() {
     mkdir -p "$(dirname "$1")" && touch "$1"
 }
 
-eval "$(zoxide init zsh)"
+eval "$(zoxide init zsh --no-cmd)"
+alias z='__zoxide_z'
+alias zi='__zoxide_zi'
 
 # use nvim as man page reader
 export MANPAGER='nvim +Man!'
