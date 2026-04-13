@@ -195,6 +195,7 @@ zstyle ':fzf-tab:complete:ta:*' fzf-preview 'tmux ls | grep -F "${word}:" | sed 
 source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # zsh-syntax-highlighting configuration (styles and patterns must be set BEFORE sourcing)
+typeset -A ZSH_HIGHLIGHT_STYLES
 ZSH_HIGHLIGHT_STYLES[command]='fg=#6fa37a,bold' #  green
 ZSH_HIGHLIGHT_STYLES[builtin]='fg=#81a1c1,bold' # light blue
 ZSH_HIGHLIGHT_STYLES[function]='fg=#b48ead'     # also light blue kinda

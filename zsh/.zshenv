@@ -24,5 +24,8 @@ export PATH="$HOME/.local/bin:$PATH"
 # LM Studio CLI
 export PATH="$PATH:$HOME/.lmstudio/bin"
 
+# Silence zoxide doctor warning in non-interactive shells
+export _ZO_DOCTOR=0
+
 # Source local secrets (API keys, tokens) — not tracked by git
 [[ -f ~/.secrets/env ]] && source ~/.secrets/env
