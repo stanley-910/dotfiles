@@ -2,3 +2,7 @@
 Brewfile.lock.json
 .claude/
 .emdash.json
+
+# Karabiner runtime files (full dir is stowed; only karabiner.json is tracked)
+karabiner/.config/karabiner/*
+!karabiner/.config/karabiner/karabiner.json

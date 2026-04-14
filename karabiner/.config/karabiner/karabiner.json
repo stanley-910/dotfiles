@@ -10,13 +10,10 @@
                             {
                                 "from": {
                                     "key_code": "escape",
-                                    "modifiers": {
-                                        "mandatory": ["shift"],
-                                        "optional": ["caps_lock"]
-                                    }
+                                    "modifiers": { "mandatory": ["shift"] }
                                 },
+                                "parameters": { "basic.to_delayed_action_delay_milliseconds": 1000 },
                                 "to": [
-                                    { "key_code": "caps_lock" },
                                     {
                                         "set_notification_message": {
                                             "id": "shift_escape_caps_lock",
@@ -24,8 +21,15 @@
                                         }
                                     }
                                 ],
+                                "to_after_key_up": [
+                                    {
+                                        "hold_down_milliseconds": 200,
+                                        "key_code": "caps_lock"
+                                    },
+                                    { "key_code": "vk_none" }
+                                ],
                                 "to_delayed_action": {
-                                    "to_if_invoked": [
+                                    "to_if_canceled": [
                                         {
                                             "set_notification_message": {
                                                 "id": "shift_escape_caps_lock",
@@ -33,7 +37,7 @@
                                             }
                                         }
                                     ],
-                                    "to_if_canceled": [
+                                    "to_if_invoked": [
                                         {
                                             "set_notification_message": {
                                                 "id": "shift_escape_caps_lock",
@@ -42,8 +46,46 @@
                                         }
                                     ]
                                 },
-                                "parameters": {
-                                    "basic.to_delayed_action_delay_milliseconds": 1000
+                                "type": "basic"
+                            },
+                            {
+                                "from": {
+                                    "key_code": "escape",
+                                    "modifiers": { "mandatory": ["shift", "caps_lock"] }
+                                },
+                                "parameters": { "basic.to_delayed_action_delay_milliseconds": 1000 },
+                                "to": [
+                                    {
+                                        "set_notification_message": {
+                                            "id": "shift_escape_caps_lock",
+                                            "text": "Toggled Caps Lock"
+                                        }
+                                    }
+                                ],
+                                "to_after_key_up": [
+                                    {
+                                        "hold_down_milliseconds": 200,
+                                        "key_code": "caps_lock"
+                                    },
+                                    { "key_code": "vk_none" }
+                                ],
+                                "to_delayed_action": {
+                                    "to_if_canceled": [
+                                        {
+                                            "set_notification_message": {
+                                                "id": "shift_escape_caps_lock",
+                                                "text": ""
+                                            }
+                                        }
+                                    ],
+                                    "to_if_invoked": [
+                                        {
+                                            "set_notification_message": {
+                                                "id": "shift_escape_caps_lock",
+                                                "text": ""
+                                            }
+                                        }
+                                    ]
                                 },
                                 "type": "basic"
                             }
@@ -95,7 +137,7 @@
                         ]
                     },
                     {
-                        "description": "Control + right_shift toggles right_shift between escape and shift",
+                        "description": "command + right_shift toggles right_shift between escape and shift",
                         "manipulators": [
                             {
                                 "conditions": [
@@ -108,10 +150,11 @@
                                 "from": {
                                     "key_code": "right_shift",
                                     "modifiers": {
-                                        "mandatory": ["control"],
+                                        "mandatory": ["command"],
                                         "optional": ["any"]
                                     }
                                 },
+                                "parameters": { "basic.to_delayed_action_delay_milliseconds": 1000 },
                                 "to": [
                                     {
                                         "set_variable": {
@@ -127,14 +170,6 @@
                                     }
                                 ],
                                 "to_delayed_action": {
-                                    "to_if_invoked": [
-                                        {
-                                            "set_notification_message": {
-                                                "id": "right_shift_shift_mode",
-                                                "text": ""
-                                            }
-                                        }
-                                    ],
                                     "to_if_canceled": [
                                         {
                                             "set_notification_message": {
@@ -142,10 +177,15 @@
                                                 "text": ""
                                             }
                                         }
+                                    ],
+                                    "to_if_invoked": [
+                                        {
+                                            "set_notification_message": {
+                                                "id": "right_shift_shift_mode",
+                                                "text": ""
+                                            }
+                                        }
                                     ]
-                                },
-                                "parameters": {
-                                    "basic.to_delayed_action_delay_milliseconds": 1000
                                 },
                                 "type": "basic"
                             },
@@ -160,10 +200,11 @@
                                 "from": {
                                     "key_code": "right_shift",
                                     "modifiers": {
-                                        "mandatory": ["control"],
+                                        "mandatory": ["command"],
                                         "optional": ["any"]
                                     }
                                 },
+                                "parameters": { "basic.to_delayed_action_delay_milliseconds": 1000 },
                                 "to": [
                                     {
                                         "set_variable": {
@@ -179,14 +220,6 @@
                                     }
                                 ],
                                 "to_delayed_action": {
-                                    "to_if_invoked": [
-                                        {
-                                            "set_notification_message": {
-                                                "id": "right_shift_shift_mode",
-                                                "text": ""
-                                            }
-                                        }
-                                    ],
                                     "to_if_canceled": [
                                         {
                                             "set_notification_message": {
@@ -194,10 +227,15 @@
                                                 "text": ""
                                             }
                                         }
+                                    ],
+                                    "to_if_invoked": [
+                                        {
+                                            "set_notification_message": {
+                                                "id": "right_shift_shift_mode",
+                                                "text": ""
+                                            }
+                                        }
                                     ]
-                                },
-                                "parameters": {
-                                    "basic.to_delayed_action_delay_milliseconds": 1000
                                 },
                                 "type": "basic"
                             },
@@ -569,6 +607,32 @@
                                         }
                                     ]
                                 },
+                                "type": "basic"
+                            }
+                        ]
+                    },
+                    {
+                        "description": "Map Command+E to Command+S in Helium",
+                        "manipulators": [
+                            {
+                                "conditions": [
+                                    {
+                                        "bundle_identifiers": [
+                                            "^net.imput.helium"
+                                        ],
+                                        "type": "frontmost_application_if"
+                                    }
+                                ],
+                                "from": {
+                                    "key_code": "e",
+                                    "modifiers": { "mandatory": ["command"] }
+                                },
+                                "to": [
+                                    {
+                                        "key_code": "s",
+                                        "modifiers": ["command"]
+                                    }
+                                ],
                                 "type": "basic"
                             }
                         ]

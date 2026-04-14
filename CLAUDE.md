@@ -5,10 +5,10 @@ GNU Stow-managed dotfiles for macOS (Apple Silicon). Each top-level directory is
 ## Stow conventions
 
 **Full directory stow** (`stow --restow -v <pkg>`):
-cursor, fastfetch, ghostty, git, jetbrains, nvim, scripts, starship, zathura, zsh, sioyek, claude
+cursor, fastfetch, ghostty, git, jetbrains, karabiner, nvim, scripts, starship, zathura, zsh, sioyek, claude
 
 **Selective file stow** (`stow --restow --no-folding -v <pkg>`):
-karabiner, tmux, yazi, zed, agents
+tmux, yazi, zed, agents
 
 Use `--no-folding` when the app writes runtime data (plugins, extensions, backups, installed packages) into the same config directory. This prevents those files from being tracked.
 

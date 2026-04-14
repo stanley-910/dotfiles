@@ -1,12 +1,10 @@
 {
   "env": {
-    "PATH": "/opt/homebrew/bin:/opt/homebrew/sbin:/Applications/Obsidian.app/Contents/MacOS:/Users/stanley/.lmstudio/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "PATH": "/Users/stanley/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Applications/Obsidian.app/Contents/MacOS:/Users/stanley/.lmstudio/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "DISABLE_TELEMETRY": "1"
   },
   "permissions": {
-    "defaultMode": "bypassPermissions",
-    "skipDangerousModePermissionPrompt": true,
     "allow": [
       "mcp__deepwiki__ask_question",
       "mcp__deepwiki__read_wiki_contents",
@@ -15,51 +13,11 @@
       "mcp__context7__query-docs",
       "mcp__plugin_context7_context7__resolve-library-id",
       "mcp__plugin_context7_context7__query-docs"
-    ]
+    ],
+    "defaultMode": "bypassPermissions",
+    "skipDangerousModePermissionPrompt": true
   },
-  "model": "opus",
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.tmux/plugins/tmux-agent-status/hooks/better-hook.sh UserPromptSubmit"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.tmux/plugins/tmux-agent-status/hooks/better-hook.sh PreToolUse"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.tmux/plugins/tmux-agent-status/hooks/better-hook.sh Stop"
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.tmux/plugins/tmux-agent-status/hooks/better-hook.sh Notification"
-          }
-        ]
-      }
-    ]
-  },
+  "hooks": {},
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"
@@ -85,5 +43,6 @@
     "enabled": true,
     "mode": "hold"
   },
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "effortLevel": "high"
 }

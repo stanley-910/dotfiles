@@ -20,6 +20,8 @@
   },
   "context_servers": {
     "mcp-server-context7": {
+      "settings": {},
+        
       "enabled": true,
     },
   },
@@ -162,8 +164,8 @@
   "buffer_font_family": "Berkeley Mono",
   "base_keymap": "JetBrains",
   "vim_mode": true,
-  "ui_font_size": 19.0,
-  "buffer_font_size": 16.0,
+  "ui_font_size": 16.0,
+  "buffer_font_size": 11.0,
   "buffer_font_features": { "calt": true, "liga": true },
   "theme": {
     "mode": "dark",
