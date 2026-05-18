@@ -17,6 +17,7 @@
     "defaultMode": "bypassPermissions",
     "skipDangerousModePermissionPrompt": true
   },
+  "model": "claude-opus-4-6",
   "hooks": {},
   "statusLine": {
     "type": "command",
@@ -38,11 +39,11 @@
   },
   "viewMode": "verbose",
   "syntaxHighlightingDisabled": false,
-  "voiceEnabled": true,
+  "effortLevel": "high",
   "voice": {
     "enabled": true,
     "mode": "hold"
   },
   "skipDangerousModePermissionPrompt": true,
-  "effortLevel": "high"
+  "voiceEnabled": true
 }

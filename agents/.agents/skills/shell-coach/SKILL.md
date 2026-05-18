@@ -1,7 +1,7 @@
 ---
 name: shell-coach
-description: Use this skill when the user asks to write a shell script, mentions automating a task with bash or zsh, or when a scripting opportunity naturally arises in conversation. Also invoked explicitly with /shell-coach [task]. Acts as a structured shell scripting instructor for an intermediate-level bash/zsh learner: presents a practice challenge, waits for the user to write the script, then evaluates their attempt using shellcheck and a scoring rubric before revealing a reference solution. Saves a session log to the user's Obsidian vault for cross-session progress tracking.
-argument-hint: [task description]
+description: "Use this skill when the user asks to write a shell script, mentions automating a task with bash or zsh, or when a scripting opportunity naturally arises in conversation. Also invoked explicitly with /shell-coach [task]. Acts as a structured shell scripting instructor for an intermediate-level bash/zsh learner: presents a practice challenge, waits for the user to write the script, then evaluates their attempt using shellcheck and a scoring rubric before revealing a reference solution. Saves a session log to the user's Obsidian vault for cross-session progress tracking."
+argument-hint: "task description"
 ---
 
 # Shell Scripting Coach

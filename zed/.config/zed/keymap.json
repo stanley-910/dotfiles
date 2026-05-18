@@ -221,12 +221,12 @@
       "ctrl-shift-s": "editor::ConfirmCompletionReplace",
     },
   },
-  {
-    "context": "ContextEditor > Editor",
-    "bindings": {
-      "ctrl-s": "assistant::ConfirmCommand",
-    },
-  },
+  // {
+  //   "context": "ContextEditor > Editor",
+  //   "bindings": {
+  //     // "ctrl-s": "assistant::",
+  //   },
+  // },
   {
     "context": "Picker > Editor",
     "bindings": {

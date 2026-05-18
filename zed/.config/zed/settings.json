@@ -7,6 +7,12 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "outline_panel": {
+    "dock": "left"
+  },
+  "collaboration_panel": {
+    "dock": "left"
+  },
   "agent_servers": {
     "claude": {
       "default_mode": "bypassPermissions",
@@ -16,7 +22,7 @@
     },
   },
   "edit_predictions": {
-    "mode": "eager",
+    "mode": "subtle",
   },
   "context_servers": {
     "mcp-server-context7": {
@@ -30,6 +36,7 @@
   "remove_trailing_whitespace_on_save": true,
   "auto_update": false,
   "agent": {
+    "dock": "right",
     "inline_assistant_model": {
       "provider": "copilot_chat",
       "model": "claude-3.5-sonnet",
@@ -49,6 +56,7 @@
   "restore_on_startup": "last_workspace",
   "scroll_beyond_last_line": "vertical_scroll_margin",
   "git_panel": {
+    "dock": "left",
     "sort_by_path": false,
   },
   "use_system_window_tabs": false,
@@ -91,6 +99,7 @@
     "active_language_button": true,
   },
   "project_panel": {
+    "dock": "left",
     "hide_hidden": false,
     "hide_root": true,
     "sticky_scroll": true,
@@ -123,7 +132,7 @@
     "enabled": true,
   },
   // "show_whitespaces": "trailing",
-  "show_edit_predictions": true,
+  "show_edit_predictions": false,
   "telemetry": {
     "diagnostics": false,
     "metrics": false,
@@ -164,8 +173,8 @@
   "buffer_font_family": "Berkeley Mono",
   "base_keymap": "JetBrains",
   "vim_mode": true,
-  "ui_font_size": 16.0,
-  "buffer_font_size": 11.0,
+  "ui_font_size": 17.0,
+  "buffer_font_size": 15.0,
   "buffer_font_features": { "calt": true, "liga": true },
   "theme": {
     "mode": "dark",
@@ -236,7 +245,8 @@
       },
     },
     "Python": {
-      "show_edit_predictions": false,
+      "tab_size": 4,
+      "show_edit_predictions": true,
       "format_on_save": "on",
       "formatter": {
         "external": {

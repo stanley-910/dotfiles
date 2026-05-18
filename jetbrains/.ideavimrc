@@ -13,7 +13,7 @@ set showmode
 " Do incremental searching.
 set incsearch
 
-set hightlightedyank
+set highlightedyank
 "set peekaboo
 set NERDTree
 set vim-paragraph-motion
@@ -269,3 +269,9 @@ map <leader>R <Action>(ContextRun)
 
 xnoremap <leader>n :norm 
 
+
+inoremap <C-p> <C-o>{
+inoremap <C-n> <C-o>}
+inoremap <C-S-n> <C-c>o
+
+nnoremap D xpp

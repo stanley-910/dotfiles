@@ -97,7 +97,6 @@ bindkey "^e" end-of-line
 bindkey '^Z' undo                     # Ctrl+Z: Undo last action
 bindkey '^y' yank                     # Ctrl+Y: Paste from kill ring
 
-
 # Vi mode specific bindings
 bindkey -M viins 'kj' vi-cmd-mode     # kj: Enter command mode from insert
 bindkey -M vicmd 'y' vi-yank-xclip    # y: Yank to system clipboard
@@ -207,9 +206,6 @@ ZSH_HIGHLIGHT_STYLES[precommand]='fg=green' # disable command modifier underlini
 typeset -A ZSH_HIGHLIGHT_PATTERNS
 ZSH_HIGHLIGHT_PATTERNS+=('rm -rf *' 'fg=white,bold,bg=red')
 
-
-
-
 source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 source <(fzf --zsh)
 
@@ -256,7 +252,7 @@ export FZF_ALT_C_OPTS="
 # ==============================================================================
 
 # File and directory operations
-alias ls='eza -la --icons --git'                    # List with icons, details and git status (including hidden files)
+alias ls='eza -la --icons'                    # List with icons, details and git status (including hidden files)
 alias la='eza -la --icons --git --total-size'                     # List with icons and details (no hidden files)
 alias ll='eza -la --icons --git'       # List all with details, icons, git status and directory sizes
 alias v="nvim"            # Quick nvim access
@@ -442,7 +438,6 @@ _ta() {
 }
 compdef _ta ta
 
-
 # echo OSC 133 escape sequence so tmux can navigate between prompts 
 # https://tanutaran.medium.com/tmux-jump-between-prompt-output-with-osc-133-shell-integration-standard-84241b2defb5
 preexec () {
@@ -460,9 +455,9 @@ autoload -Uz zmv
 # zmv -i '(*).log' '$1.txt'        # Interactive mode (confirm each)
 
 # Hook that runs when changing into a directory 
-chpwd() {
-  ls
-}
+# chpwd() {
+#   ls
+# }
 
 autoload -Uz add-zsh-hook
 function auto_venv() {
@@ -483,7 +478,7 @@ function auto_venv() {
     dir="${dir:h}"
   done
 }
-add-zsh-hook chpwd auto_venv
+# add-zsh-hook chpwd auto_venv
 
 # ==============================================================================
 # EXTERNAL TOOL INITIALIZATION
@@ -569,3 +564,10 @@ export MANPAGER='nvim +Man!'
 
 # Generated for envman. Do not edit.
 [ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
+
+# bun completions
+[ -s "/Users/stanley/.bun/_bun" ] && source "/Users/stanley/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
