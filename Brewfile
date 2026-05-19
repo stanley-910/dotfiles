@@ -89,18 +89,8 @@ brew "tree"
 # ============================================================================
 # GUI Applications (Casks)
 # ============================================================================
-
-# Ghostty - Modern GPU-accelerated terminal emulator
-cask "ghostty"
-
-# Karabiner-Elements - Keyboard customization tool
-cask "karabiner-elements"
-
-# Zed - Modern code editor
-cask "zed"
-
-# Cursor - AI-powered code editor
-cask "cursor"
+# All GUI app casks are installed by fresh-mac.sh (Stage 1) so the Brewfile
+# stays focused on CLI dev tools. See fresh-mac.sh for the cask list.
 
 # ============================================================================
 # Optional Development Tools & Languages
