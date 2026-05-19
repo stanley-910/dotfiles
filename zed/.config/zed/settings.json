@@ -208,7 +208,6 @@
     },
     "jdtls": {
       "settings": {
-        "java_home": "/Users/stanley/Library/Java/JavaVirtualMachines/openjdk-25.0.2/Contents/Home",
         "lombok_support": true,
         "jdk_auto_download": false,
 

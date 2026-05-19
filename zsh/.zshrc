@@ -564,10 +564,3 @@ export MANPAGER='nvim +Man!'
 
 # Generated for envman. Do not edit.
 [ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
-
-# bun completions
-[ -s "/Users/stanley/.bun/_bun" ] && source "/Users/stanley/.bun/_bun"
-
-# bun
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"

@@ -49,6 +49,39 @@ error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Walk a stow source directory, back up any real file already at the
+# stow target. Apps like Karabiner-Elements and Zed auto-create config
+# files on install/first launch, which then collide with stow.
+# Mirrors stow's default ignores (README/LICENSE, .git).
+#
+# Critical: when a FULL_STOW dir is already stowed, the target path
+# dereferences (via the parent dir symlink) directly to the source file
+# in the repo. We must compare realpaths and skip those, otherwise we
+# rename the actual dotfile sources.
+backup_stow_conflicts() {
+    local pkg=$1
+    [ -d "$pkg" ] || return 0
+    local timestamp src_real target_real
+    timestamp=$(date +%Y%m%d_%H%M%S)
+    while IFS= read -r src; do
+        local rel="${src#"$pkg"/}"
+        local target="$HOME/$rel"
+        [ -e "$target" ] || continue
+        # Already stowed (target resolves to same file as src) → skip
+        src_real=$(readlink -f "$src" 2>/dev/null)
+        target_real=$(readlink -f "$target" 2>/dev/null)
+        [ "$src_real" = "$target_real" ] && continue
+        # Symlink pointing elsewhere → leave it for stow to handle/report
+        [ -L "$target" ] && continue
+        # Real conflicting file → back it up
+        mv "$target" "$target.backup.$timestamp"
+        warn "Backed up conflicting $target → $target.backup.$timestamp"
+    done < <(find "$pkg" -type f \
+        ! -name 'README*' \
+        ! -name 'LICENSE*' \
+        ! -path '*/.git/*')
+}
+
 # ============================================================================
 # Step 1: Check if Homebrew is installed
 # ============================================================================
@@ -168,14 +201,24 @@ fi
 
 info "Checking for existing dotfiles to backup..."
 
-# List of common dotfiles that might conflict
-DOTFILES_TO_BACKUP=(".zshrc" ".zprofile" ".zshenv" ".gitconfig" ".tmux.conf")
+# Files that commonly exist on a fresh laptop and would conflict with stow.
+# Includes home-level dotfiles and files auto-created by apps (Claude Code,
+# Zed, etc.) on first launch. Paths are relative to $HOME.
+PATHS_TO_BACKUP=(
+    ".zshrc"
+    ".zprofile"
+    ".zshenv"
+    ".gitconfig"
+    ".tmux.conf"
+    ".claude/settings.json"
+)
 
-for dotfile in "${DOTFILES_TO_BACKUP[@]}"; do
-    if [ -f "$HOME/$dotfile" ] && [ ! -L "$HOME/$dotfile" ]; then
-        BACKUP_NAME="$HOME/${dotfile}.backup.$(date +%Y%m%d_%H%M%S)"
-        mv "$HOME/$dotfile" "$BACKUP_NAME"
-        warn "Backed up existing $dotfile to $BACKUP_NAME"
+for target in "${PATHS_TO_BACKUP[@]}"; do
+    if [ -f "$HOME/$target" ] && [ ! -L "$HOME/$target" ]; then
+        # Flatten path separators so backups land beside the original
+        BACKUP_NAME="$HOME/${target//\//_}.backup.$(date +%Y%m%d_%H%M%S)"
+        mv "$HOME/$target" "$BACKUP_NAME"
+        warn "Backed up existing $target to $BACKUP_NAME"
     fi
 done
 
@@ -196,6 +239,14 @@ FULL_STOW_DIRS=(cursor fastfetch ghostty git jetbrains nvim scripts starship sio
 # Directories that need selective file stowing (to avoid plugin pollution)
 # These SHOULD use --no-folding to symlink individual files only
 SELECTIVE_STOW_DIRS=(agents claude karabiner tmux yazi zed)
+
+# Pre-emptively back up any real files at stow target paths. Necessary
+# because brew bundle (step 2) may install apps (Karabiner-Elements, Zed,
+# etc.) that auto-create config files before stow can symlink them in.
+info "Scanning for stow conflicts and backing up existing files..."
+for dir in "${FULL_STOW_DIRS[@]}" "${SELECTIVE_STOW_DIRS[@]}"; do
+    backup_stow_conflicts "$dir"
+done
 
 # Simulate full directory stow (no --no-folding, creates directory-level symlinks)
 for dir in "${FULL_STOW_DIRS[@]}"; do

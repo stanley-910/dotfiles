@@ -19,7 +19,7 @@
 [branch]
 	sort = -committerdate
 [core]
-	excludesfile = /Users/stanley/.gitignore_global
+	excludesfile = ~/.gitignore_global
 	editor = nvim
 	untrackedCache = true
 [push]

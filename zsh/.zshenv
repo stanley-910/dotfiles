@@ -9,8 +9,8 @@ if [[ -d /opt/homebrew/bin ]]; then
   export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
 fi
 
-# Cargo (Rust)
-. "$HOME/.cargo/env"
+# Cargo (Rust) — only if installed via rustup
+[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
 
 # Node.js (Homebrew)
 export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
@@ -23,6 +23,11 @@ export PATH="$HOME/.local/bin:$PATH"
 
 # LM Studio CLI
 export PATH="$PATH:$HOME/.lmstudio/bin"
+
+# Bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
 # Silence zoxide doctor warning in non-interactive shells
 export _ZO_DOCTOR=0
