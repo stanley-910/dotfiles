@@ -1,5 +1,5 @@
-title = "zsh"
-macos-titlebar-style = hidden
+# title = "zsh"
+# macos-titlebar-style = hidden
 macos-titlebar-proxy-icon = hidden
 # theme = IC Orange PPL
 # theme = Tomorrow Night Bright

@@ -45,5 +45,6 @@
     "mode": "hold"
   },
   "skipDangerousModePermissionPrompt": true,
+  "theme": "dark",
   "voiceEnabled": true
 }

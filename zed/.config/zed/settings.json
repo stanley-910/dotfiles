@@ -14,12 +14,13 @@
     "dock": "left"
   },
   "agent_servers": {
-    "claude": {
+    "claude-acp": {
+      "type": "registry",
       "default_mode": "bypassPermissions",
-      "favorite_models": ["sonnet"],
-      "default_config_options": {},
-      "favorite_config_option_values": {},
-    },
+      "favorite_models": [
+        "sonnet"
+      ]
+    }
   },
   "edit_predictions": {
     "mode": "subtle",
@@ -49,7 +50,7 @@
     "model_parameters": [],
   },
   "icon_theme": {
-    "mode": "dark",
+    "mode": "light",
     "light": "Colored Zed Icons Theme Dark",
     "dark": "Colored Zed Icons Theme Dark",
   },
@@ -76,13 +77,13 @@
     "show": true,
   },
   "title_bar": {
+    "show_branch_status_icon": true,
     "show_menus": false,
     "show_sign_in": true,
     "show_user_picture": true,
     "show_branch_name": true,
     "show_project_items": true,
     "show_onboarding_banner": true,
-    "show_branch_icon": true,
   },
   "debugger": {
     "button": true,
@@ -179,7 +180,7 @@
   "theme": {
     "mode": "dark",
     "light": "Gruvbox Light",
-    "dark": "Gruvbox Crisp Highest Contrast",
+    "dark": "Gruvbox Dark Hard",
   },
   "lsp": {
     "tinymist": {

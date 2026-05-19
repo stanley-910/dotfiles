@@ -133,7 +133,9 @@ if [[ -t 0 ]]; then
   }
   zle -N zle-line-init
   echo -ne '\e[1 q'
-  preexec() { echo -ne '\e[1 q' ;}
+  autoload -Uz add-zsh-hook
+  _set_block_cursor() { echo -ne '\e[1 q' }
+  add-zsh-hook preexec _set_block_cursor
 fi
 
 # Load vim edit-command-line function
@@ -156,6 +158,16 @@ set -o ignoreeof
 # ==============================================================================
 # PLUGIN CONFIGURATION
 # ==============================================================================
+
+# Ghostty shell integration. Ghostty only auto-injects this into the outermost
+# zsh it spawns (via ZDOTDIR), so nested shells (inside tmux, exec zsh, sudo -E
+# zsh) lose it. Re-source here so the precmd/preexec hooks — title updates
+# on cd, OSC 133 prompt marks, cursor shape — run in every interactive shell.
+if [[ -n $GHOSTTY_RESOURCES_DIR ]]; then
+  autoload -Uz -- "$GHOSTTY_RESOURCES_DIR"/shell-integration/zsh/ghostty-integration
+  ghostty-integration
+  unfunction ghostty-integration
+fi
 
 # fzf-tab: Enhanced tab completion with fzf
 source ~/.zsh/fzf-tab/fzf-tab.plugin.zsh
@@ -438,11 +450,11 @@ _ta() {
 }
 compdef _ta ta
 
-# echo OSC 133 escape sequence so tmux can navigate between prompts 
+# echo OSC 133 escape sequence so tmux can navigate between prompts
 # https://tanutaran.medium.com/tmux-jump-between-prompt-output-with-osc-133-shell-integration-standard-84241b2defb5
-preexec () {
-  echo -n "\\e]133;A\\e\\" # this is what was recognized by tmux with ghostty
-}
+autoload -Uz add-zsh-hook
+_osc133_preexec() { print -n "\e]133;A\e\\" }
+add-zsh-hook preexec _osc133_preexec
 
 # zmv - batch rename/move
 # Enable zmv
@@ -509,19 +521,19 @@ export LESSOPEN='|~/.config/scripts/.lessfilter %s'
 alias sysinfo='fastfetch'
 
 # Tmux auto-attach: attach to last detached session or create new
-if [[ -o interactive ]] && [[ -t 0 ]] && [[ -z $TMUX ]] && \
-   [[ "$TERM_PROGRAM" != "vscode" ]] && \
-   [[ "$TERM_PROGRAM" != "zed" ]] && \
-   [[ "$OPENCODE" != 1 ]] && \
-   [[ "$TERMINAL_EMULATOR" != "JetBrains-JediTerm" ]]; then
-  LAST_SESSION=$(tmux ls -F "#{session_activity} #{session_name}" 2>/dev/null | grep -v attached | sort -r | head -n1 | cut -d' ' -f2)
-  if [[ -n $LAST_SESSION ]]; then
-     exec tmux attach -d -t "$LAST_SESSION"
-  else
-     exec tmux
-  fi
-fi
-
+# if [[ -o interactive ]] && [[ -t 0 ]] && [[ -z $TMUX ]] && \
+#    [[ "$TERM_PROGRAM" != "vscode" ]] && \
+#    [[ "$TERM_PROGRAM" != "zed" ]] && \
+#    [[ "$OPENCODE" != 1 ]] && \
+#    [[ "$TERMINAL_EMULATOR" != "JetBrains-JediTerm" ]]; then
+#   LAST_SESSION=$(tmux ls -F "#{session_activity} #{session_name}" 2>/dev/null | grep -v attached | sort -r | head -n1 | cut -d' ' -f2)
+#   if [[ -n $LAST_SESSION ]]; then
+#      exec tmux attach -d -t "$LAST_SESSION"
+#   else
+#      exec tmux
+#   fi
+# fi
+#
 # yazi function
 function y() {
   local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
