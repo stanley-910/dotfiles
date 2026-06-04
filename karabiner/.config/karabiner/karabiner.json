@@ -5,6 +5,91 @@
             "complex_modifications": {
                 "rules": [
                     {
+                        "description": "Numpad layer: hold left_option + u/i/o j/k/l m/,/. n -> numpad keys",
+                        "manipulators": [
+                            {
+                                "from": {
+                                    "key_code": "u",
+                                    "modifiers": { "mandatory": ["fn"], "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "7" }],
+                                "type": "basic"
+                            },
+                            {
+                                "from": {
+                                    "key_code": "i",
+                                    "modifiers": { "mandatory": ["fn"], "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "8" }],
+                                "type": "basic"
+                            },
+                            {
+                                "from": {
+                                    "key_code": "o",
+                                    "modifiers": { "mandatory": ["fn"], "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "9" }],
+                                "type": "basic"
+                            },
+                            {
+                                "from": {
+                                    "key_code": "j",
+                                    "modifiers": { "mandatory": ["fn"], "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "4" }],
+                                "type": "basic"
+                            },
+                            {
+                                "from": {
+                                    "key_code": "k",
+                                    "modifiers": { "mandatory": ["fn"], "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "5" }],
+                                "type": "basic"
+                            },
+                            {
+                                "from": {
+                                    "key_code": "l",
+                                    "modifiers": { "mandatory": ["fn"], "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "6" }],
+                                "type": "basic"
+                            },
+                            {
+                                "from": {
+                                    "key_code": "m",
+                                    "modifiers": { "mandatory": ["fn"], "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "1" }],
+                                "type": "basic"
+                            },
+                            {
+                                "from": {
+                                    "key_code": "comma",
+                                    "modifiers": { "mandatory": ["fn"], "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "2" }],
+                                "type": "basic"
+                            },
+                            {
+                                "from": {
+                                    "key_code": "period",
+                                    "modifiers": { "mandatory": ["fn"], "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "3" }],
+                                "type": "basic"
+                            },
+                            {
+                                "from": {
+                                    "key_code": "n",
+                                    "modifiers": { "mandatory": ["fn"], "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "0" }],
+                                "type": "basic"
+                            }
+                        ]
+                    },
+                    {
                         "description": "Shift + Escape toggles Caps Lock",
                         "manipulators": [
                             {
@@ -293,6 +378,7 @@
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
                                             "^app.zen-browser.zen",
+                                            "^com.postmanlabs.mac",
                                             "^net.imput.helium",
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
@@ -327,6 +413,7 @@
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
                                             "^app.zen-browser.zen",
+                                            "^com.postmanlabs.mac",
                                             "^net.imput.helium",
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
@@ -357,6 +444,7 @@
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
                                             "^app.zen-browser.zen",
+                                            "^com.postmanlabs.mac",
                                             "^net.imput.helium",
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
@@ -387,6 +475,7 @@
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
                                             "^app.zen-browser.zen",
+                                            "^com.postmanlabs.mac",
                                             "^net.imput.helium",
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
@@ -417,6 +506,7 @@
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
                                             "^app.zen-browser.zen",
+                                            "^com.postmanlabs.mac",
                                             "^net.imput.helium",
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
@@ -447,6 +537,7 @@
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
                                             "^app.zen-browser.zen",
+                                            "^com.postmanlabs.mac",
                                             "^net.imput.helium",
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
@@ -497,6 +588,7 @@
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
                                             "^app.zen-browser.zen",
+                                            "^com.postmanlabs.mac",
                                             "^net.imput.helium",
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
@@ -531,6 +623,7 @@
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
                                             "^app.zen-browser.zen",
+                                            "^com.postmanlabs.mac",
                                             "^net.imput.helium",
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
@@ -864,6 +957,7 @@
                                             "^com.apple.maps",
                                             "^com.tinyspeck.slackmacgap",
                                             "^app.zen-browser.zen",
+                                            "^com.postmanlabs.mac",
                                             "^net.imput.helium",
                                             "^com.apple.iCal",
                                             "^com.chabomakers.Antinote"
@@ -906,6 +1000,7 @@
                                             "^com.apple.maps",
                                             "^com.tinyspeck.slackmacgap",
                                             "^app.zen-browser.zen",
+                                            "^com.postmanlabs.mac",
                                             "^net.imput.helium",
                                             "^com.apple.iCal",
                                             "^com.chabomakers.Antinote"
@@ -938,6 +1033,7 @@
                                             "^com.apple.Maps",
                                             "^com.tinyspeck.slackmacgap",
                                             "^app.zen-browser.zen",
+                                            "^com.postmanlabs.mac",
                                             "^net.imput.helium",
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
@@ -998,6 +1094,7 @@
                                             "^com.apple.maps",
                                             "^com.tinyspeck.slackmacgap",
                                             "^app.zen-browser.zen",
+                                            "^com.postmanlabs.mac",
                                             "^net.imput.helium",
                                             "^com.apple.iCal",
                                             "^com.chabomakers.Antinote"
@@ -1028,6 +1125,7 @@
                                             "^com.apple.maps",
                                             "^com.tinyspeck.slackmacgap",
                                             "^app.zen-browser.zen",
+                                            "^com.postmanlabs.mac",
                                             "^net.imput.helium",
                                             "^com.apple.iCal",
                                             "^com.chabomakers.Antinote"
@@ -1058,6 +1156,7 @@
                                             "^com.apple.maps",
                                             "^com.tinyspeck.slackmacgap",
                                             "^app.zen-browser.zen",
+                                            "^com.postmanlabs.mac",
                                             "^net.imput.helium",
                                             "^com.apple.iCal",
                                             "^com.chabomakers.Antinote"
@@ -1088,6 +1187,7 @@
                                             "^com.apple.maps",
                                             "^com.tinyspeck.slackmacgap",
                                             "^app.zen-browser.zen",
+                                            "^com.postmanlabs.mac",
                                             "^net.imput.helium",
                                             "^com.apple.iCal",
                                             "^com.chabomakers.Antinote"
@@ -1182,6 +1282,23 @@
                         {
                             "from": { "key_code": "right_option" },
                             "to": [{ "key_code": "right_command" }]
+                        }
+                    ]
+                },
+                {
+                    "identifiers": {
+                        "is_keyboard": true,
+                        "product_id": 49948,
+                        "vendor_id": 1133
+                    },
+                    "simple_modifications": [
+                        {
+                            "from": { "key_code": "left_command" },
+                            "to": [{ "key_code": "left_option" }]
+                        },
+                        {
+                            "from": { "key_code": "left_option" },
+                            "to": [{ "key_code": "left_command" }]
                         }
                     ]
                 }
