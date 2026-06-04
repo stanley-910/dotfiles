@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# afk-run — keep the Mac awake with the lid closed, then restore sleep on exit.
+#
+# Disables lid-close sleep system-wide and guarantees the setting is reverted
+# on exit (normal finish, crash, or Ctrl-C). Meant to be run from inside your
+# existing terminal/tmux session — it does NOT create a tmux session.
+#
+# Modes:
+#   afk-run                 # hold sleep off until you press Ctrl-C
+#   afk-run -t <duration>   # hold sleep off for <duration>, then restore
+#   afk-run <command...>    # run the command; restore sleep when it finishes
+#
+# <duration> accepts sleep(1) suffixes: 10 (seconds), 30s, 5m, 2h.
+#
+# Examples:
+#   afk-run                          # disable sleep, close lid, Ctrl-C when done
+#   afk-run -t 10                    # disable sleep for 10 seconds
+#   afk-run -t 90m                   # disable sleep for 90 minutes
+#   afk-run claude                   # run claude; restore sleep when it exits
+#   afk-run python train.py --epochs 100
+set -euo pipefail
+
+usage() {
+  sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
+  exit "${1:-0}"
+}
+
+TIMER=""
+case "${1:-}" in
+  -h|--help)
+    usage 0
+    ;;
+  -t|--timer)
+    TIMER="${2:-}"
+    if [ -z "$TIMER" ]; then
+      echo "afk-run: -t/--timer requires a duration (e.g. 10, 30s, 5m, 2h)" >&2
+      exit 1
+    fi
+    shift 2
+    if [ "$#" -gt 0 ]; then
+      echo "afk-run: -t/--timer cannot be combined with a command" >&2
+      exit 1
+    fi
+    ;;
+esac
+
+# Always re-enable sleep on exit, no matter how we leave.
+cleanup() {
+  echo "afk-run: restoring normal sleep…"
+  sudo pmset -a disablesleep 0
+}
+trap cleanup EXIT INT TERM
+
+echo "afk-run: disabling lid-close sleep…"
+sudo pmset -a disablesleep 1
+
+if [ -n "$TIMER" ]; then
+  # Hold sleep off for a fixed duration, then restore (via trap).
+  echo "afk-run: holding sleep off for $TIMER. You can close the lid now."
+  caffeinate -dimsu sleep "$TIMER"
+elif [ "$#" -gt 0 ]; then
+  # Run the given command in the foreground under caffeinate; "$@" preserves
+  # argument boundaries. Sleep is restored (via the trap) when it exits.
+  echo "afk-run: running: $*"
+  echo "afk-run: you can close the lid now."
+  caffeinate -dimsu "$@"
+else
+  # No command: just hold sleep off until interrupted.
+  echo "afk-run: lid-close sleep disabled. Close the lid; press Ctrl-C to restore."
+  caffeinate -dimsu
+fi
