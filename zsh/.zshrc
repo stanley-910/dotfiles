@@ -371,16 +371,16 @@ gasp() {
 }
 
 # cd = zoxide + directory stack (so popd / - still works)
-function cd() {
-    if [[ $# -eq 0 ]]; then
-        pushd "$HOME" >/dev/null
-    elif [[ "$1" == "-" ]]; then
-        popd >/dev/null
-    else
-        pushd "$(zoxide query -- "$@" 2>/dev/null || echo "$1")" >/dev/null
-    fi
-}
-
+# function cd() {
+#     if [[ $# -eq 0 ]]; then
+#         pushd "$HOME" >/dev/null
+#     elif [[ "$1" == "-" ]]; then
+#         popd >/dev/null
+#     else
+#         pushd "$(zoxide query -- "$@" 2>/dev/null || echo "$1")" >/dev/null
+#     fi
+# }
+#
 # TMUX functions
 
 # Kill all tmux sessions
@@ -576,3 +576,10 @@ export MANPAGER='nvim +Man!'
 
 # Generated for envman. Do not edit.
 [ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
+
+# pyenv - per-directory Python version switching
+export PYENV_ROOT="$HOME/.pyenv"
+[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init -)"
+
+. "$HOME/.local/bin/env"
