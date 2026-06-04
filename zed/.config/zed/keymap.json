@@ -71,6 +71,7 @@
 
       // Basic editing
       "enter": ["workspace::SendKeystrokes", "c i w"], // Enter changes inner word
+      "shift-d": ["workspace::SendKeystrokes", "$ shift-f = w"], // D jumps to value after =
 
       // Extended yank operations
       // "y shift-l": ["workspace::SendKeystrokes", "y $"], // yL yanks to end of line
@@ -171,7 +172,13 @@
     },
   },
   {
-    "context": "(Editor && vim_mode == normal)",
+    "context": "(Editor && (vim_mode == normal || vim_mode == visual))",
+    "bindings": {
+      "space space": "file_finder::Toggle",
+    },
+  },
+  {
+    "context": "MarkdownPreview",
     "bindings": {
       "space space": "file_finder::Toggle",
     },
@@ -577,6 +584,12 @@
     "bindings": {
       "ctrl-k": "editor::ContextMenuPrevious",
       "ctrl-j": "editor::ContextMenuNext",
+    },
+  },
+  {
+    "context": "VimControl && !menu",
+    "bindings": {
+      "Q": "editor::ToggleCodeActions",
     },
   },
 ]
