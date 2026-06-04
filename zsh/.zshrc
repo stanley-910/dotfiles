@@ -132,22 +132,11 @@ function tmux_sessionizer() {
     zle accept-line
 }
 zle -N tmux_sessionizer
-bindkey ^f tmux_sessionizer
+bindkey '^f' tmux_sessionizer
 
-# ==============================================================================
-# CURSOR CONFIGURATION
-# ==============================================================================
-if [[ -t 0 ]]; then
-  zle-line-init() {
-      zle -K viins
-      echo -ne "\e[1 q"
-  }
-  zle -N zle-line-init
-  echo -ne '\e[1 q'
-  autoload -Uz add-zsh-hook
-  _set_block_cursor() { echo -ne '\e[1 q' }
-  add-zsh-hook preexec _set_block_cursor
-fi
+# Cursor configuration (vi mode) lives further down, AFTER starship init —
+# see the "CURSOR (vi mode)" block. It must register after starship so it
+# composes with starship's zle-keymap-select wrapper instead of being clobbered.
 
 # Load vim edit-command-line function
 autoload edit-command-line; zle -N edit-command-line
@@ -175,8 +164,13 @@ set -o ignoreeof
 # Ghostty shell integration. Ghostty only auto-injects this into the outermost
 # zsh it spawns (via ZDOTDIR), so nested shells (inside tmux, exec zsh, sudo -E
 # zsh) lose it. Re-source here so the precmd/preexec hooks — title updates
-# on cd, OSC 133 prompt marks, cursor shape — run in every interactive shell.
+# on cd, OSC 133 prompt marks — run in every interactive shell.
 if [[ -n $GHOSTTY_RESOURCES_DIR ]]; then
+  # We manage the vi-mode cursor ourselves (see the CURSOR block below), so drop
+  # Ghostty's "cursor" feature before sourcing its integration. Otherwise, inside
+  # tmux — where the server's GHOSTTY_SHELL_FEATURES env predates `no-cursor` and
+  # still lists cursor — Ghostty reinstalls a bar-cursor handler that fights ours.
+  GHOSTTY_SHELL_FEATURES=${(j:,:)${(s:,:)GHOSTTY_SHELL_FEATURES}:#cursor*}
   autoload -Uz -- "$GHOSTTY_RESOURCES_DIR"/shell-integration/zsh/ghostty-integration
   ghostty-integration
   unfunction ghostty-integration
@@ -520,13 +514,47 @@ fi
 
 eval "$(starship init zsh)"
 
-# Node Version Manager (nvm)
-export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
-[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
+# ==============================================================================
+# CURSOR (vi mode)
+# ==============================================================================
+# Registered AFTER starship init via add-zle-hook-widget, which APPENDS a
+# handler to zle-keymap-select instead of replacing it — so it composes with
+# starship's wrapper rather than being clobbered (the old approach broke on any
+# re-source). Ghostty's own cursor handling is disabled (shell-integration-
+# features = no-cursor) so it doesn't fight us for the shape.
+#
+# Shape: \e[N q  → 1 blink block · 2 steady block · 5 blink bar · 6 steady bar
+# Color: OSC 12 sets it (\e]12;<color>\a); OSC 112 resets to terminal default.
+if [[ -t 0 ]]; then
+  _cursor_insert() { print -n '\e[1 q\e]112\a' }        # blinking block, default color
+  _cursor_normal() { print -n '\e[1 q\e]12;#e06c75\a' } # blinking block, red
 
-# TheFuck command correction
-eval $(thefuck --alias)
+  _cursor_apply() {
+    case ${KEYMAP:-main} in
+      vicmd) _cursor_normal ;;
+      *)     _cursor_insert ;;
+    esac
+  }
+
+  autoload -Uz add-zle-hook-widget add-zsh-hook
+  add-zle-hook-widget zle-keymap-select _cursor_apply  # on Esc/kj <-> i/a
+  add-zle-hook-widget line-init         _cursor_apply  # each new prompt
+  add-zsh-hook preexec _cursor_insert                  # reset color before commands
+  _cursor_insert                                       # set at shell startup
+fi
+
+# Node is provided by Homebrew (on PATH from .zshenv). nvm removed — it had no
+# installed versions and nothing referenced it. Reinstate here if you ever need
+# per-project node switching (or prefer a faster manager like fnm/volta).
+
+# TheFuck command correction — lazy-loaded so we don't spawn Python at every
+# shell startup. The alias is registered on first use, then this wrapper removes
+# itself and re-runs the real command.
+fuck() {
+  unfunction fuck
+  eval "$(thefuck --alias)"
+  fuck "$@"
+}
 
 # Less filter for file previews
 export LESSOPEN='|~/.config/scripts/.lessfilter %s'
@@ -587,9 +615,6 @@ alias zi='__zoxide_zi'
 
 # use nvim as man page reader
 export MANPAGER='nvim +Man!'
-
-# Generated for envman. Do not edit.
-[ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
 
 # Python is managed by uv (uv run / uv venv; per-project .python-version is
 # honored automatically). Default python/python3 shims live in ~/.local/bin via
