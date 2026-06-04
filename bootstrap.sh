@@ -133,8 +133,15 @@ mkdir -p ~/.zsh
 mkdir -p ~/.config/scripts
 mkdir -p ~/.config/tmux
 
-# Local bin directory for custom scripts
+# Local bin directory for tool-managed shims (uv, pipx, etc.). Custom scripts
+# live in scripts/bin/ instead, which is added to $PATH directly from .zshenv
+# and excluded from stow via scripts/.stow-local-ignore (so no ~/bin symlink).
 mkdir -p ~/.local/bin
+
+# XDG state dirs for relocated history/cache files (zsh history + zcompdump,
+# less, python). Must exist before first shell — the programs won't create
+# parent dirs, so compinit can't write its dump and history won't persist.
+mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}"/{zsh,less,python}
 
 # Agents directory for cross-platform skills
 mkdir -p ~/.agents/skills
