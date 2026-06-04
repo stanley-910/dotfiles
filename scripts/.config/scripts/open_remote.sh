@@ -11,7 +11,7 @@ JENKINS_BASE_URL="https://master-4.jenkins.autodesk.com/job/shotgun"
 
 function main () {
   # Check if the repository is on GitHub or Autodesk
-  if [[ $url == *"github.com"* ]] || [[ $url == *"git.autodesk.com"* ]] || [[ $url == *"gitlab.cs.mcgill.ca"* ]]; then
+  if [[ $url == *"github.com"* ]] || [[ $url == *"git.autodesk.com"* ]] || [[ $url == *"gitlab.ea.com"* ]] || [[ $url == *"gitlab.cs.mcgill.ca"* ]]; then
     # Convert SSH URL to HTTPS if necessary
     if [[ $url == git@* ]]; then
       url=$(echo "$url" | sed 's/git@\(.*\):/https:\/\/\1\//')
