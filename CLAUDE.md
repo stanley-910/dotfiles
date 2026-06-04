@@ -16,6 +16,8 @@ tmux, yazi, zed, agents
 
 Use `--no-folding` when the app writes runtime data (plugins, extensions, backups, installed packages) into the same config directory. This prevents those files from being tracked.
 
+**Not stowed:** `scripts/bin/` is excluded from stow via `scripts/.stow-local-ignore`. It's added to `$PATH` directly from `.zshenv` (`$HOME/dotfiles/scripts/bin`), so executables dropped there are globally runnable with no symlink and no restow. (`scripts/.config/scripts/` is still stowed normally for config-invoked helpers.)
+
 ## Package structure
 
 - Home directory targets: `pkg/.filename` (e.g. `git/.gitconfig`)
