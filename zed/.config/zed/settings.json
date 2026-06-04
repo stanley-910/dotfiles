@@ -177,8 +177,8 @@
   "buffer_font_family": "Berkeley Mono",
   "base_keymap": "JetBrains",
   "vim_mode": true,
-  "ui_font_size": 15.0,
-  "buffer_font_size": 14.0,
+  "ui_font_size": 18.0,
+  "buffer_font_size": 19.0,
   "buffer_font_features": { "calt": true, "liga": true },
   "theme": {
     "mode": "dark",
