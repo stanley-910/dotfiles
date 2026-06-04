@@ -37,5 +37,10 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 # Silence zoxide doctor warning in non-interactive shells
 export _ZO_DOCTOR=0
 
+# Keep history dotfiles out of $HOME — relocate to XDG state dir.
+# (zsh's own HISTFILE lives in .zshrc with the rest of the history settings.)
+export LESSHISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/less/history"
+export PYTHON_HISTORY="${XDG_STATE_HOME:-$HOME/.local/state}/python/history"
+
 # Source local secrets (API keys, tokens) — not tracked by git
 [[ -f ~/.secrets/env ]] && source ~/.secrets/env

@@ -2,6 +2,12 @@
 # Show hidden files in glob patterns (files starting with .)
 setopt globdots
 
+# Enable extended glob operators (^, ~, # in patterns) — also powers zmv
+setopt extended_glob
+
+# Allow # comments at the interactive prompt (e.g. pasting commented commands)
+setopt interactive_comments
+
 # Disable XON/XOFF flow control (allows Ctrl+S to work in other applications)
 [[ -t 0 ]] && stty -ixon
 
@@ -9,8 +15,17 @@ setopt globdots
 # COMPLETION SYSTEM
 # ==============================================================================
 
-# completions
-autoload -Uz compinit && compinit
+# completions — cache the dump in XDG state, and only rebuild it once a day.
+# On other startups compinit -C loads the cached dump and skips the slow fpath
+# security scan. (#qN.mh+24) needs extended_glob (set above) and forces the glob
+# to evaluate inside [[ ]], which normally suppresses filename generation.
+autoload -Uz compinit
+ZSH_COMPDUMP="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/zcompdump"
+if [[ -n $ZSH_COMPDUMP(#qN.mh+24) ]]; then
+  compinit -d "$ZSH_COMPDUMP"
+else
+  compinit -C -d "$ZSH_COMPDUMP"
+fi
 
 # Include hidden files in completions
 _comp_options+=(globdots)
@@ -143,10 +158,12 @@ autoload edit-command-line; zle -N edit-command-line
 
 # History settings
 # setopt SHARE_HISTORY              # Share history between sessions (disabled for tmux)
-setopt HIST_EXPIRE_DUPS_FIRST     # Expire duplicate entries first
-HISTFILE=$HOME/.zhistory          # History file location
-SAVEHIST=1000                     # Number of entries to save
-HISTSIZE=999                      # Number of entries to keep in memory
+setopt HIST_EXPIRE_DUPS_FIRST     # Expire duplicate entries first when trimming
+setopt HIST_IGNORE_DUPS           # Don't record an entry that matches the previous one
+setopt HIST_REDUCE_BLANKS         # Strip superfluous blanks before recording
+HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"  # History file (XDG state dir, not $HOME)
+SAVEHIST=100000                   # Number of entries to save to disk
+HISTSIZE=100000                   # Number of entries to keep in memory
 
 # disable Ctrl+D to exit shell
 set -o ignoreeof
