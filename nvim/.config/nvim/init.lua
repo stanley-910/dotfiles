@@ -1,8 +1,6 @@
----@diagnostic disable: undefined-global
--- luacheck: globals vim
-
 require("config")
 require("config.keymap")
+require("config.autocmds")
 require("config.lazy")
 require("config.lsp")
 
@@ -51,21 +49,6 @@ vim.o.list = true
 -- instead raise a dialog asking if you wish to save the current file(s) See `:help 'confirm'`
 vim.o.confirm = true
 
--- [[ Set up keymaps ]] See `:h vim.keymap.set()`, `:h mapping`, `:h keycodes`
-
--- Use <Esc> to exit terminal mode
-vim.keymap.set('t', '<Esc>', '<C-\\><C-n>')
-
--- Map <A-j>, <A-k>, <A-h>, <A-l> to navigate between windows in any modes
-vim.keymap.set({ 't', 'i' }, '<A-h>', '<C-\\><C-n><C-w>h')
-vim.keymap.set({ 't', 'i' }, '<A-j>', '<C-\\><C-n><C-w>j')
-vim.keymap.set({ 't', 'i' }, '<A-k>', '<C-\\><C-n><C-w>k')
-vim.keymap.set({ 't', 'i' }, '<A-l>', '<C-\\><C-n><C-w>l')
-vim.keymap.set({ 'n' }, '<A-h>', '<C-w>h')
-vim.keymap.set({ 'n' }, '<A-j>', '<C-w>j')
-vim.keymap.set({ 'n' }, '<A-k>', '<C-w>k')
-vim.keymap.set({ 'n' }, '<A-l>', '<C-w>l')
-
 -- [[ Basic Autocommands ]].
 -- See `:h lua-guide-autocommands`, `:h autocmd`, `:h nvim_create_autocmd()`
 
@@ -97,9 +80,27 @@ end, { desc = 'Print the git blame for the current line' })
 vim.cmd('packadd! nohlsearch')
 
 -- default split options affect oil.nvim 
-vim.o.splitright = true
+vim.opt.splitright = true
 
+-- remove EOB '~' characters
+vim.opt.fillchars = { eob = " " }
 
 -- Theme (generated from zed/.config/zed/themes/custom-theme.json)
-vim.cmd.colorscheme("custom_theme")
+-- vim.cmd.colorscheme("custom_theme")
 
+
+-- nvim default options set for sanity
+
+
+
+
+
+-- autocommand to restore cursor position from mark '0 (saved via shada)
+vim.api.nvim_create_autocmd("BufReadPost", {
+  callback = function()
+    local mark = vim.api.nvim_buf_get_mark(0, '"')
+    if mark[1] > 1 then
+      vim.api.nvim_win_set_cursor(0, mark)
+    end
+  end
+})
