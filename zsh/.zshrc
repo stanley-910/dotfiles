@@ -227,6 +227,7 @@ ZSH_HIGHLIGHT_STYLES[alias]='fg=#b48ead'        # purple
 ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=#bf616a,bold' #red
 ZSH_HIGHLIGHT_STYLES[path]='none' # disable path underlining
 ZSH_HIGHLIGHT_STYLES[precommand]='fg=green' # disable command modifier underlining (sudo, builtin)
+ZSH_HIGHLIGHT_STYLES[comment]='fg=#6c7086' # muted gray (default fg=black,bold is invisible on dark bg)
 
 typeset -A ZSH_HIGHLIGHT_PATTERNS
 ZSH_HIGHLIGHT_PATTERNS+=('rm -rf *' 'fg=white,bold,bg=red')
