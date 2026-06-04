@@ -1,0 +1,16 @@
+# Stow ignore list for the `scripts` package.
+#
+# `bin/` is intentionally NOT stowed: it is added to $PATH directly from
+# .zshenv (export PATH="$HOME/dotfiles/scripts/bin:$PATH"), so scripts dropped
+# there are globally runnable immediately — no symlink, no restow. Stowing it
+# would also create a stray ~/bin symlink, which we don't want.
+#
+# NOTE: providing this file REPLACES stow's built-in default ignore list, so
+# the VCS/README/LICENSE patterns below are re-declared to keep them ignored.
+^/bin$
+
+# stow defaults (kept):
+\.git
+\.gitignore
+^/README.*
+^/LICENSE.*

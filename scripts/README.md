@@ -1,24 +1,34 @@
 # Scripts
 
-Custom utility scripts.
+Custom utility scripts, split into two locations by purpose.
 
-## Configuration
+## `bin/` — global commands (on `$PATH`)
 
-Scripts: `~/.config/scripts/` (symlinked via stow)
+Added to `$PATH` directly from `zsh/.zshenv`:
 
-## Included
+```sh
+export PATH="$HOME/dotfiles/scripts/bin:$PATH"
+```
 
-- `.lessfilter` - Syntax highlighting for `less` command
+This points straight at the repo, so it is **not** stowed (see
+`.stow-local-ignore`). To add a global command:
 
-## Usage
+```sh
+nvim ~/dotfiles/scripts/bin/mytool   # no extension → clean command name
+chmod +x ~/dotfiles/scripts/bin/mytool
+mytool                               # runnable from anywhere, no restow
+```
 
-Scripts are sourced/used by shell config automatically.
+Current: `afk-run`, `align`, `open-obsidian.sh`.
 
-System-wide scripts go in `~/.local/bin/` (added to PATH by bootstrap).
+## `.config/scripts/` — config-invoked helpers (stowed)
 
-## Adding Scripts
+Scripts called by full path from shell config rather than typed as commands —
+e.g. `tmux-sessionizer` (bound to `^f` in `.zshrc`) and `.lessfilter` (used via
+`$LESSOPEN`). Stowed to `~/.config/scripts/` like the rest of the package.
 
-1. Create in `~/.config/scripts/`
-2. Make executable: `chmod +x script.sh`
-3. Optional: Link to `~/.local/bin/` for system-wide access
-4. Commit to repo
+After adding a file here, re-establish the symlink:
+
+```sh
+stow --restow scripts   # run from ~/dotfiles
+```
