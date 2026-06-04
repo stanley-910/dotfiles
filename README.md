@@ -131,8 +131,7 @@ dotfiles/
 ├── jetbrains/     # IdeaVim configuration
 ├── zathura/       # Zathura PDF viewer config
 ├── fastfetch/     # Fastfetch system info config
-├── scripts/       # Custom utility scripts
-└── setups/        # Legacy setup scripts (reference)
+└── scripts/       # Custom utility scripts
 ```
 
 View individual `README.md` files in each subdirectory for tool-specific details.
