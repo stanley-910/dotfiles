@@ -1,3 +1,4 @@
+
 # Show hidden files in glob patterns (files starting with .)
 setopt globdots
 
@@ -8,13 +9,8 @@ setopt globdots
 # COMPLETION SYSTEM
 # ==============================================================================
 
-# Optimized completion loading - only run once
-autoload -Uz compinit
-if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.mh+24) ]]; then
-  compinit  # Rebuild if dump is older than 24 hours
-else
-  compinit -C  # Skip security check for faster loading
-fi
+# completions
+autoload -Uz compinit && compinit
 
 # Include hidden files in completions
 _comp_options+=(globdots)
@@ -577,9 +573,7 @@ export MANPAGER='nvim +Man!'
 # Generated for envman. Do not edit.
 [ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
 
-# pyenv - per-directory Python version switching
-export PYENV_ROOT="$HOME/.pyenv"
-[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init -)"
-
-. "$HOME/.local/bin/env"
+# Python is managed by uv (uv run / uv venv; per-project .python-version is
+# honored automatically). Default python/python3 shims live in ~/.local/bin via
+# `uv python install --default`, and ~/.local/bin is on PATH from .zshenv —
+# so there is nothing Python-related to export here. No pyenv.
