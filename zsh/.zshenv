@@ -1,6 +1,11 @@
 # Environment variables and PATHs available to ALL shells
 # (including non-interactive agent subshells like Claude Code, OpenCode)
 
+# Keep $PATH entries unique. zsh ties the `path` array to $PATH; -U dedupes it
+# automatically, so re-prepends (e.g. .zprofile after macOS path_helper) and
+# nested login shells never accumulate duplicate entries.
+typeset -U path PATH
+
 export EDITOR=nvim
 export VISUAL=nvim
 
