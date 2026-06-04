@@ -26,6 +26,11 @@ export PATH="/usr/local/opt/python/libexec/bin:$PATH"
 # pipx / user local binaries
 export PATH="$HOME/.local/bin:$PATH"
 
+# Custom scripts — points straight at the dotfiles repo (NOT stowed, see
+# scripts/.stow-local-ignore). Drop an executable in dotfiles/scripts/bin and
+# it's globally runnable immediately, no restow needed.
+export PATH="$HOME/dotfiles/scripts/bin:$PATH"
+
 # LM Studio CLI
 export PATH="$PATH:$HOME/.lmstudio/bin"
 
