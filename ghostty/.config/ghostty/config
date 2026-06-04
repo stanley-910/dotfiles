@@ -33,5 +33,7 @@ font-family = "Berkeley Mono Def"
 # TODO find out what these do 
 # shell-integration = zsh
 #
-# shell-integration-features = cursor,sudo,title,ssh-env,path
+# Disable Ghostty's own cursor management so the vi-mode cursor shape/color set
+# by .zshrc (zle-keymap-select) wins. Other integration features stay enabled.
+shell-integration-features = no-cursor
 
