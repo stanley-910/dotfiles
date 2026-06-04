@@ -7,31 +7,34 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "agent_buffer_font_size": 8.0,
+  "agent_ui_font_size": 15.0,
+  "cli_default_open_behavior": "new_window",
   "outline_panel": {
-    "dock": "left"
+    "dock": "left",
   },
   "collaboration_panel": {
-    "dock": "left"
+    "dock": "left",
   },
   "agent_servers": {
+    "pi-acp": {
+      "type": "registry",
+    },
+    "gemini": {
+      "type": "registry",
+    },
+    "github-copilot-cli": {
+      "type": "registry",
+    },
     "claude-acp": {
       "type": "registry",
-      "default_mode": "bypassPermissions",
-      "favorite_models": [
-        "sonnet"
-      ]
-    }
-  },
-  "edit_predictions": {
-    "mode": "subtle",
-  },
-  "context_servers": {
-    "mcp-server-context7": {
-      "settings": {},
-        
-      "enabled": true,
     },
   },
+  "edit_predictions": {
+    "provider": "copilot",
+    "mode": "subtle",
+  },
+  "context_servers": {},
   "buffer_line_height": "comfortable",
   "show_signature_help_after_edits": true,
   "remove_trailing_whitespace_on_save": true,
@@ -40,12 +43,12 @@
     "dock": "right",
     "inline_assistant_model": {
       "provider": "copilot_chat",
-      "model": "claude-3.5-sonnet",
+      "model": "claude-3.7-sonnet",
     },
     "default_profile": "write",
     "default_model": {
       "provider": "copilot_chat",
-      "model": "gemini-3.1-pro-preview",
+      "model": "claude-3.7-sonnet",
     },
     "model_parameters": [],
   },
@@ -128,8 +131,8 @@
   "inlay_hints": {
     "show_value_hints": true,
     "show_parameter_hints": true,
-    "show_background": false,
-    "show_type_hints": true,
+    "show_background": true,
+    "show_type_hints": false,
     "enabled": true,
   },
   // "show_whitespaces": "trailing",
@@ -160,7 +163,7 @@
     "min_line_number_digits": 2,
   },
   "relative_line_numbers": "enabled",
-  "auto_signature_help": true,
+  "auto_signature_help": false,
   "vertical_scroll_margin": 8.0,
   "excerpt_context_lines": 2,
   "expand_excerpt_lines": 6,
@@ -174,8 +177,8 @@
   "buffer_font_family": "Berkeley Mono",
   "base_keymap": "JetBrains",
   "vim_mode": true,
-  "ui_font_size": 17.0,
-  "buffer_font_size": 15.0,
+  "ui_font_size": 15.0,
+  "buffer_font_size": 14.0,
   "buffer_font_features": { "calt": true, "liga": true },
   "theme": {
     "mode": "dark",
@@ -211,7 +214,6 @@
       "settings": {
         "lombok_support": true,
         "jdk_auto_download": false,
-
       },
     },
     "basedpyright": {
@@ -246,16 +248,15 @@
     },
     "Python": {
       "tab_size": 4,
+      "language_servers": ["basedpyright", "ruff"],
       "show_edit_predictions": true,
       "format_on_save": "on",
+      "code_actions_on_format": {
+        "source.organizeImports.ruff": true,
+        "source.fixAll.ruff": true,
+      },
       "formatter": {
-        "external": {
-          "command": "bash",
-          "arguments": [
-            "-c",
-            "ruff check --select=I --fix --stdin-filename {buffer_path} | ruff format --stdin-filename {buffer_path}",
-          ],
-        },
+        "language_server": { "name": "ruff" },
       },
     },
     "Typst": {
