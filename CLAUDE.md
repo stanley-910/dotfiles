@@ -2,6 +2,10 @@
 
 GNU Stow-managed dotfiles for macOS (Apple Silicon). Each top-level directory is a stow package.
 
+## Commits
+
+Stagger commits by stow package (the "tool") — one package per commit, never mix packages in a single commit. Use Conventional Commits with the package name as the scope: `feat(nvim): ...`, `fix(zsh): ...`, `chore(zed): ...`. When one package has unrelated changes, make separate focused commits, each still scoped to that package. (No `Co-Authored-By` trailers — see global CLAUDE.md.)
+
 ## Stow conventions
 
 **Full directory stow** (`stow --restow -v <pkg>`):
