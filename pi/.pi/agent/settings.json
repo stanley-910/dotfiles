@@ -1,0 +1,54 @@
+{
+  "lastChangelogVersion": "0.78.1",
+  "defaultProvider": "github-copilot",
+  "defaultModel": "gpt-5.5",
+  "defaultThinkingLevel": "high",
+  "compaction": {
+    "enabled": false
+  },
+  "enableInstallTelemetry": false,
+  "doubleEscapeAction": "tree",
+  "treeFilterMode": "default",
+  "quietStartup": true,
+  "steeringMode": "one-at-a-time",
+  "followUpMode": "all",
+  "warnings": {
+    "anthropicExtraUsage": true
+  },
+  "subagents": {
+    "agentOverrides": {
+      "scout": {
+        "model": "github-copilot/gpt-5.4-nano",
+        "thinking": "minimal"
+      }
+    }
+  },
+  "packages": [
+    "npm:@juicesharp/rpiv-pi",
+    "npm:@juicesharp/rpiv-todo",
+    "npm:@juicesharp/rpiv-btw",
+    "npm:@juicesharp/rpiv-workflow",
+    "npm:@juicesharp/rpiv-args",
+    "npm:@juicesharp/rpiv-i18n",
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:@tintinweb/pi-subagents",
+    "npm:pi-mcp-adapter",
+    "npm:context-mode",
+    "npm:@vigolium/piolium",
+    "npm:@juicesharp/rpiv-advisor",
+    "npm:@juicesharp/rpiv-web-tools",
+    "npm:@that-yolanda/pi-context"
+  ],
+  "autocompleteMaxVisible": 20,
+  "theme": "piolium-srcery",
+  "enabledModels": [
+    "github-copilot/gpt-5.5",
+    "github-copilot/gpt-5.4-mini",
+    "github-copilot/gpt-5.4-nano",
+    "github-copilot/claude-opus-4.6",
+    "github-copilot/claude-sonnet-4.6",
+    "github-copilot/claude-opus-4.8",
+    "github-copilot/gemini-3.1-pro-preview",
+    "github-copilot/gemini-3.5-flash"
+  ]
+}
