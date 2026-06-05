@@ -18,7 +18,7 @@
   "subagents": {
     "agentOverrides": {
       "scout": {
-        "model": "github-copilot/gpt-5.4-nano",
+        "model": "github-copilot/gpt-5.4-mini",
         "thinking": "minimal"
       }
     }
@@ -44,7 +44,6 @@
   "enabledModels": [
     "github-copilot/gpt-5.5",
     "github-copilot/gpt-5.4-mini",
-    "github-copilot/gpt-5.4-nano",
     "github-copilot/claude-opus-4.6",
     "github-copilot/claude-sonnet-4.6",
     "github-copilot/claude-opus-4.8",
