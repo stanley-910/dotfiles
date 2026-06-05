@@ -1,0 +1,29 @@
+// Global Zed tasks. See https://zed.dev/docs/tasks for documentation.
+[
+  {
+    "label": "Zed: Increase all font sizes",
+    "command": "zed-font-size",
+    "args": ["increase"],
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "always",
+    "shell": "system",
+    "show_summary": false,
+    "show_command": false,
+    "save": "none",
+  },
+  {
+    "label": "Zed: Decrease all font sizes",
+    "command": "zed-font-size",
+    "args": ["decrease"],
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "always",
+    "shell": "system",
+    "show_summary": false,
+    "show_command": false,
+    "save": "none",
+  },
+]

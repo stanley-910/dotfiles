@@ -242,22 +242,22 @@
   },
   {
     "bindings": {
-      "cmd--": [
-        "zed::DecreaseBufferFontSize",
-        {
-          "persist": true,
-        },
-      ],
+      "cmd--": ["task::Spawn", { "task_name": "Zed: Decrease all font sizes" }],
     },
   },
   {
     "bindings": {
-      "cmd-=": [
-        "zed::IncreaseBufferFontSize",
-        {
-          "persist": true,
-        },
-      ],
+      "cmd-_": ["task::Spawn", { "task_name": "Zed: Decrease all font sizes" }],
+    },
+  },
+  {
+    "bindings": {
+      "cmd-=": ["task::Spawn", { "task_name": "Zed: Increase all font sizes" }],
+    },
+  },
+  {
+    "bindings": {
+      "cmd-+": ["task::Spawn", { "task_name": "Zed: Increase all font sizes" }],
     },
   },
   {
@@ -336,26 +336,6 @@
     "context": "Workspace",
     "bindings": {
       "alt alt": "project_symbols::Toggle",
-    },
-  },
-  {
-    "bindings": {
-      "cmd-_": [
-        "zed::DecreaseUiFontSize",
-        {
-          "persist": true,
-        },
-      ],
-    },
-  },
-  {
-    "bindings": {
-      "cmd-+": [
-        "zed::IncreaseUiFontSize",
-        {
-          "persist": true,
-        },
-      ],
     },
   },
   {
