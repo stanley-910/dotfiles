@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""Increment or decrement Zed's editor, UI, and agent font sizes together."""
+
+from __future__ import annotations
+
+import argparse
+import fcntl
+import hashlib
+import os
+import re
+import sys
+import tempfile
+from pathlib import Path
+
+FONT_KEYS = (
+    "ui_font_size",
+    "buffer_font_size",
+    "agent_ui_font_size",
+    "agent_buffer_font_size",
+)
+
+DEFAULTS = {
+    "ui_font_size": 16.0,
+    "buffer_font_size": 15.0,
+}
+
+MIN_FONT_SIZE = 6.0
+MAX_FONT_SIZE = 100.0
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Increment or decrement all top-level Zed font size settings."
+    )
+    parser.add_argument(
+        "direction",
+        choices=("increase", "decrease", "+", "-"),
+        help="Whether to increase or decrease font sizes.",
+    )
+    parser.add_argument(
+        "--step",
+        type=float,
+        default=1.0,
+        help="Font-size delta in pixels (default: 1.0).",
+    )
+    parser.add_argument(
+        "--settings",
+        type=Path,
+        default=Path(
+            os.environ.get("ZED_SETTINGS_FILE", "~/.config/zed/settings.json")
+        ).expanduser(),
+        help="Path to Zed settings.json (default: ~/.config/zed/settings.json).",
+    )
+    return parser.parse_args()
+
+
+def key_pattern(key: str) -> re.Pattern[str]:
+    # Match only the conventional top-level two-space-indented settings lines.
+    # This avoids changing profile-local or commented example settings deeper in the file.
+    return re.compile(
+        rf'(?m)^([ \t]{{2}}"{re.escape(key)}"\s*:\s*)(null|-?\d+(?:\.\d+)?)([^\n]*)$'
+    )
+
+
+def read_number(text: str, key: str) -> float | None:
+    matches = list(key_pattern(key).finditer(text))
+    if len(matches) > 1:
+        raise ValueError(f"found multiple top-level {key!r} entries")
+    if not matches:
+        return None
+
+    raw_value = matches[0].group(2)
+    if raw_value == "null":
+        return None
+    return float(raw_value)
+
+
+def format_number(value: float) -> str:
+    return f"{value:.1f}"
+
+
+def clamp(value: float) -> float:
+    return min(MAX_FONT_SIZE, max(MIN_FONT_SIZE, value))
+
+
+def replace_existing(text: str, key: str, value: float) -> tuple[str, bool]:
+    pattern = key_pattern(key)
+    matches = list(pattern.finditer(text))
+    if len(matches) > 1:
+        raise ValueError(f"found multiple top-level {key!r} entries")
+    if not matches:
+        return text, False
+
+    match = matches[0]
+    replacement = f"{match.group(1)}{format_number(value)}{match.group(3)}"
+    return text[: match.start()] + replacement + text[match.end() :], True
+
+
+def insert_missing(text: str, values: dict[str, float], missing: list[str]) -> str:
+    if not missing:
+        return text
+
+    insertion = "".join(f'  "{key}": {format_number(values[key])},\n' for key in missing)
+    opening = re.search(r"^\{\s*\n", text)
+    if not opening:
+        raise ValueError("settings file does not look like a JSON object")
+    return text[: opening.end()] + insertion + text[opening.end() :]
+
+
+def updated_text(text: str, delta: float) -> tuple[str, dict[str, tuple[float, float]]]:
+    current = {key: read_number(text, key) for key in FONT_KEYS}
+
+    ui_size = (
+        current["ui_font_size"]
+        if current["ui_font_size"] is not None
+        else DEFAULTS["ui_font_size"]
+    )
+    buffer_size = (
+        current["buffer_font_size"]
+        if current["buffer_font_size"] is not None
+        else DEFAULTS["buffer_font_size"]
+    )
+
+    effective = {
+        "ui_font_size": ui_size,
+        "buffer_font_size": buffer_size,
+        "agent_ui_font_size": current["agent_ui_font_size"]
+        if current["agent_ui_font_size"] is not None
+        else ui_size,
+        "agent_buffer_font_size": current["agent_buffer_font_size"]
+        if current["agent_buffer_font_size"] is not None
+        else buffer_size,
+    }
+
+    new_values = {key: clamp(value + delta) for key, value in effective.items()}
+    changes = {key: (effective[key], new_values[key]) for key in FONT_KEYS}
+
+    updated = text
+    missing: list[str] = []
+    for key in FONT_KEYS:
+        updated, found = replace_existing(updated, key, new_values[key])
+        if not found:
+            missing.append(key)
+
+    updated = insert_missing(updated, new_values, missing)
+    return updated, changes
+
+
+def main() -> int:
+    args = parse_args()
+    delta = args.step if args.direction in ("increase", "+") else -args.step
+
+    settings_path = args.settings.expanduser()
+    target_path = settings_path.resolve(strict=False)
+    lock_hash = hashlib.sha256(str(target_path).encode()).hexdigest()[:16]
+    lock_path = Path(tempfile.gettempdir()) / f"zed-font-size-{lock_hash}.lock"
+
+    if not target_path.exists():
+        print(f"Zed settings file not found: {settings_path}", file=sys.stderr)
+        return 1
+
+    with lock_path.open("w") as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+
+        original = target_path.read_text()
+        updated, changes = updated_text(original, delta)
+
+        if updated != original:
+            mode = target_path.stat().st_mode & 0o777
+            with tempfile.NamedTemporaryFile(
+                "w", dir=target_path.parent, delete=False
+            ) as temp_file:
+                temp_file.write(updated)
+                temp_name = temp_file.name
+            os.chmod(temp_name, mode)
+            os.replace(temp_name, target_path)
+
+    summary = ", ".join(
+        f"{key}: {format_number(old)} -> {format_number(new)}"
+        for key, (old, new) in changes.items()
+    )
+    print(summary)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
