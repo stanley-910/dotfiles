@@ -572,4 +572,82 @@
       "Q": "editor::ToggleCodeActions",
     },
   },
+
+  // Agent panel
+  // `cmd-shift-e` is Zed's default Project Panel shortcut in `Workspace`,
+  // and Reveal-In-Project-Panel in `!AcpThread > Editor && mode == full`.
+  // Override those more-specific editor/diff/sidebar contexts so the chord
+  // opens/focuses Agent from anywhere except inside Agent, where it closes the dock.
+  {
+    "context": "Workspace",
+    "bindings": {
+      "cmd-shift-e": "agent::ToggleFocus",
+    },
+  },
+  {
+    "context": "Pane",
+    "bindings": {
+      "cmd-shift-e": "agent::ToggleFocus",
+    },
+  },
+  {
+    "context": "ProjectPanel",
+    "bindings": {
+      "cmd-shift-e": "agent::ToggleFocus",
+    },
+  },
+  {
+    "context": "GitPanel",
+    "bindings": {
+      "cmd-shift-e": "agent::ToggleFocus",
+    },
+  },
+  {
+    "context": "!AcpThread > Editor && mode == full",
+    "bindings": {
+      "cmd-shift-e": "agent::ToggleFocus",
+    },
+  },
+  {
+    "context": "GitDiff > Editor",
+    "bindings": {
+      "cmd-shift-e": "agent::ToggleFocus",
+    },
+  },
+  {
+    "context": "StashDiff > Editor",
+    "bindings": {
+      "cmd-shift-e": "agent::ToggleFocus",
+    },
+  },
+  {
+    "context": "AgentPanel",
+    "bindings": {
+      "cmd-shift-e": "workspace::CloseActiveDock",
+    },
+  },
+  {
+    "context": "AcpThread",
+    "bindings": {
+      "cmd-shift-e": "workspace::CloseActiveDock",
+    },
+  },
+  {
+    "context": "AcpThread > Editor",
+    "bindings": {
+      "cmd-shift-e": "workspace::CloseActiveDock",
+    },
+  },
+  {
+    "context": "Editor && mode == full",
+    "bindings": {
+      "cmd->": "agent::AddSelectionToThread",
+    },
+  },
+  {
+    "context": "Terminal",
+    "bindings": {
+      "cmd->": "agent::AddSelectionToThread",
+    },
+  },
 ]
