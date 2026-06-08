@@ -26,11 +26,11 @@ format = """
 $username\
 $hostname\
 $directory\
+$git_status\
+$git_branch\
 $character\
 """
 right_format ="""
-$git_status\
-$git_branch\
 """
 
 #[ ]($style)\
