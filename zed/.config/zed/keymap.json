@@ -74,7 +74,7 @@
       "shift-d": ["workspace::SendKeystrokes", "$ shift-f = w"], // D jumps to value after =
 
       // Extended yank operations
-      // "y shift-l": ["workspace::SendKeystrokes", "y $"], // yL yanks to end of line
+      "Y": ["workspace::SendKeystrokes", "y $"],
       // "y shift-h": ["workspace::SendKeystrokes", "y ^"], // yH yanks to first non-whitespace
       // Extended change operations
       "space y": ["workspace::SendKeystrokes", ": %y enter"],
@@ -420,6 +420,81 @@
       "ctrl-c": "buffer_search::Dismiss",
     },
   },
+  // Search navigation: mirrors the default cmd-g / cmd-shift-g actions
+  // on bracket keys that are easier to hit while the search UI is open.
+  {
+    "context": "BufferSearchBar",
+    "bindings": {
+      "ctrl-]": "search::SelectNextMatch",
+      "ctrl-[": "search::SelectPreviousMatch",
+    },
+  },
+  {
+    "context": "BufferSearchBar > Editor",
+    "bindings": {
+      "ctrl-]": "search::SelectNextMatch",
+      "ctrl-[": "search::SelectPreviousMatch",
+    },
+  },
+  {
+    "context": "BufferSearchBar && !in_replace > Editor",
+    "bindings": {
+      "ctrl-]": "search::SelectNextMatch",
+      "ctrl-[": "search::SelectPreviousMatch",
+    },
+  },
+  {
+    "context": "ProjectSearchBar",
+    "bindings": {
+      "ctrl-]": "search::SelectNextMatch",
+      "ctrl-[": "search::SelectPreviousMatch",
+    },
+  },
+  {
+    "context": "ProjectSearchBar > Editor",
+    "bindings": {
+      "ctrl-]": "search::SelectNextMatch",
+      "ctrl-[": "search::SelectPreviousMatch",
+    },
+  },
+  {
+    "context": "ProjectSearchBar && !in_replace > Editor",
+    "bindings": {
+      "ctrl-]": "search::SelectNextMatch",
+      "ctrl-[": "search::SelectPreviousMatch",
+    },
+  },
+  {
+    "context": "ProjectSearchView",
+    "bindings": {
+      "ctrl-]": "search::SelectNextMatch",
+      "ctrl-[": "search::SelectPreviousMatch",
+    },
+  },
+  {
+    "context": "Pane && !Terminal",
+    "bindings": {
+      "ctrl-]": "search::SelectNextMatch",
+      "ctrl-[": "search::SelectPreviousMatch",
+    },
+  },
+  // Override Zed/Vim defaults globally:
+  // - ctrl-] was `editor::GoToDefinition` (use `g d` instead)
+  // - ctrl-[ was Vim escape/normal-mode switching (use `escape` instead)
+  {
+    "context": "VimControl && !menu",
+    "bindings": {
+      "ctrl-]": "search::SelectNextMatch",
+      "ctrl-[": "search::SelectPreviousMatch",
+    },
+  },
+  {
+    "context": "vim_mode == insert && !menu",
+    "bindings": {
+      "ctrl-]": "search::SelectNextMatch",
+      "ctrl-[": "search::SelectPreviousMatch",
+    },
+  },
   {
     "context": "(Editor && mode == full)",
     "bindings": {
@@ -578,6 +653,8 @@
   // and Reveal-In-Project-Panel in `!AcpThread > Editor && mode == full`.
   // Override those more-specific editor/diff/sidebar contexts so the chord
   // opens/focuses Agent from anywhere except inside Agent, where it closes the dock.
+  // `cmd-l` is the non-closing focus swap: visual selection sends to Agent;
+  // otherwise it focuses Agent from the editor and focuses the center pane from Agent.
   {
     "context": "Workspace",
     "bindings": {
@@ -624,24 +701,34 @@
     "context": "AgentPanel",
     "bindings": {
       "cmd-shift-e": "workspace::CloseActiveDock",
+      "cmd-l": "workspace::FocusCenterPane",
     },
   },
   {
     "context": "AcpThread",
     "bindings": {
       "cmd-shift-e": "workspace::CloseActiveDock",
+      "cmd-l": "workspace::FocusCenterPane",
     },
   },
   {
     "context": "AcpThread > Editor",
     "bindings": {
       "cmd-shift-e": "workspace::CloseActiveDock",
+      "cmd-l": "workspace::FocusCenterPane",
     },
   },
   {
     "context": "Editor && mode == full",
     "bindings": {
+      "cmd-l": "agent::ToggleFocus",
       "cmd->": "agent::AddSelectionToThread",
+    },
+  },
+  {
+    "context": "Editor && mode == full && vim_mode == visual",
+    "bindings": {
+      "cmd-l": "agent::AddSelectionToThread",
     },
   },
   {
