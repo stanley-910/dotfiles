@@ -180,6 +180,10 @@ step_macos_defaults() {
     defaults write NSGlobalDomain NSAutomaticPeriodSubstitutionEnabled   -bool false
     # Tab through every UI control, not just text inputs.
     defaults write NSGlobalDomain AppleKeyboardUIMode                    -int 3
+    # Helium app shortcuts: Option+Q/D for browser back/forward.
+    defaults write net.imput.helium NSUserKeyEquivalents -dict-add \
+        "Back" "~q" \
+        "Forward" "~d"
 
     # --- Trackpad ----------------------------------------------------------
     # Tap-to-click on both the built-in trackpad and any Bluetooth ones.
