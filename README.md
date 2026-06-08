@@ -63,6 +63,7 @@ source ~/.zshrc
 
 ### Core Development Tools
 - **Neovim** - Modern vim-based editor
+- **Pi Coding Agent** - Local extensions/themes, including Starshipline, plan mode, and todos
 - **FFmpeg** - Multimedia processing
 - **jq** - JSON processor
 
@@ -89,12 +90,22 @@ brew install stow
 git clone https://github.com/yourusername/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
-# For existing .config (adopt and restore)
-stow --adopt */
+# For existing config (adopt and restore), use the same package split as bootstrap.sh
+for pkg in cursor fastfetch ghostty git jetbrains nvim scripts starship sioyek zsh; do
+  [ -d "$pkg" ] && stow --adopt "$pkg"
+done
+for pkg in agents claude karabiner pi tmux yazi zed; do
+  [ -d "$pkg" ] && stow --adopt --no-folding "$pkg"
+done
 git restore .
 
 # For fresh start (just symlink)
-stow */
+for pkg in cursor fastfetch ghostty git jetbrains nvim scripts starship sioyek zsh; do
+  [ -d "$pkg" ] && stow --restow "$pkg"
+done
+for pkg in agents claude karabiner pi tmux yazi zed; do
+  [ -d "$pkg" ] && stow --restow --no-folding "$pkg"
+done
 ```
 
 ## Post-Installation
@@ -126,6 +137,7 @@ dotfiles/
 ├── karabiner/     # Karabiner config (backups excluded)
 ├── zed/           # Zed config (extensions excluded)
 ├── starship/      # Starship prompt config
+├── pi/            # Pi coding agent extensions and themes
 ├── ghostty/       # Ghostty terminal config
 ├── cursor/        # Cursor editor settings
 ├── jetbrains/     # IdeaVim configuration
@@ -170,7 +182,7 @@ Review and customize before installing.
 
 ## Important: Plugin Pollution Prevention
 
-Some tools (tmux, yazi, karabiner, zed) use `.stow-local-ignore` files to prevent plugin directories from being symlinked. This keeps your dotfiles clean - only configuration files are tracked, not installed plugins or cache.
+Some tools/packages (agents, claude, karabiner, pi, tmux, yazi, zed) are stowed with `--no-folding` so runtime files, plugins, sessions, package installs, and caches stay in `$HOME` instead of being folded into this repo. This keeps your dotfiles clean - only configuration files are tracked.
 
 ## Troubleshooting
 
