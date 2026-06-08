@@ -47,5 +47,11 @@ export _ZO_DOCTOR=0
 export LESSHISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/less/history"
 export PYTHON_HISTORY="${XDG_STATE_HOME:-$HOME/.local/state}/python/history"
 
+# Pi Coding Agent — move global config/state out of ~/.pi for XDG compliance.
+# Keep this in .zshenv so interactive Pi sessions and non-interactive agent
+# subshells agree on the same runtime directories.
+export PI_CODING_AGENT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/pi/agent"
+export PI_CODING_AGENT_SESSION_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/pi/sessions"
+
 # Source local secrets (API keys, tokens) — not tracked by git
 [[ -f ~/.secrets/env ]] && source ~/.secrets/env
