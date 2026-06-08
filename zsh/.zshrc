@@ -361,6 +361,15 @@ chud() { _cc "$CLAUDE_MODEL_LOW" "$@"; }
 cs()   { _cc "$CLAUDE_MODEL_MID" "$@"; }
 co()   { _cc "$CLAUDE_MODEL_HIGH" "$@"; }
 
+# GitHub Copilot CLI: default to full permissions.
+copilot() {
+  command copilot --allow-all "$@"
+}
+
+pi() {
+	PI_INTERNAL_SCROLLBACK=1 command pi "$@"
+}
+
 # Global aliases
 # Redirect stderr to /dev/null
 alias -g NE='2>/dev/null'
