@@ -195,33 +195,6 @@
       "installedAt": "2026-05-23T21:52:12.960Z",
       "updatedAt": "2026-05-23T21:52:12.960Z"
     },
-    "pubmed-database": {
-      "source": "google-deepmind/science-skills",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/google-deepmind/science-skills.git",
-      "skillPath": "skills/pubmed_database/SKILL.md",
-      "skillFolderHash": "7381ec23078dde63fcd9912bcdcba9352c8f9279",
-      "installedAt": "2026-05-23T22:36:57.359Z",
-      "updatedAt": "2026-05-23T22:36:57.359Z"
-    },
-    "biomedical-search": {
-      "source": "yorkeccak/scientific-skills",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/yorkeccak/scientific-skills.git",
-      "skillPath": "skills/biomedical-search/SKILL.md",
-      "skillFolderHash": "083125d8cfc4a336f18aa8e814491d4cc5e06dea",
-      "installedAt": "2026-05-23T22:36:58.982Z",
-      "updatedAt": "2026-05-23T22:36:58.982Z"
-    },
-    "science-skills-common": {
-      "source": "google-deepmind/science-skills",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/google-deepmind/science-skills.git",
-      "skillPath": "skills/science_skills_common/SKILL.md",
-      "skillFolderHash": "a389ad1919419ef8d95235adbb1e2c23e23fbd52",
-      "installedAt": "2026-05-23T22:38:54.791Z",
-      "updatedAt": "2026-05-23T22:38:54.791Z"
-    },
     "mermaid-diagrams": {
       "source": "softaworks/agent-toolkit",
       "sourceType": "github",
