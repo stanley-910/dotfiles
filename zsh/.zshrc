@@ -182,11 +182,30 @@ source ~/.zsh/fzf-tab/fzf-tab.plugin.zsh
 # fzf-tab configuration
 zstyle ':fzf-tab:*' switch-group '<' '>'                  # Switch groups with < >
 zstyle ':fzf-tab:complete:git-checkout:*' fzf-preview '' # Disable preview for git checkout
+# Default (rm, vim, git, ...): Enter only INSERTS the completion; Ctrl-E inserts+runs.
+# We deliberately never auto-run on Enter here, so an empty-query Enter on `rm <Tab>`
+# can't fire a destructive command by reflex.
 zstyle ':fzf-tab:*' fzf-bindings \
     'ctrl-s:accept' \
     'ctrl-n:preview-down' \
     'ctrl-p:preview-up'
-zstyle ':fzf-tab:*' accept-line 'ctrl-e'                    # Enter: Accept & Execute
+zstyle ':fzf-tab:*' accept-line 'ctrl-e'                  # Ctrl-E: Accept & Execute
+
+# Directory navigation (cd/z) ONLY: make Enter context-sensitive on the fzf query.
+#   - query empty (you just hit <Tab>, haven't typed) -> accept-line: cd's in & runs.
+#   - query typed (you're fuzzy-filtering)            -> plain accept: inserts the
+#       highlighted match and returns to the prompt, so one more Enter runs it.
+# Mechanism: --expect only reports a key (-> accept-line) while that key is UNBOUND,
+# so we toggle Enter's binding by query state. 'top' keeps the first match selected.
+# These more-specific zstyles win over the ':fzf-tab:*' ones above for cd/z contexts.
+zstyle ':fzf-tab:complete:(cd|z):*' fzf-bindings \
+    'start:unbind(enter)' \
+    'change:top+transform([ -z {q} ] && echo "unbind(enter)" || echo "rebind(enter)")' \
+    'enter:accept' \
+    'ctrl-s:accept' \
+    'ctrl-n:preview-down' \
+    'ctrl-p:preview-up'
+zstyle ':fzf-tab:complete:(cd|z):*' accept-line 'enter'  # Enter (empty query): Accept & Execute
 zstyle ':fzf-tab:*' continuous-trigger 'ctrl-space'
 zstyle ':fzf-tab:*' fzf-min-height 20                       # Minimum height for the preview window
 zstyle ':fzf-tab:*' fzf-pad 4                               # Padding around the preview window
