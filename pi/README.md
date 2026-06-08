@@ -2,8 +2,20 @@
 
 Pi Coding Agent config managed by GNU Stow.
 
-Use no-folding because `~/.pi/agent` also contains runtime state such as sessions,
-auth, package installs, generated extension config, and npm package caches:
+This package is stowed into XDG-compliant Pi paths. `zsh/.zshenv` exports:
+
+```zsh
+export PI_CODING_AGENT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/pi/agent"
+export PI_CODING_AGENT_SESSION_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/pi/sessions"
+```
+
+Tracked source files therefore live under `~/dotfiles/pi/.config/pi/agent/` and
+stow to `~/.config/pi/agent/`. Sessions are kept in
+`~/.local/state/pi/sessions/` instead of the config directory.
+
+Use no-folding because `~/.config/pi/agent` also contains runtime state such as
+auth, package installs, generated extension config, package caches, and locally
+installed skills/agents:
 
 ```bash
 stow --restow --no-folding -v pi
@@ -11,30 +23,43 @@ stow --restow --no-folding -v pi
 
 ## Installed Pi packages
 
-`~/.pi/agent/settings.json` is tracked in this package so permanent `pi install`
-entries are reproducible on a fresh machine. Runtime package contents still live
-under `~/.pi/agent/npm/` and are not tracked.
+`~/.config/pi/agent/settings.json` is tracked in this package so permanent
+`pi install` entries are reproducible on a fresh machine. Runtime package
+contents still live under `~/.config/pi/agent/npm/` and are not tracked.
 
 Currently installed through settings:
 
-- `npm:pi-subagents` — existing local subagent package/skill used by this dotfiles setup
-- `npm:@tintinweb/pi-subagents` — RPIV-compatible Claude-Code-style `Agent` subagent tools
 - `npm:@juicesharp/rpiv-pi` — RPIV research/design/plan/implement/validate skills
+- `npm:@juicesharp/rpiv-todo` — model-visible todo overlay/tool
+- `npm:@juicesharp/rpiv-btw` — `/btw` side questions without polluting the main conversation
 - `npm:@juicesharp/rpiv-workflow` — `/wf` workflow runner used by RPIV
 - `npm:@juicesharp/rpiv-args` — `$ARGUMENTS` / `$1` expansion for RPIV skills
 - `npm:@juicesharp/rpiv-i18n` — localization support used by RPIV packages
 - `npm:@juicesharp/rpiv-ask-user-question` — structured clarification tool used by RPIV skills
-- `npm:@juicesharp/rpiv-todo` — model-visible todo overlay/tool
-- `npm:@juicesharp/rpiv-btw` — `/btw` side questions without polluting the main conversation
+- `npm:@tintinweb/pi-subagents` — RPIV-compatible Claude-Code-style `Agent` subagent tools
+- `npm:pi-mcp-adapter` — MCP bridge used by the Pi setup
+- `npm:context-mode` — large-output/context-mode tools and skills
+- `npm:@vigolium/piolium` — Piolium theme/resources; package skills are disabled in settings
+- `npm:@juicesharp/rpiv-advisor` — RPIV advisor package
+- `npm:@juicesharp/rpiv-web-tools` — RPIV web/search tooling
+- `npm:@that-yolanda/pi-context` — extra Pi context utilities
+- `npm:pi-rewind` — session/history rewind utilities
 
 The earlier local workflow prototype is parked at
-`~/.pi/agent/extensions-disabled/workflow/index.ts` so it does not collide with
-RPIV commands/tools. Move it back under `extensions/` only if you want the local
-prototype instead of RPIV.
+`~/.config/pi/agent/extensions-disabled/workflow/index.ts` so it does not collide
+with RPIV commands/tools. Move it back under `extensions/` only if you want the
+local prototype instead of RPIV.
+
+## Local runtime experiments
+
+See [`PI_RUNTIME_SCROLLBACK_FILE_MAP.md`](./PI_RUNTIME_SCROLLBACK_FILE_MAP.md)
+for the current map of direct Pi runtime edits under `/opt/homebrew` and
+`~/.config/pi/agent/npm`, including the internal scrollback patch, `/btw` overlay
+scroll fix, backups, and reproduction commands for another agent.
 
 ## Starshipline
 
-`~/.pi/agent/extensions/starshipline/index.ts` installs a Pi extension that:
+`~/.config/pi/agent/extensions/starshipline/index.ts` installs a Pi extension that:
 
 - renders a clean left footer using colors/symbols from `~/.config/starship.toml`;
 - can fall back to the raw `starship prompt` output with `/starshipline left starship`;
@@ -42,10 +67,10 @@ prototype instead of RPIV.
 - adds Pi-side stats on the right: token totals, cache efficiency, cache read/write,
   cost, context pressure meter, model, and thinking level;
 - provides `/starshipline` for live theme preset and color changes;
-- includes the static `starship-nord` Pi theme for use from `/settings`.
+- has built-in Starshipline presets such as `starship-nord` (no separate Pi theme file is tracked).
 
-Runtime config is written to `~/.pi/agent/starshipline.json` and is intentionally
-not tracked.
+Runtime config is written to `~/.config/pi/agent/starshipline.json` and is
+intentionally not tracked.
 
 Common commands:
 

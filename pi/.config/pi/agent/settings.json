@@ -2,7 +2,7 @@
   "lastChangelogVersion": "0.78.1",
   "defaultProvider": "github-copilot",
   "defaultModel": "gpt-5.5",
-  "defaultThinkingLevel": "xhigh",
+  "defaultThinkingLevel": "low",
   "compaction": {
     "enabled": false
   },
@@ -14,6 +14,9 @@
   "followUpMode": "all",
   "warnings": {
     "anthropicExtraUsage": true
+  },
+  "terminal": {
+    "showTerminalProgress": true
   },
   "subagents": {
     "agentOverrides": {
@@ -34,12 +37,16 @@
     "npm:@tintinweb/pi-subagents",
     "npm:pi-mcp-adapter",
     "npm:context-mode",
-    "npm:@vigolium/piolium",
+    {
+      "source": "npm:@vigolium/piolium",
+      "skills": []
+    },
     "npm:@juicesharp/rpiv-advisor",
     "npm:@juicesharp/rpiv-web-tools",
-    "npm:@that-yolanda/pi-context"
+    "npm:@that-yolanda/pi-context",
+    "npm:pi-rewind"
   ],
-  "autocompleteMaxVisible": 20,
+  "autocompleteMaxVisible": 10,
   "theme": "piolium-srcery",
   "enabledModels": [
     "github-copilot/gpt-5.5",
