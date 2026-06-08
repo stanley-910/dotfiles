@@ -243,9 +243,9 @@ echo ""
 # These should NOT use --no-folding to create directory-level symlinks
 FULL_STOW_DIRS=(cursor fastfetch ghostty git jetbrains nvim scripts starship sioyek zsh)
 
-# Directories that need selective file stowing (to avoid plugin pollution)
+# Directories that need selective file stowing (to avoid plugin/runtime pollution)
 # These SHOULD use --no-folding to symlink individual files only
-SELECTIVE_STOW_DIRS=(agents claude karabiner tmux yazi zed)
+SELECTIVE_STOW_DIRS=(agents claude karabiner pi tmux yazi zed)
 
 # Pre-emptively back up any real files at stow target paths. Necessary
 # because brew bundle (step 2) may install apps (Karabiner-Elements, Zed,
