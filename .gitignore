@@ -1,6 +1,6 @@
 # Homebrew Bundle lock file - tracks exact versions installed
 Brewfile.lock.json
-.claude/
+/.claude/
 .emdash.json
 
 # Karabiner runtime files (full dir is stowed; only karabiner.json is tracked)
