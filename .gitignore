@@ -6,3 +6,7 @@ Brewfile.lock.json
 # Karabiner runtime files (full dir is stowed; only karabiner.json is tracked)
 karabiner/.config/karabiner/*
 !karabiner/.config/karabiner/karabiner.json
+
+# Tooling artifacts (not config): rpiv skill output + context-mode index
+.rpiv/
+index.txt
