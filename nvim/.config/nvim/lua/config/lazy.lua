@@ -6,7 +6,7 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
   if vim.v.shell_error ~= 0 then
     vim.api.nvim_echo({
       { "Failed to clone lazy.nvim:\n", "ErrorMsg" },
-      { out, "WarningMsg" },
+      { out,                            "WarningMsg" },
       { "\nPress any key to exit..." },
     }, true, {})
     vim.fn.getchar()
@@ -33,8 +33,8 @@ require("lazy").setup({
   -- install = { colorscheme = { "habamax" } },
   -- Check for plugin updates but don't notify on startup (use :Lazy to view updates)
   -- This prevents the "Press ENTER to continue" popup when opening nvim
-  checker = { 
+  checker = {
     enabled = true,
-    notify = false,  -- Silently check for updates, view them with :Lazy
+    notify = false, -- Silently check for updates, view them with :Lazy
   },
 })
