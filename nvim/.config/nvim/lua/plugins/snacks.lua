@@ -82,8 +82,8 @@ return {
     -- [4] bufdelete: a pure library module (no setup/opts/enabled needed) — the
     -- functions exist as soon as snacks loads. Wired into keymaps instead of an
     -- opts block:
-    --   * <C-w>c / <C-w>C (keymap.lua)        -> Snacks.bufdelete()
-    --   * buffer.delete / buffer.only (quickbind) -> Snacks.bufdelete[.other]()
+    --   * <C-w>c / <C-w>C (keymap.lua)        -> snacks.bufdelete
+    --   * buffer.delete / buffer.only (quickbind) -> snacks.bufdelete[.other]
     -- Deletes the buffer while keeping the window/split, unlike plain :bdelete.
 
     -- [5] quickfile: render a file's first screen BEFORE the full plugin stack
@@ -93,6 +93,36 @@ return {
     quickfile = {
       enabled = true,
       exclude = { "latex" },
+    },
+
+    -- [6] gitbrowse: open the current repo/file/selection/commit in the system
+    -- browser (GitHub/GitLab/etc). Wired to <leader>gb in keymap.lua. Uses the
+    -- default fallback chain: commit under cursor -> file line/range -> branch
+    -- -> repo, depending on what information is available.
+    gitbrowse = {
+      enabled = true,
+    },
+
+    -- [7] rename: a pure helper module (no setup/opts/enabled needed) for FILE
+    -- renames, not symbol renames. Snacks.rename.rename_file() performs a file
+    -- move and sends LSP workspace/willRenameFiles + didRenameFiles so imports
+    -- can update. Oil integration lives in oil.lua; Snacks explorer/picker uses
+    -- the same helper internally for its explorer_rename action.
+
+    -- [8] scroll: smooth scrolling for normal/mouse scrolls while respecting
+    -- scrolloff. No keymaps needed; it animates native scrolling commands.
+    -- Defaults were a little floaty; keep it smooth but faster.
+    scroll = {
+      enabled = true,
+      animate = {
+        duration = { step = 8, total = 120 },
+        easing = "linear",
+      },
+      animate_repeat = {
+        delay = 100,
+        duration = { step = 4, total = 35 },
+        easing = "linear",
+      },
     },
   },
 }

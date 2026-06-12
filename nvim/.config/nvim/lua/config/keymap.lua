@@ -162,11 +162,15 @@ map("n", "<leader>v", cmd("vsplit"), opts("Split vertically"))
 map("n", "<Tab>", cmd("bnext"), opts("Next buffer"))
 map("n", "<S-Tab>", cmd("bprevious"), opts("Previous buffer"))
 -- Native <C-w>c closes a window and errors with E444 in a single-window
--- buffer-cycling workflow. Snacks.bufdelete() deletes the buffer while KEEPING
+-- buffer-cycling workflow. snacks.bufdelete deletes the buffer while KEEPING
 -- the window/split (plain :bdelete would also close the split). Deferred in a
--- function so Snacks is resolved at press time.
-map("n", "<C-w>c", function() Snacks.bufdelete() end, opts("Delete buffer (keep window)"))
-map("n", "<C-w>C", function() Snacks.bufdelete() end, opts("Delete buffer (keep window)"))
+-- function so the module is resolved at press time.
+map("n", "<C-w>c", function()
+  require("snacks.bufdelete")()
+end, opts("Delete buffer (keep window)"))
+map("n", "<C-w>C", function()
+  require("snacks.bufdelete")()
+end, opts("Delete buffer (keep window)"))
 
 map({ "n", "i", "t" }, "<M-h>", "<C-\\><C-n><C-w>h", opts("Window left"))
 map({ "n", "i", "t" }, "<M-l>", "<C-\\><C-n><C-w>l", opts("Window right"))
@@ -237,6 +241,11 @@ map("n", "<C-c>", "<cmd>nohlsearch<CR><cmd>CloseFloatingWindows<CR><cmd>FlashCle
   opts("Clear search highlight, floats, and flash"))
 
 map("n", "gs", telescope("lsp_document_symbols"), opts("Document symbols"))
+
+-- <leader>g* was unused when added; gitsigns currently owns <leader>h*.
+map({ "n", "x" }, "<leader>gb", function()
+  require("snacks.gitbrowse")()
+end, opts("Open git URL in browser"))
 
 -- -----------------------------------------------------------------------------
 -- Editing
