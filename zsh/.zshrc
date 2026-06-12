@@ -145,14 +145,23 @@ autoload edit-command-line; zle -N edit-command-line
 # HISTORY CONFIGURATION
 # ==============================================================================
 
-# History settings
-# setopt SHARE_HISTORY              # Share history between sessions (disabled for tmux)
+# History file (XDG state dir, not $HOME). Create the parent so fresh
+# machines do not silently fail to persist shell history.
+HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
+command mkdir -p -- "${HISTFILE:h}"
+SAVEHIST=100000                   # Number of entries to save to disk
+HISTSIZE=100000                   # Number of entries to keep in memory
+
+# Tmux-friendly shared history:
+#   - write each accepted command to disk immediately, so future panes/shells
+#     start with commands entered in older panes, even if those panes stay open
+#   - do NOT import history updates into already-running panes live
+setopt INC_APPEND_HISTORY         # Append new commands without waiting for shell exit
+unsetopt SHARE_HISTORY            # Avoid live cross-pane history imports
+unsetopt INC_APPEND_HISTORY_TIME  # Keep immediate append semantics explicit
 setopt HIST_EXPIRE_DUPS_FIRST     # Expire duplicate entries first when trimming
 setopt HIST_IGNORE_DUPS           # Don't record an entry that matches the previous one
 setopt HIST_REDUCE_BLANKS         # Strip superfluous blanks before recording
-HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"  # History file (XDG state dir, not $HOME)
-SAVEHIST=100000                   # Number of entries to save to disk
-HISTSIZE=100000                   # Number of entries to keep in memory
 
 # disable Ctrl+D to exit shell
 set -o ignoreeof
@@ -368,6 +377,15 @@ copilot() {
 
 pi() {
 	PI_INTERNAL_SCROLLBACK=1 command pi "$@"
+}
+
+# Headroom: never re-register the Serena MCP server when wrapping Claude.
+headroom() {
+  if [[ "$1" == "wrap" && "$2" == "claude" ]]; then
+    command headroom "$@" --no-serena
+  else
+    command headroom "$@"
+  fi
 }
 
 # Global aliases
