@@ -113,6 +113,9 @@ end, { desc = "Hide flash char-mode highlights" })
 -- -----------------------------------------------------------------------------
 
 
+map({ "n", "x" }, "H", "^", opts("Start of Line"))
+map({ "n", "x" }, "L", "$", opts("End of Line"))
+
 -- Zed's current mapping uses larger vertical jumps here. The older IdeaVim file
 -- used ]m/[m method motions, but Zed is the newer active editor config.
 map({ "n", "x" }, "<C-j>", "8j", opts("Move down 8 lines"))
@@ -376,17 +379,3 @@ map("n", "<leader>R", function()
     dap.run_last()
   end
 end, opts("Rerun last debug session"))
-
--- -----------------------------------------------------------------------------
--- Plugin-backed mappings to enable later
--- -----------------------------------------------------------------------------
--- Zed/IdeaVim features intentionally not bound until their plugins exist:
---   * Sneak/subword motions: folke/flash.nvim or chrisgrieser/nvim-spider.
---   * Rich textobjects: nvim-mini/mini.ai.
---   * Surround/exchange: nvim-mini/mini.surround or tommcdo/vim-exchange.
---   * Smart increment/decrement: monaqa/dial.nvim.
---   * Python debugging: mfussenegger/nvim-dap + mfussenegger/nvim-dap-python.
---
--- I did not map <C-[> because terminals treat it as <Esc>, and I did not map
--- <C-i> in insert mode because terminals treat it as <Tab>.
---

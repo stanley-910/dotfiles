@@ -46,3 +46,5 @@ vim.opt.signcolumn = "yes"
 vim.opt.wrap = false
 
 vim.opt.undofile = true -- save undotree per file after writing
+
+vim.opt.cmdheight = 0   -- dissapear the bottom blank line until cmd / search

@@ -23,3 +23,5 @@ return {
     time_interval = 7, -- default 17ms
   },
 }
+
+-- TODO after writing file and tryingt omove cursor there is a weird jitter like cursor moves from top of the file to the bottom

@@ -3,7 +3,6 @@
   "barbar.nvim": { "branch": "master", "commit": "337ecfadb8bf005050990bf2f624dc4fc828dabd" },
   "blink.cmp": { "branch": "main", "commit": "78336bc89ee5365633bcf754d93df01678b5c08f" },
   "blink.indent": { "branch": "main", "commit": "5cb5ea0f942f17d6182fdad064a17d67f71b9375" },
-  "comfy-line-numbers.nvim": { "branch": "main", "commit": "9adedbaf1f410cdaacf4fb2ca8eb44f3d5f6d010" },
   "conform.nvim": { "branch": "master", "commit": "619363c30309d29ffa631e67c8183f2a72caa373" },
   "dial.nvim": { "branch": "master", "commit": "f2634758455cfa52a8acea6f142dcd6271a1bf57" },
   "dropbar.nvim": { "branch": "master", "commit": "808ba31cde89aec8833e9789f5e04557cd31c9e1" },

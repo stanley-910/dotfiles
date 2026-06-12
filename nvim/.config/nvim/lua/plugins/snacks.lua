@@ -13,7 +13,7 @@
 -- KNOWN OVERLAPS with the current config — do NOT enable these without a plan:
 --   indent     -> already have lua/plugins/indent.lua
 --   picker     -> already have telescope.lua
---   statuscolumn, dashboard, scroll, notifier, input, explorer -> larger scope,
+--   statuscolumn, notifier, input, explorer -> larger scope,
 --                 some overlap dropbar/statusline; revisit later.
 --
 -- See: https://github.com/folke/snacks.nvim  (per-module docs under /docs)
@@ -103,6 +103,7 @@ return {
       enabled = true,
     },
 
+    -- TODO interesting thing here to handle: when doing rename of file in oil, like every single file opened in a buffer, however it did properly rename the places where it was modified ,just wish it ONLY opened those files
     -- [7] rename: a pure helper module (no setup/opts/enabled needed) for FILE
     -- renames, not symbol renames. Snacks.rename.rename_file() performs a file
     -- move and sends LSP workspace/willRenameFiles + didRenameFiles so imports
@@ -123,6 +124,21 @@ return {
         duration = { step = 4, total = 35 },
         easing = "linear",
       },
+    },
+
+    -- [9] dashboard: "Ledger" start screen — modular two-pane layout from the
+    -- design handoff (pure typography, dot leaders, toggleable right-column
+    -- modules). ALL layout/modules/keys live in lua/config/dashboard.lua;
+    -- `sections` is a function so that file only loads when the dashboard
+    -- actually opens. Width/pane_gap: two 52-col panes + 6 gap ≈ the design's
+    -- 110-col content block.
+    dashboard = {
+      enabled = true,
+      width = 52,
+      pane_gap = 6,
+      sections = function()
+        return require("config.dashboard").sections()
+      end,
     },
   },
 }
