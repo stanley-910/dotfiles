@@ -1,0 +1,187 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: headroom-pi-copilot [options] [-- extra headroom proxy args]
+
+Start Headroom as a Pi GitHub Copilot proxy using Pi's stored Copilot auth.
+
+Options:
+  --refresh        Use Pi's refresh token and let Headroom exchange tokens (default)
+  --static-token   Use Pi's current access token directly (expires sooner)
+  --dry-run        Print derived config without starting Headroom
+  --host HOST      Bind host (default: 127.0.0.1)
+  --port PORT      Bind port (default: 8787; Pi models.json expects 8787)
+  --mode MODE      Headroom mode (default: token)
+  -h, --help       Show help
+
+Env overrides:
+  PI_CODING_AGENT_DIR          Pi config dir (default: ~/.config/pi/agent)
+  HEADROOM_COPILOT_AUTH_MODE   refresh|static (default: refresh)
+  HEADROOM_COPILOT_UPSTREAM    Force upstream, e.g. https://api.business.githubcopilot.com
+  HEADROOM_TELEMETRY           Default: off
+
+Pi usage after starting this script:
+  pi --model headroom-copilot/gpt-5.5
+EOF
+}
+
+auth_mode="${HEADROOM_COPILOT_AUTH_MODE:-refresh}"
+host="${HEADROOM_COPILOT_HOST:-127.0.0.1}"
+port="${HEADROOM_COPILOT_PORT:-8787}"
+mode="${HEADROOM_MODE:-token}"
+dry_run=0
+extra_args=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --refresh)
+      auth_mode="refresh"
+      shift
+      ;;
+    --static-token|--static)
+      auth_mode="static"
+      shift
+      ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
+    --host)
+      host="${2:?missing value for --host}"
+      shift 2
+      ;;
+    --port)
+      port="${2:?missing value for --port}"
+      shift 2
+      ;;
+    --mode)
+      mode="${2:?missing value for --mode}"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      extra_args+=("$@")
+      break
+      ;;
+    *)
+      extra_args+=("$1")
+      shift
+      ;;
+  esac
+done
+
+case "$auth_mode" in
+  refresh|static) ;;
+  *)
+    echo "error: HEADROOM_COPILOT_AUTH_MODE must be refresh or static, got: $auth_mode" >&2
+    exit 2
+    ;;
+esac
+
+command -v python3 >/dev/null || { echo "error: python3 not found" >&2; exit 127; }
+command -v headroom >/dev/null || { echo "error: headroom not found" >&2; exit 127; }
+
+agent_dir="${PI_CODING_AGENT_DIR:-$HOME/.config/pi/agent}"
+auth_json="$agent_dir/auth.json"
+if [[ ! -f "$auth_json" ]]; then
+  echo "error: Pi auth file not found: $auth_json" >&2
+  echo "hint: run 'pi /login' or use direct Pi once with github-copilot" >&2
+  exit 1
+fi
+
+# Emits shell-safe assignments for COPILOT_ACCESS, COPILOT_REFRESH, and UPSTREAM.
+eval "$(HEADROOM_COPILOT_UPSTREAM="${HEADROOM_COPILOT_UPSTREAM:-}" python3 - "$auth_json" <<'PY'
+import json
+import os
+import pathlib
+import re
+import shlex
+import sys
+
+auth_path = pathlib.Path(sys.argv[1]).expanduser()
+auth = json.loads(auth_path.read_text())
+try:
+    copilot = auth["github-copilot"]
+except KeyError:
+    raise SystemExit(f"missing github-copilot entry in {auth_path}")
+
+access = str(copilot.get("access") or "")
+refresh = str(copilot.get("refresh") or "")
+forced_upstream = os.environ.get("HEADROOM_COPILOT_UPSTREAM", "").strip()
+
+if forced_upstream:
+    upstream = forced_upstream.rstrip("/")
+else:
+    match = re.search(r"proxy-ep=([^;]+)", access)
+    host = match.group(1) if match else "api.individual.githubcopilot.com"
+    if host.startswith("proxy."):
+        host = "api." + host[len("proxy."):]
+    upstream = "https://" + host
+
+for key, value in {
+    "COPILOT_ACCESS": access,
+    "COPILOT_REFRESH": refresh,
+    "UPSTREAM": upstream,
+}.items():
+    print(f"{key}={shlex.quote(value)}")
+PY
+)"
+
+if [[ -z "${COPILOT_ACCESS:-}" ]]; then
+  echo "error: Pi auth.json has no github-copilot access token" >&2
+  exit 1
+fi
+if [[ "$auth_mode" == "refresh" && -z "${COPILOT_REFRESH:-}" ]]; then
+  echo "error: refresh mode requested but Pi auth.json has no github-copilot refresh token" >&2
+  exit 1
+fi
+if [[ "$UPSTREAM" == https://proxy.* ]]; then
+  echo "error: upstream still points at proxy host, expected api host: $UPSTREAM" >&2
+  exit 1
+fi
+
+cat <<EOF
+Headroom Pi Copilot proxy
+  auth mode: $auth_mode
+  upstream:  $UPSTREAM
+  listen:    http://$host:$port
+  model:     pi --model headroom-copilot/gpt-5.5
+EOF
+
+if [[ "$dry_run" == 1 ]]; then
+  exit 0
+fi
+
+export GITHUB_COPILOT_API_URL="$UPSTREAM"
+export OPENAI_TARGET_API_URL="$UPSTREAM"
+export HEADROOM_TELEMETRY="${HEADROOM_TELEMETRY:-off}"
+
+if [[ "$auth_mode" == "refresh" ]]; then
+  export GITHUB_COPILOT_GITHUB_TOKEN="$COPILOT_REFRESH"
+  export GITHUB_COPILOT_USE_TOKEN_EXCHANGE=1
+  unset GITHUB_COPILOT_API_TOKEN COPILOT_PROVIDER_BEARER_TOKEN
+else
+  export GITHUB_COPILOT_API_TOKEN="$COPILOT_ACCESS"
+  export GITHUB_COPILOT_USE_TOKEN_EXCHANGE=0
+  unset GITHUB_COPILOT_GITHUB_TOKEN
+fi
+
+cmd=(
+  headroom proxy
+  --host "$host"
+  --port "$port"
+  --mode "$mode"
+  --no-subscription-tracking
+)
+
+if [[ ${#extra_args[@]} -gt 0 ]]; then
+  cmd+=("${extra_args[@]}")
+fi
+
+exec "${cmd[@]}"
