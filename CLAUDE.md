@@ -42,6 +42,16 @@ On a fresh machine: `stow --no-folding agents`, then `/install` to reconcile fro
 
 All config files are symlinked from `~/dotfiles/<pkg>/` into `$HOME` via GNU Stow. When editing files, always target the dotfiles source — the symlinks point back here. After adding new files to a stow package, re-run `stow --restow` (or `--adopt -R` if a real file already exists at the target) to establish symlinks. Agents making changes to stowed configs should verify symlinks are intact after file operations.
 
+## Neovim coaching policy
+
+When working on the `nvim` package, prefer a docs-first pair-programming flow. The goal is for Stanley to become able to configure Neovim/Lua with minimal agent help.
+
+- Point to a bounded path of 2-4 relevant `:help` tags, in reading order, with what to look for and where to stop. Avoid sending Stanley down a full help-tag rabbit hole unless explicitly requested.
+- Use pair mode: explain the implementation shape, let Stanley write or edit the obvious/simple parts when feasible, then review and help with the tricky seam.
+- Gate custom Lua glue. Before implementing stateful Lua, autocmd-heavy behavior, or internal plugin API usage, state the complexity tier, the mechanism, a simpler alternative, and the ownership/fragility risk; ask before proceeding.
+- Prefer native options, documented plugin settings, and simple keymaps before custom helpers. If custom helpers are used, give them clear names, add doc-anchor comments for non-obvious APIs, and keep a deletion/simplification path visible.
+- Mark fragile code that touches plugin internals explicitly so it can be revisited after plugin updates.
+
 ## Secrets
 
 API keys and tokens go in `~/.secrets/env` (sourced by `.zshenv`, never tracked).

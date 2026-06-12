@@ -1,7 +1,8 @@
 vim.g.mapleader = " "
 vim.keymap.set("n", "<leader>pv", vim.cmd.Ex)
 
--- Oil remap
+-- Format/Lint
+map("n", "<leader>l", vim.lsp.buf.format, opts("Format buffer")) -- theres an issue with diagnostics not reattaching after I go back from normal mode to insert back to insert?
 
 vim.keymap.set("n", "-", vim.cmd.Oil)
 
