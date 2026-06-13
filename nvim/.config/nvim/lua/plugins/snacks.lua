@@ -130,14 +130,16 @@ return {
     -- design handoff (pure typography, dot leaders, toggleable right-column
     -- modules). ALL layout/modules/keys live in lua/config/dashboard.lua;
     -- `sections` is a function so that file only loads when the dashboard
-    -- actually opens. Width/pane_gap: two 52-col panes + 6 gap ≈ the design's
-    -- 110-col content block.
+    -- actually opens. `width` here is the MAX pane width; sections() shrinks it
+    -- responsively per window (writing dash.opts.width) so the two 52-col panes
+    -- (+6 gap ≈ the design's 110-col block) scale down instead of overflowing.
+    -- snacks passes the dashboard instance to the section function — forward it.
     dashboard = {
       enabled = true,
       width = 52,
       pane_gap = 6,
-      sections = function()
-        return require("config.dashboard").sections()
+      sections = function(dash)
+        return require("config.dashboard").sections(dash)
       end,
     },
   },

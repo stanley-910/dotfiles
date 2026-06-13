@@ -34,8 +34,13 @@ local M = {}
 -- ---------------------------------------------------------------------------
 
 M.opts = {
-  width = 52, -- per-pane width; keep in sync with dashboard.width in snacks.lua
-  gap = 1,    -- blank lines between JUMP/RECENT rows (0 = compact)
+  -- per-pane width. `width` is the LIVE value, recomputed responsively each
+  -- render in sections() (clamped down to fit the window); `width_max` is the
+  -- ceiling. width_max should match dashboard.width in snacks.lua.
+  width = 52,
+  width_max = 52,
+  gap = 1,             -- blank lines between JUMP/RECENT rows (0 = compact)
+  narrow_top_pad = 3,  -- blank rows above the header in single-column mode only
   recent_limit = 5,
 
   -- Accent: kanagawa palette name. Alternates from the design:
@@ -91,15 +96,15 @@ local function set_hl()
   end)
   if on_kanagawa and ok then
     local p = colors.palette
-    hl("DashTop", { fg = p.fujiWhite, bold = true })   -- top header, heavier terminal face
+    hl("DashTop", { fg = p.fujiWhite, bold = true })     -- top header, heavier terminal face
     hl("DashTopMuted", { fg = p.fujiGray, bold = true }) -- top header metadata
-    hl("DashHeader", { fg = p.fujiWhite })              -- primary text
-    hl("DashText", { fg = p.oldWhite })                 -- secondary text
-    hl("DashSection", { fg = p.fujiGray })              -- CAPS section labels
+    hl("DashHeader", { fg = p.fujiWhite })               -- primary text
+    hl("DashText", { fg = p.oldWhite })                  -- secondary text
+    hl("DashSection", { fg = p.fujiGray })               -- CAPS section labels
     hl("DashMuted", { fg = p.fujiGray })
-    hl("DashDots", { fg = p.sumiInk6 })                 -- dot leaders
-    hl("DashRule", { fg = p.sumiInk5 })                 -- horizontal rules
-    hl("DashKey", { fg = p.springViolet1 })             -- keybind hints
+    hl("DashDots", { fg = p.sumiInk6 })                  -- dot leaders
+    hl("DashRule", { fg = p.sumiInk5 })                  -- horizontal rules
+    hl("DashKey", { fg = p.springViolet1 })              -- keybind hints
     hl("DashAccent", { fg = p[M.opts.accent] or p.carpYellow })
     hl("DashGitMod", { fg = p.autumnYellow })
     hl("DashDone", { fg = p.springGreen })
@@ -631,7 +636,7 @@ local function github_contrib_lines()
         and decoded.data.user
         and decoded.data.user.contributionsCollection
         and decoded.data.user.contributionsCollection.contributionCalendar
-      or nil
+        or nil
     if not calendar or not calendar.weeks then
       return nil
     end
@@ -1011,8 +1016,29 @@ end
 -- sections() — assembles the two panes. Called by snacks every (re)render.
 -- ---------------------------------------------------------------------------
 
-function M.sections()
+function M.sections(dash)
   set_hl()
+
+  -- Responsive pane width. snacks passes the dashboard instance here, and this
+  -- runs during update()'s resolve() step — BEFORE snacks' own layout()/render()
+  -- read dash.opts.width. So we shrink both widths in lockstep: M.opts.width
+  -- drives the row()/budget math below; dash.opts.width drives snacks' pane
+  -- placement and centering. Clamp to [40, max]; below ~2*40+gap snacks collapses
+  -- to a single stacked pane on its own (and draw_divider bails). dash._size.width
+  -- is the window width snacks centers on. See the "keep in sync" note in
+  -- snacks.lua. (FRAGILE: relies on snacks calling sections(self) and resolve
+  -- running before layout — revisit if a snacks update reorders update().)
+  local narrow = false
+  if dash and dash._size and dash.opts then
+    local gap = dash.opts.pane_gap or 6
+    local target = math.max(40, math.min(M.opts.width_max, math.floor((dash._size.width - gap) / 2)))
+    M.opts.width = target
+    dash.opts.width = target
+    -- single-column (stacked) once two panes + gap no longer fit; mirrors
+    -- snacks' own max_panes math in D:layout()
+    narrow = math.floor((dash._size.width + gap) / (target + gap)) < 2
+  end
+
   local width = M.opts.width
   local items = {}
   -- Track each pane's height (1 text line per item + padding) so the footer
@@ -1027,7 +1053,15 @@ function M.sections()
     return item
   end
 
+  -- In single-column mode the stacked content overflows and snacks can't center
+  -- it, so it pins to row 1. Push it down a little so it doesn't hug the top.
+  -- (No-op in two-pane mode, where snacks centers normally.)
+  if narrow and M.opts.narrow_top_pad > 0 then
+    add({ text = { { " " } }, padding = M.opts.narrow_top_pad - 1 }, 1)
+  end
+
   -- pane 1 header: user@nvim + version, then the rule
+  -- Alteration: a Good morning, afternoon, evening / greeting thing for my name and just the nvim and version
   local v = vim.version()
   add({
     text = {
@@ -1100,8 +1134,8 @@ function M.sections()
       vim.cmd("only")
     end,
     text = {
-      { "h: ", hl = "DashKey" },
-      { tip.tag, hl = "DashAccent" },
+      { "h: ",                            hl = "DashKey" },
+      { tip.tag,                          hl = "DashAccent" },
       { desc ~= "" and " " .. desc or "", hl = "DashMuted" },
     },
   }, 1)
@@ -1146,6 +1180,14 @@ local function draw_divider()
   if not win then
     return
   end
+  -- The divider only makes sense in the side-by-side two-pane layout. Below the
+  -- content-block width snacks stacks the panes vertically, and a fixed
+  -- mid-column line would slice straight through that stacked content — so bail
+  -- (the clear above already removed any stale divider from a wider render).
+  local content_w = M.opts.width * 2 + 6 -- keep in sync with pane_gap in snacks.lua
+  if vim.api.nvim_win_get_width(win) < content_w then
+    return
+  end
   -- anchor on CONTENT, not buffer rows: the buffer may carry blank centering
   -- rows above the header depending on window height
   local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
@@ -1162,7 +1204,6 @@ local function draw_divider()
     return
   end
   -- center of the 6-col pane gap (content block is centered in the window)
-  local content_w = M.opts.width * 2 + 6 -- keep in sync with pane_gap in snacks.lua
   local col0 = math.max(0, math.floor((vim.api.nvim_win_get_width(win) - content_w) / 2))
   -- bridge the pane gap on the rule row, so the header rule reads as ONE line
   vim.api.nvim_buf_set_extmark(buf, divider_ns, rule_row - 1, 0, {
@@ -1195,14 +1236,48 @@ local function dashboard_win()
 end
 
 local saved_cmdheight ---@type number?
+local dashboard_winopts = {
+  "colorcolumn",
+  "cursorcolumn",
+  "cursorline",
+  "foldcolumn",
+  "foldmethod",
+  "list",
+  "number",
+  "relativenumber",
+  "sidescrolloff",
+  "signcolumn",
+  "spell",
+  "statuscolumn",
+  "statusline",
+  "winbar",
+  "winhighlight",
+  "wrap",
+}
+
+-- Fallback for dashboards opened before this module had a chance to snapshot
+-- the window (for example, a future startup-open path). User-invoked :Dashboard
+-- goes through M.open() below, which restores the exact previous values.
 local normal_winopts = {
+  colorcolumn = "",
+  cursorcolumn = false,
+  cursorline = true,
+  foldcolumn = "0",
+  foldmethod = "manual",
+  list = true,
   number = true,
   relativenumber = true,
-  statuscolumn = "",
+  sidescrolloff = 0,
   signcolumn = "yes",
-  foldcolumn = "0",
+  spell = false,
+  statuscolumn = "",
+  statusline = "",
+  winbar = "",
+  winhighlight = "",
+  wrap = false,
 }
 local dashboard_wins = {} ---@type table<integer, boolean>
+local saved_winopts = {} ---@type table<integer, table<string, any>>
 local scroll_locked = {} ---@type table<integer, boolean>
 
 local function lock_mouse_scroll(buf)
@@ -1220,6 +1295,18 @@ local function lock_mouse_scroll(buf)
   end
 end
 
+local function save_win_chrome(win)
+  if not vim.api.nvim_win_is_valid(win) or saved_winopts[win] then
+    return
+  end
+
+  local wo = vim.wo[win]
+  saved_winopts[win] = {}
+  for _, opt in ipairs(dashboard_winopts) do
+    saved_winopts[win][opt] = wo[opt]
+  end
+end
+
 local function mark_dashboard_win(win)
   if vim.api.nvim_win_is_valid(win) then
     dashboard_wins[win] = true
@@ -1233,11 +1320,12 @@ local function restore_win_chrome(win)
 
   if vim.api.nvim_win_is_valid(win) then
     local wo = vim.wo[win]
-    for opt, value in pairs(normal_winopts) do
+    for opt, value in pairs(saved_winopts[win] or normal_winopts) do
       wo[opt] = value
     end
   end
   dashboard_wins[win] = nil
+  saved_winopts[win] = nil
 end
 
 local function restore_current_win_chrome_if_needed()
@@ -1290,6 +1378,18 @@ local function refresh_statusline()
     require("lualine").refresh({ place = { "statusline" } })
   end)
   vim.cmd.redrawstatus()
+end
+
+function M.open()
+  local ok, snacks = pcall(require, "snacks")
+  if not ok then
+    vim.notify("snacks.nvim is not available", vim.log.levels.WARN)
+    return
+  end
+
+  local win = vim.api.nvim_get_current_win()
+  save_win_chrome(win)
+  snacks.dashboard.open({ win = win })
 end
 
 -- Consumed by the lualine snacks_dashboard extension (statusline.lua): the
@@ -1362,6 +1462,12 @@ local function draw_viz()
   end
   local win = vim.fn.win_findbuf(buf)[1]
   if not win then
+    return
+  end
+  -- Same fixed-column assumption as the divider: skip in the narrow/stacked
+  -- layout so the equalizer is not overlaid at a meaningless screen column.
+  local content_w = M.opts.width * 2 + 6
+  if vim.api.nvim_win_get_width(win) < content_w then
     return
   end
   local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
@@ -1438,6 +1544,17 @@ vim.api.nvim_create_autocmd("User", {
   group = group,
   pattern = "SnacksDashboardUpdatePost",
   callback = function()
+    -- Drop snacks' ongoing cursor-snap. It re-pins the cursor onto an
+    -- actionable row on every CursorMoved; once you scroll down to a pane whose
+    -- only action is far away (e.g. pane 2's lone THEME [t]), D:find can only
+    -- return that one item, so <C-u> moves up and the snap yanks it back —
+    -- <C-u> appears dead while <C-d> works. The one-time snap from this same
+    -- update() already placed the cursor on an action; we only remove the
+    -- persistent handler so the dashboard scrolls freely. Single-key actions
+    -- (f, /, t, ...) are unaffected — they're bound to keys, not cursor pos.
+    -- snacks recreates the group each update(), so re-clear every UpdatePost.
+    -- FRAGILE: depends on the snacks-internal augroup name.
+    pcall(vim.api.nvim_clear_autocmds, { group = "snacks_dashboard_cursor" })
     pcall(draw_divider)
   end,
 })
