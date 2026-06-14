@@ -3,7 +3,7 @@ vim.opt_local.tabstop = 2
 vim.opt_local.shiftwidth = 2
 vim.opt_local.softtabstop = -1 -- follow shiftwidth for insert-mode <Tab>/<BS>
 vim.opt_local.colorcolumn = "101"
---
+
 -- remove 'o'/<CR> insert comment behaviour
 vim.opt.formatoptions:remove({ "o", "r" })
 
