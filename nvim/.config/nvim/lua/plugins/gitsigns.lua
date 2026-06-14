@@ -3,10 +3,12 @@ return {
     "lewis6991/gitsigns.nvim",
     event = { "BufReadPre", "BufNewFile" },
     opts = {
+      -- Keep inline blame off by default: Snacks.git.blame_line() owns the
+      -- on-demand, fuller blame/history view, while gitsigns still owns signs,
+      -- hunk navigation, staging/resetting, and the optional inline-blame toggle.
       current_line_blame = true,
       current_line_blame_opts = {
-        delay = 0, -- Set delay to 500ms (or any integer in milliseconds)
-        -- other options...
+        delay = 0,
       },
       on_attach = function(bufnr)
         local gitsigns = require("gitsigns")
@@ -41,15 +43,15 @@ return {
         map("n", "<leader>hr", gitsigns.reset_hunk, "Reset git hunk")
         map("n", "<leader>hp", gitsigns.preview_hunk, "Preview git hunk")
         map("n", "<leader>hb", function()
-          gitsigns.blame_line({ full = true })
-        end, "Blame current line")
+          Snacks.git.blame_line()
+        end, "Blame current line history")
         map("n", "<leader>hB", gitsigns.toggle_current_line_blame, "Toggle line blame")
         map("n", "<leader>hd", gitsigns.diffthis, "Diff current file")
         map("n", "<leader>hD", function()
           gitsigns.diffthis("~")
         end, "Diff current file against HEAD~")
         map("n", "<leader>hQ", gitsigns.setqflist, "Git hunks to quickfix")
-        map("n", "<leader>ht", gitsigns.toggle_deleted, "Toggle deleted lines")
+        map("n", "<leader>ht", gitsigns.preview_hunk_inline, "Preview hunk inline")
 
         map("v", "<leader>hs", function()
           gitsigns.stage_hunk({ vim.fn.line("."), vim.fn.line("v") })

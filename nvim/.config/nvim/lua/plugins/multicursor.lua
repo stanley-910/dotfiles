@@ -57,8 +57,9 @@ return {
     set({ "n", "x" }, "<down>", function() mc.lineAddCursor(1) end, { desc = "MC: add cursor down" })
 
     -- Add / skip a cursor by matching the word or visual selection (Ctrl-d style).
-    set({ "n", "x" }, "<leader>n", function() mc.matchAddCursor(1) end, { desc = "MC: add cursor at next match" })
-    set({ "n", "x" }, "<leader>N", function() mc.matchAddCursor(-1) end, { desc = "MC: add cursor at prev match" })
+    -- TODO find better binding
+    -- set({ "n", "x" }, "<leader>n", function() mc.matchAddCursor(1) end, { desc = "MC: add cursor at next match" })
+    -- set({ "n", "x" }, "<leader>N", function() mc.matchAddCursor(-1) end, { desc = "MC: add cursor at prev match" })
 
     -- Insert / append for each line of a visual selection (like block I/A).
     set("x", "I", mc.insertVisual, { desc = "MC: insert at start of each line" })
