@@ -6,6 +6,8 @@ return {
   lazy = false,
   dependencies = {
     {
+      -- dropbar uses telescope-fzf-native as a standalone fuzzy engine; this
+      -- does not require keeping telescope.nvim itself installed.
       "nvim-telescope/telescope-fzf-native.nvim",
       build = "make",
     },

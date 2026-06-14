@@ -8,17 +8,17 @@ return {
     "nvim-lualine/lualine.nvim",
     dependencies = { "nvim-mini/mini.icons" },
     -- opts is a function (not a table) because the dashboard extension below
-    -- resolves tokyodark palette colors at load time — tokyodark is in the rtp
+    -- resolves kanagawa palette colors at load time — kanagawa is in the rtp
     -- by then (priority 1000), but not yet when this spec file is collected.
     opts = function()
       -- Minimal "DASH" bar shown only for the snacks_dashboard filetype
       -- (the Mission Control strip from the dashboard design handoff):
       --   [DASH] ~/cwd  weather ............ utf-8 · fri jun 12 [21:42:08]
       -- Weather comes from the dashboard's own cached wx fetch.
-      local ok, tokyodark = pcall(function()
-        return require("tokyodark.colors").setup({ theme = "wave" }).palette
+      local ok, kanagawa = pcall(function()
+        return require("kanagawa.colors").setup({ theme = "wave" }).palette
       end)
-      local p = ok and tokyodark or {}
+      local p = ok and kanagawa or {}
       local dash_extension = {
         filetypes = { "snacks_dashboard" },
         sections = {
@@ -43,7 +43,7 @@ return {
 
       return {
         options = {
-          theme = "tokyodark",
+          theme = "kanagawa",
           globalstatus = true,
           component_separators = { left = "", right = "" },
           section_separators = { left = "", right = "" },
