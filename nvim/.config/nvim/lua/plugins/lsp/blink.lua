@@ -87,7 +87,16 @@ return {
     },
 
     sources = {
-      default = { 'lsp', 'path', 'snippets', 'buffer' },
+      -- LazyDev adds high-priority completions for Lua `require(...)` and
+      -- `---@module` annotations while editing this Neovim config.
+      default = { 'lazydev', 'lsp', 'path', 'snippets', 'buffer' },
+      providers = {
+        lazydev = {
+          name = 'LazyDev',
+          module = 'lazydev.integrations.blink',
+          score_offset = 100,
+        },
+      },
     },
 
     -- LuaSnip is installed (see lua/plugins/luasnip.lua) but inert. To route

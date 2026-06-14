@@ -1,7 +1,14 @@
 local lsp_group = vim.api.nvim_create_augroup("UserLspConfig", { clear = true })
 
 vim.diagnostic.config({
-  signs = false,
+  signs = {
+    text = {
+      [vim.diagnostic.severity.ERROR] = " ",
+      [vim.diagnostic.severity.WARN] = " ",
+      [vim.diagnostic.severity.INFO] = " ",
+      [vim.diagnostic.severity.HINT] = "󰌵 ",
+    },
+  },
   underline = true,
   update_in_insert = true,
   virtual_text = false,
@@ -194,11 +201,11 @@ vim.api.nvim_create_autocmd("LspAttach", {
       desc = "Focus hover/diagnostic window",
     })
 
-    vim.keymap.set("n", "grr", "<cmd>Trouble lsp_references open focus=true<CR>", {
-      buffer = event.buf,
-      silent = true,
-      desc = "References (Trouble)",
-    })
+    -- vim.keymap.set("n", "grr", "<cmd>Trouble lsp_references open focus=true<CR>", {
+    --   buffer = event.buf,
+    --   silent = true,
+    --   desc = "References (Trouble)",
+    -- })
 
     vim.keymap.set("n", "]d", function()
       jump_diagnostic(1)
