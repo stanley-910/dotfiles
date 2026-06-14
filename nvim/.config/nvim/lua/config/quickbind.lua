@@ -436,59 +436,6 @@ local function select_async(prompt, items, format_item)
 
   local co = coroutine.running()
 
-  local ok, pickers = pcall(require, "telescope.pickers")
-  if ok then
-    local finders = require("telescope.finders")
-    local conf = require("telescope.config").values
-    local actions = require("telescope.actions")
-    local action_state = require("telescope.actions.state")
-
-    pickers
-        .new({}, {
-          prompt_title = prompt,
-          finder = finders.new_table({
-            results = items,
-            entry_maker = function(item)
-              local display = format_item and format_item(item) or tostring(item)
-              return {
-                value = item,
-                display = display,
-                ordinal = display,
-              }
-            end,
-          }),
-          sorter = conf.generic_sorter({}),
-          attach_mappings = function(prompt_bufnr, map)
-            local done = false
-            local function finish(value)
-              if done then
-                return
-              end
-              done = true
-              actions.close(prompt_bufnr)
-              resume(co, value)
-            end
-
-            actions.select_default:replace(function()
-              local entry = action_state.get_selected_entry()
-              finish(entry and entry.value or nil)
-            end)
-
-            map({ "i", "n" }, "<Esc>", function()
-              finish(nil)
-            end)
-            map({ "i", "n" }, "<C-c>", function()
-              finish(nil)
-            end)
-
-            return true
-          end,
-        })
-        :find()
-
-    return coroutine.yield()
-  end
-
   vim.ui.select(items, {
     prompt = prompt,
     format_item = format_item,

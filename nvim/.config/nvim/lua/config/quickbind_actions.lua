@@ -20,11 +20,14 @@ local function require_or_notify(module, plugin_name)
   return nil
 end
 
-local function telescope(picker, picker_opts)
+local function snacks_picker(picker, picker_opts)
   return function()
-    local builtin = require_or_notify("telescope.builtin", "telescope.nvim")
-    if builtin then
-      builtin[picker](picker_opts or {})
+    local snacks = require_or_notify("snacks", "snacks.nvim")
+    local pick = snacks and snacks.picker and snacks.picker[picker]
+    if pick then
+      pick(picker_opts or {})
+    else
+      vim.notify("Snacks picker '" .. picker .. "' is not available", vim.log.levels.WARN)
     end
   end
 end
@@ -90,15 +93,15 @@ local function add_curated_actions(actions)
   add(actions, { id = "quickbind.delete", desc = "Delete generated quickbind", category = "keybinds", rhs = cmd("QuickBindDelete") })
 
   -- Files/search ----------------------------------------------------------------
-  add(actions, { id = "file.find", desc = "Find files", category = "find", rhs = telescope("find_files") })
-  add(actions, { id = "file.oldfiles", desc = "Recent files", category = "find", rhs = telescope("oldfiles") })
-  add(actions, { id = "file.buffers", desc = "Find buffers", category = "find", rhs = telescope("buffers") })
-  add(actions, { id = "file.grep", desc = "Find in project", category = "find", rhs = telescope("live_grep") })
-  add(actions, { id = "file.grep_word", desc = "Find word under cursor", category = "find", rhs = telescope("grep_string") })
-  add(actions, { id = "file.help", desc = "Find help tags", category = "find", rhs = telescope("help_tags") })
-  add(actions, { id = "file.commands", desc = "Find commands", category = "find", rhs = telescope("commands") })
-  add(actions, { id = "file.keymaps", desc = "Find keymaps", category = "find", rhs = telescope("keymaps") })
-  add(actions, { id = "file.diagnostics", desc = "Find diagnostics", category = "find", rhs = telescope("diagnostics") })
+  add(actions, { id = "file.find", desc = "Find files", category = "find", rhs = snacks_picker("files") })
+  add(actions, { id = "file.oldfiles", desc = "Recent files", category = "find", rhs = snacks_picker("recent") })
+  add(actions, { id = "file.buffers", desc = "Find buffers", category = "find", rhs = snacks_picker("buffers") })
+  add(actions, { id = "file.grep", desc = "Find in project", category = "find", rhs = snacks_picker("grep") })
+  add(actions, { id = "file.grep_word", desc = "Find word under cursor", category = "find", rhs = snacks_picker("grep_word") })
+  add(actions, { id = "file.help", desc = "Find help tags", category = "find", rhs = snacks_picker("help") })
+  add(actions, { id = "file.commands", desc = "Find commands", category = "find", rhs = snacks_picker("commands") })
+  add(actions, { id = "file.keymaps", desc = "Find keymaps", category = "find", rhs = snacks_picker("keymaps") })
+  add(actions, { id = "file.diagnostics", desc = "Find diagnostics", category = "find", rhs = snacks_picker("diagnostics") })
   add(actions, { id = "file.oil", desc = "Open parent directory in Oil", category = "files", rhs = oil_open })
   add(actions, { id = "file.write", desc = "Write buffer", category = "files", rhs = cmd("write") })
   add(actions, { id = "file.write_all", desc = "Write all buffers", category = "files", rhs = cmd("wall") })
@@ -136,9 +139,9 @@ local function add_curated_actions(actions)
   add(actions, { id = "diagnostic.loclist", desc = "Diagnostics to location list", category = "diagnostics", rhs = vim.diagnostic.setloclist })
 
   -- Git -------------------------------------------------------------------------
-  add(actions, { id = "git.status", desc = "Git status", category = "git", rhs = telescope("git_status") })
-  add(actions, { id = "git.commits", desc = "Git commits", category = "git", rhs = telescope("git_commits") })
-  add(actions, { id = "git.branches", desc = "Git branches", category = "git", rhs = telescope("git_branches") })
+  add(actions, { id = "git.status", desc = "Git status", category = "git", rhs = snacks_picker("git_status") })
+  add(actions, { id = "git.commits", desc = "Git commits", category = "git", rhs = snacks_picker("git_log") })
+  add(actions, { id = "git.branches", desc = "Git branches", category = "git", rhs = snacks_picker("git_branches") })
   add(actions, { id = "git.next_hunk", desc = "Next git hunk", category = "git", rhs = gitsigns("next_hunk") })
   add(actions, { id = "git.prev_hunk", desc = "Previous git hunk", category = "git", rhs = gitsigns("prev_hunk") })
   add(actions, { id = "git.preview_hunk", desc = "Preview git hunk", category = "git", rhs = gitsigns("preview_hunk") })

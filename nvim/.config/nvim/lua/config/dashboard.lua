@@ -273,11 +273,12 @@ end
 
 local function pick(picker, picker_opts)
   return function()
-    local ok, builtin = pcall(require, "telescope.builtin")
-    if ok then
-      builtin[picker](picker_opts or {})
+    local pickers = Snacks.picker
+    local fn = pickers and pickers[picker]
+    if fn then
+      fn(picker_opts or {})
     else
-      vim.notify("telescope.nvim is not available", vim.log.levels.WARN)
+      vim.notify("Snacks picker '" .. picker .. "' is not available", vim.log.levels.WARN)
     end
   end
 end
@@ -289,10 +290,10 @@ local function stub(msg)
 end
 
 local jump_actions = {
-  { key = "f", label = "find file",      hint = "SPC SPC", action = pick("find_files") },
-  { key = "/", label = "grep project",   hint = "SPC /",   action = pick("live_grep") },
+  { key = "f", label = "find file",      hint = "SPC SPC", action = pick("files") },
+  { key = "/", label = "grep project",   hint = "SPC /",   action = pick("grep") },
   { key = "n", label = "scratch buffer", hint = "n",       action = ":enew" },
-  { key = "r", label = "recent files",   hint = "r",       action = pick("oldfiles") },
+  { key = "r", label = "recent files",   hint = "r",       action = pick("recent") },
   -- SKELETON: no session plugin installed yet (handoff suggests folke/persistence.nvim)
   {
     key = "s",
@@ -300,12 +301,11 @@ local jump_actions = {
     hint = "s",
     action = stub("session restore is a stub — install folke/persistence.nvim")
   },
-  -- SKELETON: no projects picker yet (telescope-project, or snacks picker projects)
   {
     key = "p",
     label = "browse projects",
     hint = "p",
-    action = stub("projects is a stub — install a projects picker")
+    action = pick("projects")
   },
   {
     key = "g",
@@ -323,7 +323,7 @@ local jump_actions = {
     key = "c",
     label = "config",
     hint = "c",
-    action = pick("find_files", { cwd = vim.fn.stdpath("config") })
+    action = pick("files", { cwd = vim.fn.stdpath("config") })
   },
   { key = "L", label = "lazy", hint = "SPC L", action = ":Lazy" },
   { key = "q", label = "quit", hint = "q",     action = ":qa" },
@@ -801,18 +801,7 @@ local function swatches()
 end
 
 local function theme_pick()
-  local ok, builtin = pcall(require, "telescope.builtin")
-  if not ok then
-    return vim.notify("telescope.nvim is not available", vim.log.levels.WARN)
-  end
-  -- enable_preview live-applies each colorscheme as the selection moves (and
-  -- restores on cancel); the preview PANE would only echo buffer text, so use
-  -- a compact dropdown with the previewer hidden instead.
-  builtin.colorscheme(require("telescope.themes").get_dropdown({
-    enable_preview = true,
-    previewer = false,
-    ignore_builtins = true,
-  }))
+  Snacks.picker.colorschemes()
 end
 
 function modules.theme()

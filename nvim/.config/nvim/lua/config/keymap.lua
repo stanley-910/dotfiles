@@ -47,34 +47,6 @@ local function require_or_notify(module, plugin_name)
   return nil
 end
 
--- Build Telescope callbacks without requiring telescope at startup. If Telescope
--- ever gets removed/renamed, the keymap reports a useful warning instead of
--- throwing a Lua stack trace.
-local function telescope(picker, picker_opts)
-  return function()
-    local builtin = require_or_notify("telescope.builtin", "telescope.nvim")
-    if builtin then
-      builtin[picker](picker_opts or {})
-    end
-  end
-end
-
--- Same lazy callback shape for Snacks picker sources. Snacks owns symbol-tree
--- navigation; Telescope stays focused on files/grep for now.
-local function snacks_picker(picker, picker_opts)
-  return function()
-    local snacks = require_or_notify("snacks", "snacks.nvim")
-    local pickers = snacks and snacks.picker
-    local pick = pickers and pickers[picker]
-
-    if pick then
-      pick(picker_opts or {})
-    else
-      vim.notify("Snacks picker '" .. picker .. "' is not available", vim.log.levels.WARN)
-    end
-  end
-end
-
 -- Search for the current visual selection literally. Use scratch register z,
 -- restore it afterward, then seed the / search register with \V "very nomagic"
 -- text so punctuation in the selection is not treated as regex syntax.
@@ -237,8 +209,14 @@ end, opts("Open parent directory in Oil"))
 -- Find/search/navigation UI
 -- -----------------------------------------------------------------------------
 
-map({ "n", "v" }, "<leader><leader>", telescope("find_files"), opts("Find files"))
-map("n", "<leader>/", telescope("live_grep"), opts("Find in project"))
+-- local snacks = require("snacks")
+-- vim.print(snacks.picker)
+
+-- map({ "n", "v" }, "<leader><leader>", snacks_picker("files"), opts("Find files"))
+-- map("n", "<leader>/", snacks_picker("grep"), opts("Find in project"))
+-- map("n", "<leader>gl", snacks_picker("git_log"), opts("Git Grep"))
+-- map("n", "<leader>gd", snacks_picker("git_diff"), opts("Git Grep"))
+
 map("x", "/", visual_search_selection, opts("Search visual selection"))
 -- `:nohlsearch` hides current highlights without changing 'hlsearch', so the
 -- next search automatically highlights matches again. Keep that part as a raw
@@ -251,7 +229,7 @@ map("n", "<Esc>", "<cmd>nohlsearch<CR><cmd>CloseFloatingWindows<CR><cmd>FlashCle
 map("n", "<C-c>", "<cmd>nohlsearch<CR><cmd>CloseFloatingWindows<CR><cmd>FlashClear<CR>",
   opts("Clear search highlight, floats, and flash"))
 
-map("n", "gs", snacks_picker("lsp_symbols"), opts("Document symbols"))
+-- map("n", "gs", snacks_picker("lsp_symbols"), opts("Document symbols"))
 
 -- <leader>g* was unused when added; gitsigns currently owns <leader>h*.
 map({ "n", "x" }, "<leader>gb", function()
@@ -339,7 +317,7 @@ map("c", "<C-n>", "<Down>", opts("Command history next", { silent = false }))
 -- can display a real source buffer, so picker-local maps are not guaranteed to be
 -- present from the preview pane. A smart binding can call this first, handle the
 -- picker case, then fall back to its normal behavior.
----@diagnostic disable-next-line: unused-local
+---@diagnostic disable-next-line: unused-function, unused-local
 local function cycle_snacks_picker_window()
   local snacks = require_or_notify("snacks", "snacks.nvim")
   if not snacks or not snacks.picker or not snacks.picker.get then
@@ -366,15 +344,13 @@ local function cycle_snacks_picker_window()
   return false
 end
 
-map("n", "<M-b>", "evb", opts("Select previous word-ish"))
-map("x", "<M-b>", "b", opts("Extend to previous word"))
-map("i", "<M-b>", "<Esc>evb", opts("Select previous word-ish"))
-map("n", "<M-e>", "viw", opts("Select inner word"))
-map("x", "<M-e>", "e", opts("Extend to word end"))
+map({ "n", "i" }, "<M-w>", function()
+  if cycle_snacks_picker_window() then
+    return
+  end
 
--- x{motion} replacement is handled by gbprod/substitute.nvim. That keeps the
--- old xiw/xa" muscle memory while making any future text object work without
--- adding another explicit keymap here.
+  vim.cmd("wincmd w")
+end, opts("Cycle picker/window"))
 
 -- -----------------------------------------------------------------------------
 -- LSP and diagnostics
@@ -407,19 +383,56 @@ local function dap_action(action)
   end
 end
 
-map("n", "<leader>d", dap_action("continue"), opts("Debug continue/start"))
-map("n", "<leader>b", dap_action("toggle_breakpoint"), opts("Toggle breakpoint"))
-map("n", "<leader>R", dap_action("run_last"), opts("Rerun last debug session"))
-map("n", "<leader>Do", dap_action("step_over"), opts("Debug step over"))
-map("n", "<leader>Di", dap_action("step_into"), opts("Debug step into"))
-map("n", "<leader>Du", dap_action("step_out"), opts("Debug step out"))
-map("n", "<leader>Dt", dap_action("terminate"), opts("Debug terminate"))
-map("n", "<leader>Dr", function()
-  local dap = require_or_notify("dap", "nvim-dap")
-  if dap then
-    dap.repl.open()
+map("n", "<leader>dd", dap_action("continue"), opts("Debug continue/start"))
+map("n", "<leader>db", dap_action("toggle_breakpoint"), opts("Toggle breakpoint"))
+map("n", "<leader>dr", dap_action("run_last"), opts("Rerun last debug session"))
+-- map("n", "<leader>Do", dap_action("step_over"), opts("Debug step over"))
+-- map("n", "<leader>Di", dap_action("step_into"), opts("Debug step into"))
+-- map("n", "<leader>Du", dap_action("step_out"), opts("Debug step out"))
+-- map("n", "<leader>Dt", dap_action("terminate"), opts("Debug terminate"))
+-- map("n", "<leader>Dr", function()
+--   local dap = require_or_notify("dap", "nvim-dap")
+--   if dap then
+--     dap.repl.open()
+--   end
+-- end, opts("Debug REPL"))
+
+
+local function open_scratch_output(text)
+  vim.cmd("botright 12split")
+  vim.cmd("enew")
+
+  vim.bo.buftype = "nofile"
+  vim.bo.bufhidden = "wipe"
+  vim.bo.swapfile = false
+  vim.cmd.wincmd("L")
+
+  local lines = vim.split(text ~= "" and text or "(no output)", "\n", { plain = true })
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
+  vim.bo.modified = false
+end
+
+vim.api.nvim_create_user_command("LuaOutput", function(ctx)
+  local lua_cmd = ("%d,%dlua"):format(ctx.line1, ctx.line2)
+
+  local ok, result = pcall(vim.api.nvim_exec2, lua_cmd, { output = true })
+
+  if ok then
+    open_scratch_output(result.output)
+  else
+    open_scratch_output(result)
   end
-end, opts("Debug REPL"))
+end, { range = true })
 
 
-map("x", "<CR>", "c", opts("Change visual selection"))
+map("x", "<leader>r", cmd("'<,'>lua"), opts("run visual selection"))
+map("n", "<leader>r", cmd(".lua"), opts("run line"))
+
+
+map("x", "<leader>r", cmd("'<,'>LuaOutput"), opts("run visual selection to split"))
+map("n", "<leader>r", cmd(".LuaOutput"), opts("run line to split"))
+
+map("n", "<M-x>", "x", opts("delete char"))
+
+
+map("n", "<leader>bo", cmd("BufferOrderByBufferNumber"), opts("Order buffers/#"))

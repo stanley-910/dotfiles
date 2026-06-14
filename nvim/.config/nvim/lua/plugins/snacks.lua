@@ -12,9 +12,8 @@
 --
 -- KNOWN OVERLAPS with the current config — do NOT enable these without a plan:
 --   indent     -> already have lua/plugins/indent.lua
---   picker     -> telescope still owns files/grep; Snacks picker is enabled
---                 only for curated symbol navigation.
---   statuscolumn, notifier, input, explorer -> larger scope,
+--   picker     -> Snacks now owns files/grep/LSP picker flows.
+--   notifier, input, explorer -> larger scope,
 --                 some overlap dropbar/statusline; revisit later.
 --
 -- See: https://github.com/folke/snacks.nvim  (per-module docs under /docs)
@@ -31,7 +30,7 @@ return {
     -- huge/minified files stay responsive. Layers with treesitter.lua's 100 KiB
     -- highlight cap (that skips highlighting; this also blocks LSP attach).
     -- Knobs (defaults shown) — tweak to taste:
-    bigfile = {
+    bigfile      = {
       enabled = true,
       notify = true,            -- toast when big-file mode kicks in
       size = 1.5 * 1024 * 1024, -- trigger above 1.5 MB
@@ -43,7 +42,7 @@ return {
     -- not map it; ]] / [[ remain native section motions unless mapped elsewhere.
     -- Needs an attached LSP that supports textDocument/documentHighlight.
     -- Knobs (defaults shown):
-    words = {
+    words        = {
       enabled = true,
       debounce = 200,            -- ms before highlights update
       notify_jump = false,       -- toast on each jump
@@ -56,7 +55,7 @@ return {
     -- [3] indent: indent guides + animated current-scope guide. Replaces
     -- blink.indent (disabled in indent.lua) — only one may draw guides at a time.
     -- Scope detection uses treesitter when available, else indentation.
-    indent = {
+    indent       = {
       enabled = true,
       indent = {
         char = "▏", -- U+258F hairline; thinnest straight guide
@@ -81,6 +80,12 @@ return {
       },
     },
 
+    -- NOTE: Snacks.scope is a separate navigation module from indent.scope.
+    -- Enable it later if you want Snacks.scope.jump() for top/bottom/parent
+    -- indentation-scope jumps. Its defaults use [i / ]i, which currently belong
+    -- to Treesitter conditional motions in textobjects.lua, so choose new keys
+    -- or disable/remap those defaults before turning it on.
+
     -- [4] bufdelete: intentionally unused. It keeps windows/splits open after
     -- deleting a buffer, which conflicts with native <C-w>c muscle memory.
     -- Use native window close (:q / :close / <C-w>c) and explicit :bdelete.
@@ -89,7 +94,7 @@ return {
     -- finishes loading, so opening files feels instant. Pairs with bigfile.
     -- needs_setup, so enabled must be set. `exclude` lists treesitter langs to
     -- skip the early render for (latex's parser is slow/heavy by default).
-    quickfile = {
+    quickfile    = {
       enabled = true,
       exclude = { "latex" },
     },
@@ -98,7 +103,7 @@ return {
     -- browser (GitHub/GitLab/etc). Wired to <leader>gb in keymap.lua. Uses the
     -- default fallback chain: commit under cursor -> file line/range -> branch
     -- -> repo, depending on what information is available.
-    gitbrowse = {
+    gitbrowse    = {
       enabled = true,
     },
 
@@ -111,7 +116,7 @@ return {
     -- [8] scroll: smooth scrolling for normal/mouse scrolls while respecting
     -- scrolloff. No keymaps needed; it animates native scrolling commands.
     -- Defaults were a little floaty; keep it smooth but faster.
-    scroll = {
+    scroll       = {
       enabled = true,
       animate = {
         duration = { step = 8, total = 120 },
@@ -124,7 +129,26 @@ return {
       },
     },
 
-    -- [9] dashboard: "Ledger" start screen — modular two-pane layout from the
+    -- [9] statuscolumn: replace the default gutter with Snacks' composed
+    -- status column. It keeps native number/relativenumber behavior, pulls
+    -- regular signs/diagnostics/marks to the left, and Git/fold indicators to
+    -- the right. Fold icons only appear in windows where foldcolumn is nonzero.
+    -- See :help 'statuscolumn' and snacks.nvim-statuscolumn.
+    statuscolumn = {
+      enabled = true,
+      left = { "mark", "sign" },
+      right = { "fold", "git" },
+      folds = {
+        open = false,
+        git_hl = false,
+      },
+      git = {
+        patterns = { "GitSign", "MiniDiffSign" },
+      },
+      refresh = 50,
+    },
+
+    -- [10] dashboard: "Ledger" start screen — modular two-pane layout from the
     -- design handoff (pure typography, dot leaders, toggleable right-column
     -- modules). ALL layout/modules/keys live in lua/config/dashboard.lua;
     -- `sections` is a function so that file only loads when the dashboard
@@ -132,7 +156,7 @@ return {
     -- responsively per window (writing dash.opts.width) so the two 52-col panes
     -- (+6 gap ≈ the design's 110-col block) scale down instead of overflowing.
     -- snacks passes the dashboard instance to the section function — forward it.
-    dashboard = {
+    dashboard    = {
       enabled = true,
       width = 52,
       pane_gap = 6,
@@ -141,13 +165,57 @@ return {
       end,
     },
 
-    -- [10] picker: enable only the picker core so `gs` can use Snacks' tree
-    -- shaped LSP symbol view. Telescope remains the default for files/grep.
-    -- Keep `vim.ui.select` untouched for now; QuickBind has its own selection
-    -- flow and we do not want a global UI swap as a side effect of symbol nav.
-    picker = {
+    -- [11] picker: Snacks now owns files/grep/LSP picker flows plus vim.ui.select
+    -- so plugins using the generic selection API get the same picker UI.
+    picker       = {
       enabled = true,
-      ui_select = false,
+      ui_select = true,
+      actions = {
+        flash = function(picker)
+          require("flash").jump({
+            pattern = "^",
+            label = { after = { 0, 0 } },
+            search = {
+              mode = "search",
+              exclude = {
+                function(win)
+                  return vim.bo[vim.api.nvim_win_get_buf(win)].filetype ~= "snacks_picker_list"
+                end,
+              },
+            },
+            action = function(match)
+              local idx = picker.list:row2idx(match.pos[1])
+              picker.list:_move(idx, true, true)
+            end,
+          })
+        end,
+        trouble_open = function(picker)
+          require("trouble.sources.snacks").open(picker, { type = "smart" })
+        end,
+      },
+      win = {
+        input = {
+          keys = {
+            ["<C-s>"] = { "confirm", mode = { "i", "n" } },
+            -- Flash-jump to a visible picker row.
+            ["<a-s>"] = { "flash", mode = { "n", "i" } },
+
+            -- Only normal mode: don't steal literal "s" while typing in picker input.
+            ["s"] = { "flash", mode = "n" },
+
+            -- Send the current Snacks picker results to Trouble.
+            ["<C-t>"] = { "trouble_open", mode = { "i", "n" } },
+          },
+        },
+        list = {
+          keys = {
+            ["<C-s>"] = "confirm",
+            ["<C-t>"] = "trouble_open",
+            -- Useful if focus is in the result list instead of input.
+            ["s"] = "flash",
+          },
+        },
+      },
       sources = {
         lsp_symbols = {
           -- Show the nested outline instead of a flat fuzzy list, and keep the
@@ -157,8 +225,8 @@ return {
           keep_parents = true,
 
           -- Snacks' built-in `lsp_symbols` source uses a curated SymbolKind
-          -- allow-list. That is tidy, but it hid symbols that Telescope showed
-          -- during testing: TS/Lua language servers can report "function-like"
+          -- allow-list. That is tidy, but it hid symbols that previous picker
+          -- testing showed: TS/Lua language servers can report "function-like"
           -- code as Variable/Constant/Object depending on syntax. In TypeScript,
           -- arrow functions like `const foo = () => {}` commonly come back as
           -- SymbolKind.Variable, not SymbolKind.Function. `default = true` means
@@ -167,10 +235,99 @@ return {
           -- and without overriding it Lua would keep the curated list.
           filter = {
             default = true,
-            lua = true,
+            -- lua = true,
           },
         },
       },
     },
   },
+  keys = {
+    {
+      "<leader><space>",
+      function() Snacks.picker.smart() end,
+      desc = "Smart Find Files",
+      mode = { "n", "x" }
+    },
+    {
+      "<leader>,",
+      function() Snacks.picker.buffers() end,
+      desc = "Buffers",
+      mode = { "n", "x" }
+    },
+    {
+      "<leader>/",
+      function() Snacks.picker.grep() end,
+      desc = "Grep",
+      mode = { "n" }
+    },
+    {
+      "<leader>/",
+      function()
+        Snacks.picker.grep_word(
+          {
+            args = {} -- disable '-w' rg flag, want exact match
+          }
+        )
+      end,
+      desc = "Grep Selection",
+      mode = "x",
+    },
+    { "<leader>:",  function() Snacks.picker.command_history() end,                         desc = "Command History" },
+    { "<leader>n",  function() Snacks.picker.notifications() end,                           desc = "Notification History" },
+    { "<leader>e",  function() Snacks.explorer() end,                                       desc = "File Explorer" },
+    -- find
+    { "<leader>fb", function() Snacks.picker.buffers() end,                                 desc = "Buffers" },
+    { "<leader>fc", function() Snacks.picker.files({ cwd = vim.fn.stdpath("config") }) end, desc = "Find Config File" },
+    { "<leader>ff", function() Snacks.picker.files() end,                                   desc = "Find Files" },
+    { "<leader>fg", function() Snacks.picker.git_files() end,                               desc = "Find Git Files" },
+    { "<leader>fp", function() Snacks.picker.projects() end,                                desc = "Projects" },
+    { "<leader>fr", function() Snacks.picker.recent() end,                                  desc = "Recent" },
+    -- git
+    { "<leader>gb", function() Snacks.picker.git_branches() end,                            desc = "Git Branches" },
+    { "<leader>gl", function() Snacks.picker.git_log() end,                                 desc = "Git Log" },
+    { "<leader>gL", function() Snacks.picker.git_log_line() end,                            desc = "Git Log Line" },
+    { "<leader>gs", function() Snacks.picker.git_status() end,                              desc = "Git Status" },
+    { "<leader>gS", function() Snacks.picker.git_stash() end,                               desc = "Git Stash" },
+    { "<leader>gd", function() Snacks.picker.git_diff() end,                                desc = "Git Diff (Hunks)" },
+    { "<leader>gf", function() Snacks.picker.git_log_file() end,                            desc = "Git Log File" },
+    -- gh
+    { "<leader>gi", function() Snacks.picker.gh_issue() end,                                desc = "GitHub Issues (open)" },
+    { "<leader>gI", function() Snacks.picker.gh_issue({ state = "all" }) end,               desc = "GitHub Issues (all)" },
+    { "<leader>gp", function() Snacks.picker.gh_pr() end,                                   desc = "GitHub Pull Requests (open)" },
+    { "<leader>gP", function() Snacks.picker.gh_pr({ state = "all" }) end,                  desc = "GitHub Pull Requests (all)" },
+    -- Grep
+    { "<leader>sb", function() Snacks.picker.lines() end,                                   desc = "Buffer Lines" },
+    { "<leader>sB", function() Snacks.picker.grep_buffers() end,                            desc = "Grep Open Buffers" },
+    -- search
+    { '<leader>s"', function() Snacks.picker.registers() end,                               desc = "Registers" },
+    { '<leader>s/', function() Snacks.picker.search_history() end,                          desc = "Search History" },
+    { "<leader>sa", function() Snacks.picker.autocmds() end,                                desc = "Autocmds" },
+    { "<leader>sC", function() Snacks.picker.commands() end,                                desc = "Commands" },
+    { "<leader>sd", function() Snacks.picker.diagnostics() end,                             desc = "Diagnostics" },
+    { "<leader>sD", function() Snacks.picker.diagnostics_buffer() end,                      desc = "Buffer Diagnostics" },
+    { "<leader>sh", function() Snacks.picker.help() end,                                    desc = "Help Pages" },
+    { "<leader>sH", function() Snacks.picker.highlights() end,                              desc = "Highlights" },
+    { "<leader>si", function() Snacks.picker.icons() end,                                   desc = "Icons" },
+    { "<leader>sj", function() Snacks.picker.jumps() end,                                   desc = "Jumps" },
+    { "<leader>sk", function() Snacks.picker.keymaps() end,                                 desc = "Keymaps" },
+    { "<leader>sl", function() Snacks.picker.loclist() end,                                 desc = "Location List" },
+    { "<leader>sm", function() Snacks.picker.marks() end,                                   desc = "Marks" },
+    { "<leader>sM", function() Snacks.picker.man() end,                                     desc = "Man Pages" },
+    { "<leader>sp", function() Snacks.picker.lazy() end,                                    desc = "Search for Plugin Spec" },
+    { "<leader>sq", function() Snacks.picker.qflist() end,                                  desc = "Quickfix List" },
+    { "<leader>sR", function() Snacks.picker.resume() end,                                  desc = "Resume" },
+    { "<leader>su", function() Snacks.picker.undo() end,                                    desc = "Undo History" },
+    { "<leader>uC", function() Snacks.picker.colorschemes() end,                            desc = "Colorschemes" },
+    -- LSP
+    { "gd",         function() Snacks.picker.lsp_definitions() end,                         desc = "Goto Definition" },
+    { "gD",         function() Snacks.picker.lsp_declarations() end,                        desc = "Goto Declaration" },
+    { "grr",        function() Snacks.picker.lsp_references() end,                          nowait = true,                       desc = "References" },
+    { "gI",         function() Snacks.picker.lsp_implementations() end,                     desc = "Goto Implementation" },
+    { "gy",         function() Snacks.picker.lsp_type_definitions() end,                    desc = "Goto T[y]pe Definition" },
+    { "gai",        function() Snacks.picker.lsp_incoming_calls() end,                      desc = "C[a]lls Incoming" },
+    { "gao",        function() Snacks.picker.lsp_outgoing_calls() end,                      desc = "C[a]lls Outgoing" },
+    { "gs",         function() Snacks.picker.lsp_symbols() end,                             desc = "LSP Symbols" },
+    { "gS",         function() Snacks.picker.lsp_workspace_symbols() end,                   desc = "LSP Workspace Symbols" },
+
+  }
 }
