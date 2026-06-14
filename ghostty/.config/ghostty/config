@@ -3,7 +3,8 @@
 macos-titlebar-proxy-icon = hidden
 # theme = IC Orange PPL
 # theme = Tomorrow Night Bright
-theme = Black Metal (Bathory)
+# theme = Black Metal (Bathory)
+theme = TokyoNight Night
 
 window-padding-x = 6
 window-padding-balance = true
@@ -12,8 +13,9 @@ font-feature = -liga
 font-feature = -calt
 font-feature = -dlig
 macos-option-as-alt = true
-background-opacity = 0.95
-background-blur = true
+# background-opacity = 0.95
+# background-blur = false
+background-blur = false
 confirm-close-surface = false
 mouse-hide-while-typing = true
 
