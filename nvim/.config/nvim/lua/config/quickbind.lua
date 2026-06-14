@@ -18,6 +18,7 @@
 --   :h nvim_create_user_command()
 --   :h which-key.nvim-which-key-mappings
 
+-- TODO add support for :Command [arg] ie :CellularAutomation make_it_rain
 local M = {}
 
 local state = {
@@ -443,47 +444,47 @@ local function select_async(prompt, items, format_item)
     local action_state = require("telescope.actions.state")
 
     pickers
-      .new({}, {
-        prompt_title = prompt,
-        finder = finders.new_table({
-          results = items,
-          entry_maker = function(item)
-            local display = format_item and format_item(item) or tostring(item)
-            return {
-              value = item,
-              display = display,
-              ordinal = display,
-            }
-          end,
-        }),
-        sorter = conf.generic_sorter({}),
-        attach_mappings = function(prompt_bufnr, map)
-          local done = false
-          local function finish(value)
-            if done then
-              return
+        .new({}, {
+          prompt_title = prompt,
+          finder = finders.new_table({
+            results = items,
+            entry_maker = function(item)
+              local display = format_item and format_item(item) or tostring(item)
+              return {
+                value = item,
+                display = display,
+                ordinal = display,
+              }
+            end,
+          }),
+          sorter = conf.generic_sorter({}),
+          attach_mappings = function(prompt_bufnr, map)
+            local done = false
+            local function finish(value)
+              if done then
+                return
+              end
+              done = true
+              actions.close(prompt_bufnr)
+              resume(co, value)
             end
-            done = true
-            actions.close(prompt_bufnr)
-            resume(co, value)
-          end
 
-          actions.select_default:replace(function()
-            local entry = action_state.get_selected_entry()
-            finish(entry and entry.value or nil)
-          end)
+            actions.select_default:replace(function()
+              local entry = action_state.get_selected_entry()
+              finish(entry and entry.value or nil)
+            end)
 
-          map({ "i", "n" }, "<Esc>", function()
-            finish(nil)
-          end)
-          map({ "i", "n" }, "<C-c>", function()
-            finish(nil)
-          end)
+            map({ "i", "n" }, "<Esc>", function()
+              finish(nil)
+            end)
+            map({ "i", "n" }, "<C-c>", function()
+              finish(nil)
+            end)
 
-          return true
-        end,
-      })
-      :find()
+            return true
+          end,
+        })
+        :find()
 
     return coroutine.yield()
   end
@@ -682,7 +683,8 @@ function M.delete_bind()
     end
 
     local bind = select_async("Delete generated quickbind", data.binds, function(item)
-      return ("%-12s %-6s %s"):format(display_lhs(item.lhs), table.concat(mode_list(item), ""), item.desc or item.action or item.rhs)
+      return ("%-12s %-6s %s"):format(display_lhs(item.lhs), table.concat(mode_list(item), ""),
+        item.desc or item.action or item.rhs)
     end)
     if not bind then
       return
@@ -734,7 +736,7 @@ function M.bind(opts)
     end
 
     local action = #candidates == 1 and candidates[1]
-      or select_async("QuickBind: choose action", candidates, action_label)
+        or select_async("QuickBind: choose action", candidates, action_label)
     if not action then
       return
     end
@@ -779,9 +781,11 @@ function M.bind(opts)
     if #validation.exact > 0 and not opts.force then
       local summaries = {}
       for _, conflict in ipairs(validation.exact) do
-        summaries[#summaries + 1] = ("%s [%s] → %s"):format(display_lhs(conflict.lhs), conflict.mode, map_summary(conflict.mapping))
+        summaries[#summaries + 1] = ("%s [%s] → %s"):format(display_lhs(conflict.lhs), conflict.mode,
+          map_summary(conflict.mapping))
       end
-      local choice = confirm_async("Override existing mapping? " .. table.concat(summaries, "; "), { "Cancel", "Override" })
+      local choice = confirm_async("Override existing mapping? " .. table.concat(summaries, "; "),
+        { "Cancel", "Override" })
       if choice ~= "Override" then
         return
       end
@@ -791,7 +795,8 @@ function M.bind(opts)
     local groups = generated_group_map(data)
     for _, prefix in ipairs(group_prefixes(lhs)) do
       if not groups[prefix] then
-        local desc = input_async("Description for group " .. display_lhs(prefix) .. ": ", tokens(prefix)[#tokens(prefix)] or prefix)
+        local desc = input_async("Description for group " .. display_lhs(prefix) .. ": ",
+          tokens(prefix)[#tokens(prefix)] or prefix)
         if desc == nil then
           return
         end

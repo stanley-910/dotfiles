@@ -1,5 +1,6 @@
 require("config.options")
 require("config.keymap")
+require("config.commands")
 require("config.autocmds")
 require("config.reload")
 require("config.lazy")
@@ -36,7 +37,7 @@ end, { desc = 'Print the git blame for the current line' })
 -- 'updatetime' and when going to insert mode
 vim.cmd('packadd! nohlsearch')
 
--- default split options affect oil.nvim 
+-- default split options affect oil.nvim
 vim.opt.splitright = true
 
 -- remove EOB '~' characters

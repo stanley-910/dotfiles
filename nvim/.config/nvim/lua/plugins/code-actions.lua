@@ -33,6 +33,14 @@ return {
 
           -- Keep preview manual at first so it doesn't obscure context.
           -- Press K inside the picker to preview.
+          -- does this do anything?
+          -- picker = {
+          --   "snacks",
+          --   opts = {
+          --     layout = "vertical",
+          --   },
+          -- },
+
           auto_preview = false,
 
           winborder = "rounded",

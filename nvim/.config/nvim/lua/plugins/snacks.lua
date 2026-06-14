@@ -12,7 +12,8 @@
 --
 -- KNOWN OVERLAPS with the current config — do NOT enable these without a plan:
 --   indent     -> already have lua/plugins/indent.lua
---   picker     -> already have telescope.lua
+--   picker     -> telescope still owns files/grep; Snacks picker is enabled
+--                 only for curated symbol navigation.
 --   statuscolumn, notifier, input, explorer -> larger scope,
 --                 some overlap dropbar/statusline; revisit later.
 --
@@ -38,8 +39,9 @@ return {
     },
 
     -- [2] words: auto-highlights all LSP references of the symbol under the
-    -- cursor and navigates between them. Sets up ]] (next ref) / [[ (prev ref)
-    -- — you have no custom maps on those, so no conflict. Needs an attached LSP.
+    -- cursor. It exposes Snacks.words.jump(), but this config intentionally does
+    -- not map it; ]] / [[ remain native section motions unless mapped elsewhere.
+    -- Needs an attached LSP that supports textDocument/documentHighlight.
     -- Knobs (defaults shown):
     words = {
       enabled = true,
@@ -79,12 +81,9 @@ return {
       },
     },
 
-    -- [4] bufdelete: a pure library module (no setup/opts/enabled needed) — the
-    -- functions exist as soon as snacks loads. Wired into keymaps instead of an
-    -- opts block:
-    --   * <C-w>c / <C-w>C (keymap.lua)        -> snacks.bufdelete
-    --   * buffer.delete / buffer.only (quickbind) -> snacks.bufdelete[.other]
-    -- Deletes the buffer while keeping the window/split, unlike plain :bdelete.
+    -- [4] bufdelete: intentionally unused. It keeps windows/splits open after
+    -- deleting a buffer, which conflicts with native <C-w>c muscle memory.
+    -- Use native window close (:q / :close / <C-w>c) and explicit :bdelete.
 
     -- [5] quickfile: render a file's first screen BEFORE the full plugin stack
     -- finishes loading, so opening files feels instant. Pairs with bigfile.
@@ -103,7 +102,6 @@ return {
       enabled = true,
     },
 
-    -- TODO interesting thing here to handle: when doing rename of file in oil, like every single file opened in a buffer, however it did properly rename the places where it was modified ,just wish it ONLY opened those files
     -- [7] rename: a pure helper module (no setup/opts/enabled needed) for FILE
     -- renames, not symbol renames. Snacks.rename.rename_file() performs a file
     -- move and sends LSP workspace/willRenameFiles + didRenameFiles so imports
@@ -141,6 +139,38 @@ return {
       sections = function(dash)
         return require("config.dashboard").sections(dash)
       end,
+    },
+
+    -- [10] picker: enable only the picker core so `gs` can use Snacks' tree
+    -- shaped LSP symbol view. Telescope remains the default for files/grep.
+    -- Keep `vim.ui.select` untouched for now; QuickBind has its own selection
+    -- flow and we do not want a global UI swap as a side effect of symbol nav.
+    picker = {
+      enabled = true,
+      ui_select = false,
+      sources = {
+        lsp_symbols = {
+          -- Show the nested outline instead of a flat fuzzy list, and keep the
+          -- containing class/object/module visible while filtering so matches
+          -- still have code-structure context.
+          tree = true,
+          keep_parents = true,
+
+          -- Snacks' built-in `lsp_symbols` source uses a curated SymbolKind
+          -- allow-list. That is tidy, but it hid symbols that Telescope showed
+          -- during testing: TS/Lua language servers can report "function-like"
+          -- code as Variable/Constant/Object depending on syntax. In TypeScript,
+          -- arrow functions like `const foo = () => {}` commonly come back as
+          -- SymbolKind.Variable, not SymbolKind.Function. `default = true` means
+          -- "show every SymbolKind the LSP returns" for normal filetypes.
+          -- `lua = true` is explicit because Snacks ships a Lua-specific filter,
+          -- and without overriding it Lua would keep the curated list.
+          filter = {
+            default = true,
+            lua = true,
+          },
+        },
+      },
     },
   },
 }

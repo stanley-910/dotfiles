@@ -52,11 +52,11 @@ local function gitsigns(action)
   end
 end
 
-local function bufdelete(action)
-  return function()
-    local bd = require_or_notify("snacks.bufdelete", "snacks.nvim")
-    if bd then
-      bd[action or "delete"]()
+local function delete_other_buffers()
+  local current = vim.api.nvim_get_current_buf()
+  for _, buffer in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
+    if buffer.bufnr ~= current then
+      pcall(vim.api.nvim_buf_delete, buffer.bufnr, {})
     end
   end
 end
@@ -107,8 +107,8 @@ local function add_curated_actions(actions)
   -- Buffers/windows -------------------------------------------------------------
   add(actions, { id = "buffer.next", desc = "Next buffer", category = "buffers", rhs = cmd("bnext") })
   add(actions, { id = "buffer.prev", desc = "Previous buffer", category = "buffers", rhs = cmd("bprevious") })
-  add(actions, { id = "buffer.delete", desc = "Delete buffer", category = "buffers", rhs = bufdelete() })
-  add(actions, { id = "buffer.only", desc = "Delete other buffers", category = "buffers", rhs = bufdelete("other") })
+  add(actions, { id = "buffer.delete", desc = "Delete buffer", category = "buffers", rhs = cmd("bdelete") })
+  add(actions, { id = "buffer.only", desc = "Delete other buffers", category = "buffers", rhs = delete_other_buffers })
   add(actions, { id = "window.split", desc = "Split horizontally", category = "windows", rhs = cmd("split") })
   add(actions, { id = "window.vsplit", desc = "Split vertically", category = "windows", rhs = cmd("vsplit") })
   add(actions, { id = "window.close", desc = "Close window", category = "windows", rhs = cmd("close") })

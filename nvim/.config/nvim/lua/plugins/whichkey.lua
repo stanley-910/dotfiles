@@ -7,6 +7,7 @@ return {
     spec = {
       { "<leader>h", group = "git hunks" },
       { "<leader>c", group = "code / LSP" },
+      { "<leader>D", group = "debug" },
       { "<leader>x", group = "diagnostics (trouble)" },
       -- Bracket-motion prefixes are not under a leader, but can still be labeled:
       { "]", group = "next" },

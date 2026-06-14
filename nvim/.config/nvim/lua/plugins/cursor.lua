@@ -14,13 +14,23 @@ return {
 
     smear_between_buffers = false,
     smear_to_cmd = false,
-    smear_insert_mode = false,
+
+    smear_insert_mode = true,
+    stiffness_insert_mode = 0.9,
+    trailing_stiffness_insert_mode = 0.9,
+    damping_insert_mode = 0.95,
+
+
+
+
+
     -- Snacks already animates viewport scroll; draw cursor easing in screen
     -- space so motions that also scroll don't look like they lag behind text.
     scroll_buffer_space = false,
     particles_enabled = false,
     smear_terminal_mode = false,
     time_interval = 7, -- default 17ms
+
   },
 }
 

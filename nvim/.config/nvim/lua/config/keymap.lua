@@ -59,6 +59,22 @@ local function telescope(picker, picker_opts)
   end
 end
 
+-- Same lazy callback shape for Snacks picker sources. Snacks owns symbol-tree
+-- navigation; Telescope stays focused on files/grep for now.
+local function snacks_picker(picker, picker_opts)
+  return function()
+    local snacks = require_or_notify("snacks", "snacks.nvim")
+    local pickers = snacks and snacks.picker
+    local pick = pickers and pickers[picker]
+
+    if pick then
+      pick(picker_opts or {})
+    else
+      vim.notify("Snacks picker '" .. picker .. "' is not available", vim.log.levels.WARN)
+    end
+  end
+end
+
 -- Search for the current visual selection literally. Use scratch register z,
 -- restore it afterward, then seed the / search register with \V "very nomagic"
 -- text so punctuation in the selection is not treated as regex syntax.
@@ -164,16 +180,8 @@ vim.api.nvim_create_autocmd("FileType", {
 map("n", "<leader>v", cmd("vsplit"), opts("Split vertically"))
 map("n", "<Tab>", cmd("bnext"), opts("Next buffer"))
 map("n", "<S-Tab>", cmd("bprevious"), opts("Previous buffer"))
--- Native <C-w>c closes a window and errors with E444 in a single-window
--- buffer-cycling workflow. snacks.bufdelete deletes the buffer while KEEPING
--- the window/split (plain :bdelete would also close the split). Deferred in a
--- function so the module is resolved at press time.
-map("n", "<C-w>c", function()
-  require("snacks.bufdelete")()
-end, opts("Delete buffer (keep window)"))
-map("n", "<C-w>C", function()
-  require("snacks.bufdelete")()
-end, opts("Delete buffer (keep window)"))
+-- Keep native <C-w>c / <C-w>C behavior: close the current window/split.
+-- Buffer deletion belongs on explicit :bdelete / quickbind buffer actions.
 
 map({ "n", "i", "t" }, "<M-h>", "<C-\\><C-n><C-w>h", opts("Window left"))
 map({ "n", "i", "t" }, "<M-l>", "<C-\\><C-n><C-w>l", opts("Window right"))
@@ -243,7 +251,7 @@ map("n", "<Esc>", "<cmd>nohlsearch<CR><cmd>CloseFloatingWindows<CR><cmd>FlashCle
 map("n", "<C-c>", "<cmd>nohlsearch<CR><cmd>CloseFloatingWindows<CR><cmd>FlashClear<CR>",
   opts("Clear search highlight, floats, and flash"))
 
-map("n", "gs", telescope("lsp_document_symbols"), opts("Document symbols"))
+map("n", "gs", snacks_picker("lsp_symbols"), opts("Document symbols"))
 
 -- <leader>g* was unused when added; gitsigns currently owns <leader>h*.
 map({ "n", "x" }, "<leader>gb", function()
@@ -327,9 +335,37 @@ map("c", "<C-n>", "<Down>", opts("Command history next", { silent = false }))
 -- Selection/text-object muscle memory
 -- -----------------------------------------------------------------------------
 
-map("n", "<M-w>", "viw", opts("Select inner word"))
-map("x", "<M-w>", "w", opts("Extend to next word"))
-map("i", "<M-w>", "<Esc>viw", opts("Select inner word"))
+-- Picker-window detection helper kept for future smart bindings: Snacks previews
+-- can display a real source buffer, so picker-local maps are not guaranteed to be
+-- present from the preview pane. A smart binding can call this first, handle the
+-- picker case, then fall back to its normal behavior.
+---@diagnostic disable-next-line: unused-local
+local function cycle_snacks_picker_window()
+  local snacks = require_or_notify("snacks", "snacks.nvim")
+  if not snacks or not snacks.picker or not snacks.picker.get then
+    return false
+  end
+
+  local ok, actions = pcall(require, "snacks.picker.actions")
+  if not ok then
+    return false
+  end
+
+  local current_win = vim.api.nvim_get_current_win()
+  for _, picker in ipairs(snacks.picker.get()) do
+    local input_win = picker.input and picker.input.win and picker.input.win.win
+    local list_win = picker.list and picker.list.win and picker.list.win.win
+    local preview_win = picker.preview and picker.preview.win and picker.preview.win.win
+
+    if current_win == input_win or current_win == list_win or current_win == preview_win then
+      actions.cycle_win(picker)
+      return true
+    end
+  end
+
+  return false
+end
+
 map("n", "<M-b>", "evb", opts("Select previous word-ish"))
 map("x", "<M-b>", "b", opts("Extend to previous word"))
 map("i", "<M-b>", "<Esc>evb", opts("Select previous word-ish"))
@@ -353,29 +389,37 @@ map("n", "gy", vim.lsp.buf.type_definition, opts("Go to type definition"))
 
 
 -- Format/Lint
-map("n", "<leader>l", vim.lsp.buf.format, opts("Format buffer")) -- theres an issue with diagnostics not reattaching after I go back from normal mode to insert back to insert?
+vim.keymap.set('n', '<leader>l', function()
+  -- use conform when formatter available, but fallback to lsp when not
+  require('conform').format({ async = true, lsp_format = 'fallback' })
+end, { desc = 'Format file' })
 
 -- -----------------------------------------------------------------------------
--- Debugger placeholders: become real once nvim-dap/nvim-dap-python are installed.
+-- Debugger: core nvim-dap controls. UI/adapters are configured separately.
 -- -----------------------------------------------------------------------------
 
-map("n", "<leader>d", function()
-  local dap = require_or_notify("dap", "nvim-dap")
-  if dap then
-    dap.continue()
+local function dap_action(action)
+  return function()
+    local dap = require_or_notify("dap", "nvim-dap")
+    if dap then
+      dap[action]()
+    end
   end
-end, opts("Debug/continue"))
+end
 
-map("n", "<leader>b", function()
+map("n", "<leader>d", dap_action("continue"), opts("Debug continue/start"))
+map("n", "<leader>b", dap_action("toggle_breakpoint"), opts("Toggle breakpoint"))
+map("n", "<leader>R", dap_action("run_last"), opts("Rerun last debug session"))
+map("n", "<leader>Do", dap_action("step_over"), opts("Debug step over"))
+map("n", "<leader>Di", dap_action("step_into"), opts("Debug step into"))
+map("n", "<leader>Du", dap_action("step_out"), opts("Debug step out"))
+map("n", "<leader>Dt", dap_action("terminate"), opts("Debug terminate"))
+map("n", "<leader>Dr", function()
   local dap = require_or_notify("dap", "nvim-dap")
   if dap then
-    dap.toggle_breakpoint()
+    dap.repl.open()
   end
-end, opts("Toggle breakpoint"))
+end, opts("Debug REPL"))
 
-map("n", "<leader>R", function()
-  local dap = require_or_notify("dap", "nvim-dap")
-  if dap then
-    dap.run_last()
-  end
-end, opts("Rerun last debug session"))
+
+map("x", "<CR>", "c", opts("Change visual selection"))

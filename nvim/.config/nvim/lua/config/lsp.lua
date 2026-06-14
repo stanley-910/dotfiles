@@ -200,14 +200,6 @@ vim.api.nvim_create_autocmd("LspAttach", {
       desc = "References (Trouble)",
     })
 
-    vim.keymap.set("n", "gl", function()
-      show_diagnostic_float(event.buf, "line")
-    end, {
-      buffer = event.buf,
-      silent = true,
-      desc = "Show line diagnostics",
-    })
-
     vim.keymap.set("n", "]d", function()
       jump_diagnostic(1)
     end, {
@@ -231,3 +223,4 @@ vim.lsp.enable("basedpyright")
 vim.lsp.enable("ruff")
 vim.lsp.enable("vtsls")
 vim.lsp.enable('eslint')
+vim.lsp.enable('bashls')

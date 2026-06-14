@@ -2,6 +2,16 @@
 
 Personal Neovim configuration, stowed to `~/.config/nvim`.
 
+## System dependencies
+
+Install these outside Neovim before bootstrapping plugins:
+
+```sh
+brew install tree-sitter-cli
+```
+
+`nvim-treesitter` on the `main` branch requires the `tree-sitter` CLI to build parsers. The Homebrew `tree-sitter` formula only installs the library; the executable comes from `tree-sitter-cli`.
+
 ## QuickBind prototype
 
 `config.quickbind` is a prototype for Obsidian Spacekeys-style quick binding on top of Neovim keymaps and which-key.

@@ -49,7 +49,7 @@ vim.api.nvim_create_autocmd("ColorScheme", {
   end,
 })
 
--- When the last real buffer is deleted (<C-w>c, :bd, ...), nvim lands on an
+-- When the last real buffer is deleted (:bd, quickbind buffer.delete, ...), nvim lands on an
 -- empty [No Name] scratch window. Show the dashboard there instead, reusing
 -- that window/buffer the same way the startup path does. Scheduled because
 -- BufDelete fires BEFORE the buffer list updates.
@@ -61,10 +61,10 @@ vim.api.nvim_create_autocmd("BufDelete", {
       -- only act when we actually fell back to an empty, unnamed, unmodified
       -- normal buffer (not oil/terminal/help, not the dashboard itself)
       if
-        vim.bo.filetype ~= ""
-        or vim.bo.buftype ~= ""
-        or vim.api.nvim_buf_get_name(0) ~= ""
-        or vim.bo.modified
+          vim.bo.filetype ~= ""
+          or vim.bo.buftype ~= ""
+          or vim.api.nvim_buf_get_name(0) ~= ""
+          or vim.bo.modified
       then
         return
       end
@@ -72,7 +72,7 @@ vim.api.nvim_create_autocmd("BufDelete", {
         return b.name ~= "" or b.changed == 1
       end, vim.fn.getbufinfo({ buflisted = 1 }))
       if #listed == 0 and Snacks then
-        Snacks.dashboard.open({
+        Snacks.dashboard.open({ -- TODO undefined global snacks
           buf = vim.api.nvim_get_current_buf(),
           win = vim.api.nvim_get_current_win(),
         })
@@ -89,5 +89,32 @@ vim.api.nvim_create_autocmd("ColorScheme", {
   group = vim.api.nvim_create_augroup("LspReferenceNoUnderline", { clear = true }),
   callback = function()
     vim.api.nvim_set_hl(0, "LspReferenceWrite", { link = "LspReferenceText" })
+  end
+})
+
+
+-- :set ft? for help-pages
+--  filetype=help
+--  quitting help file doesn't close the buffer, prob cuz still open?, yeah :q isnt enough you need to close the buffer
+--  buffer nr is passed through event args
+--
+-- • id: (`number`) Autocommand id
+-- • event: (`vim.api.keyset.events`) Name of the triggered
+--   event |autocmd-events|
+-- • group: (`number?`) Group id, if any
+-- • file: (`string`) <afile> (not expanded to a full path)
+-- • match: (`string`) <amatch> (expanded to a full path) -- this is filepath
+-- • buf: (`number`) <abuf>
+-- • data: (`any`) Arbitrary data passed from
+-- :h FileType state: <amatch> is the new value of 'filetype'.
+
+vim.api.nvim_create_autocmd("FileType", {
+  group = group,
+  pattern = "help",
+  desc = "Show help pages as listed right splits",
+  callback = function(args)
+    -- :help already opened the help buffer in a window; move that window right.
+    vim.bo[args.buf].buflisted = true
+    vim.cmd.wincmd("L")
   end,
 })

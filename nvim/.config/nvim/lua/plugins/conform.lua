@@ -8,7 +8,10 @@ return {
       typescriptreact = { 'prettier' },
       json = { 'prettier' },
       html = { 'prettier' },
-      css = { 'prettier' }
+      css = { 'prettier' },
+      sh = { 'shfmt' },
+
+      python = { 'ruff_fix', 'ruff_format' }
     },
     format_on_save = {
       lsp_format = "fallback",

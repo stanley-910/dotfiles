@@ -1,26 +1,17 @@
 return {
   {
     'stevearc/oil.nvim',
-    init = function()
-      -- Tell LSP clients about file moves made in Oil so they can update imports.
-      -- This pairs Oil's filesystem UI with snacks.rename's LSP file-operation
-      -- notifications: workspace/willRenameFiles + workspace/didRenameFiles.
-      vim.api.nvim_create_autocmd("User", {
-        group = vim.api.nvim_create_augroup("OilSnacksRename", { clear = true }),
-        pattern = "OilActionsPost",
-        callback = function(event)
-          local rename = require("snacks.rename")
-          for _, action in ipairs((event.data and event.data.actions) or {}) do
-            if action.type == "move" then
-              rename.on_rename_file(action.src_url, action.dest_url)
-            end
-          end
-        end,
-      })
-    end,
     ---@module 'oil'
     ---@type oil.SetupOpts
     opts = {
+      -- Oil already sends workspace/willRenameFiles + workspace/didRenameFiles
+      -- for file moves. Keep this native path instead of also calling
+      -- snacks.rename from OilActionsPost, which duplicates rename notifications.
+      lsp_file_methods = {
+        enabled = true,
+        timeout_ms = 1000,
+        autosave_changes = "unmodified",
+      },
       win_options = {
         signcolumn = "yes:2",
       },
