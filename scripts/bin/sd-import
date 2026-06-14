@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# sd-import.sh — offload a Fujifilm SD card to a mounted drive, sorted by type.
+#
+#   $0 = script
+#   $1 = <sd_dcim_path>   e.g. /Volumes/FUJI64/DCIM
+#   $2 = <dest_root>      e.g. /Volumes/PhotoSSD/Photos
+#
+# Layout created on the drive:
+#   <dest_root>/<date-range>/RAW/     <- .RAF
+#   <dest_root>/<date-range>/media/   <- .JPG/.HIF + .MOV videos + .WAV voice memos
+#
+# Date range comes from EXIF DateTimeOriginal (real capture date), not mtime.
+# Copies (cp -pn) — never moves — so the card stays intact until you verify.
+# Targets macOS default bash 3.2: no mapfile, no negative array indices.
+
+# --- helpers ----------------------------------------------------------------
+
+die() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+# Print null-delimited paths under $src matching any of the given extensions.
+# usage: find_by_ext jpg jpeg mov   (case-insensitive)
+find_by_ext() {
+  local args=()
+  local e
+  for e in "$@"; do
+    args+=(-iname "*.$e" -o)
+  done
+  # drop the trailing -o so the -o group is well-formed
+  unset 'args[${#args[@]}-1]'
+  find "$src" -type f \( "${args[@]}" \) -print0
+}
+
+# Copy every file from find_by_ext into $1; echo how many files now live there.
+# usage: copy_into "$media_dir" jpg jpeg mov wav
+
+copy_into() {
+  local dest_dir=$1
+  shift
+  local f
+  while IFS= read -r -d '' f; do
+    # cp's output (incl. -v per-file lines) goes to stderr so it never
+    # pollutes the count we emit on stdout below.
+    cp "${cp_opts[@]}" "$f" "$dest_dir/" >&2
+  done < <(find_by_ext "$@")
+  # report truth from the destination, not the loop (idempotent across re-runs)
+  find "$dest_dir" -maxdepth 1 -type f | wc -l | tr -d ' '
+}
+
+# --- 0. args & preconditions ------------------------------------------------
+
+cp_opts=(-p -n) # preserve timestamps, never clobber
+while [[ ${1:-} == -* ]]; do
+  case $1 in
+    -v | --verbose) cp_opts+=(-v) ;; # cp prints "src -> dest" per file
+    -h | --help)
+      printf 'usage: %s [-v] <sd_dcim_path> <dest_root>\n' "$(basename "$0")"
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *) die "unknown option: $1" ;;
+  esac
+  shift
+done
+
+[[ $# -eq 2 ]] || die "usage: $(basename "$0") [-v] <sd_dcim_path> <dest_root>"
+
+src=$1
+dest_root=$2
+
+[[ -d $src ]] || die "source DCIM not a directory: $src"
+[[ -d $dest_root ]] || die "dest root not a directory: $dest_root"
+command -v exiftool >/dev/null 2>&1 || die "exiftool not found (brew install exiftool)"
+
+# --- 1. capture-date range from EXIF ----------------------------------------
+# Photos only (RAF/JPG/HIF) carry a reliable DateTimeOriginal.
+#   -r            recurse into 100_FUJI/, 101_FUJI/, ...
+#   -S -s         print the bare value, no tag label
+#   -d '%Y-%m-%d' format the date so it sorts lexicographically
+#   -q -q -m      quiet + ignore minor warnings
+printf 'Scanning EXIF capture dates...\n' >&2
+date_list=$(
+  exiftool -r -S -s -d '%Y-%m-%d' -DateTimeOriginal \
+    -ext RAF -ext JPG -ext HIF \
+    "$src" -q -q -m 2>/dev/null | sort -u
+)
+[[ -n $date_list ]] || die "no EXIF DateTimeOriginal found under $src"
+
+earliest=$(printf '%s\n' "$date_list" | head -n1)
+latest=$(printf '%s\n' "$date_list" | tail -n1)
+
+# --- 2. build destination folder --------------------------------------------
+if [[ $earliest == "$latest" ]]; then
+  folder=$earliest
+else
+  folder="${earliest}_to_${latest}"
+fi
+
+dest="$dest_root/$folder"
+raw_dir="$dest/RAW"
+media_dir="$dest/media"
+mkdir -p "$raw_dir" "$media_dir"
+
+# --- 3. sort files into place -----------------------------------------------
+printf 'Copying into %s ...\n' "$dest" >&2
+raw_n=$(copy_into "$raw_dir" raf)
+media_n=$(copy_into "$media_dir" jpg jpeg hif mov wav)
+
+# --- 4. summary -------------------------------------------------------------
+printf 'Imported %s  (%s RAW, %s media)  ->  %s\n' "$folder" "$raw_n" "$media_n" "$dest"
+printf 'Verify the copy before formatting the card in-camera.\n' >&2
