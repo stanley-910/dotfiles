@@ -21,7 +21,7 @@ return {
   dependencies = {
     "nvim-lua/plenary.nvim",            -- required: core utilities
     "MunifTanjim/nui.nvim",             -- required: UI components
-    "nvim-telescope/telescope.nvim",    -- picker provider (already in this config)
+    "folke/snacks.nvim",                -- picker provider
     "nvim-mini/mini.icons",             -- dashboard / file icons (Nerd Font)
   },
 
@@ -30,8 +30,8 @@ return {
     -- Solving language. Switch per-question at runtime with :Leet lang.
     lang = "python3",
 
-    -- Reuse the existing telescope install for problem/tab/lang pickers.
-    picker = { provider = "telescope" },
+    -- Reuse the existing Snacks picker install for problem/tab/lang pickers.
+    picker = { provider = "snacks-picker" },
 
     -- Standalone mode (the default) wants to own the whole Neovim session and
     -- refuses to start when listed buffers exist ("contains listed buffers").
