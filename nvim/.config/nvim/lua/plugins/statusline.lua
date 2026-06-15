@@ -41,6 +41,79 @@ return {
         },
       }
 
+      -- ── transient cmdline-replacement components ──────────────────────────
+      -- These three recover what the cmdline used to show now that cmdheight=0:
+
+      -- (1) search match count. After you press n/N or *, # the count normally
+      -- echoes to the (now absent) cmdline; searchcount() recovers "[3/12]".
+      -- Refreshes on CursorMoved (n/N/*/# all move the cursor), so no extra glue.
+      local searchcount = {
+        function()
+          local sc = vim.fn.searchcount({ maxcount = 999 })
+          if not sc.total or sc.total == 0 then
+            return ""
+          end
+          if sc.incomplete == 1 then -- recompute timed out
+            return "[?/?]"
+          end
+          return string.format("[%d/%d]", sc.current, sc.total)
+        end,
+        cond = function()
+          return vim.v.hlsearch == 1
+        end,
+        icon = "",
+        color = { fg = p.carpYellow },
+      }
+
+      -- (2) macro recording indicator. reg_recording() is "" unless recording.
+      local recording = {
+        function()
+          return "REC @" .. vim.fn.reg_recording()
+        end,
+        cond = function()
+          return vim.fn.reg_recording() ~= ""
+        end,
+        color = { fg = p.samuraiRed, gui = "bold" },
+      }
+
+      -- (3) active LSP clients attached to the current buffer.
+      local lsp = {
+        function()
+          local clients = vim.lsp.get_clients({ bufnr = 0 })
+          local names = {}
+          for _, c in ipairs(clients) do
+            names[#names + 1] = c.name
+          end
+          return table.concat(names, " ")
+        end,
+        cond = function()
+          return #vim.lsp.get_clients({ bufnr = 0 }) > 0
+        end,
+        icon = "",
+        color = { fg = p.springGreen },
+      }
+
+      -- FRAGILE SEAM: lualine does not redraw the statusline when a macro
+      -- recording starts/stops, so the REC indicator would lag up to the refresh
+      -- interval. Force an immediate refresh. RecordingLeave fires while
+      -- reg_recording() is STILL set, so defer one tick to read the cleared
+      -- value. Delete this block if a future nvim redraws on these events.
+      local rec_group = vim.api.nvim_create_augroup("LualineRecording", { clear = true })
+      vim.api.nvim_create_autocmd("RecordingEnter", {
+        group = rec_group,
+        callback = function()
+          require("lualine").refresh()
+        end,
+      })
+      vim.api.nvim_create_autocmd("RecordingLeave", {
+        group = rec_group,
+        callback = function()
+          vim.defer_fn(function()
+            require("lualine").refresh()
+          end, 50)
+        end,
+      })
+
       return {
         options = {
           theme = "kanagawa",
@@ -67,10 +140,17 @@ return {
             },
           },
           lualine_b = { "branch", "diff", "diagnostics" },
-          lualine_c = { { "filename", path = 1 } },
+          lualine_c = {
+            { "filename", path = 1 },
+            recording,
+            searchcount,
+            -- showcmd / pending operators, routed here by showcmdloc=statusline.
+            "%S",
+          },
           lualine_x = {
             -- "encoding",
             -- "fileformat",
+            lsp,
             {
               "filetype",
               fmt = function(filetype)

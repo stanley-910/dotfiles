@@ -47,4 +47,9 @@ vim.opt.wrap = false
 
 vim.opt.undofile = true -- save undotree per file after writing
 
-vim.opt.cmdheight = 1   -- dissapear the bottom blank line until cmd / search
+vim.opt.cmdheight = 0 -- reclaim the bottom row; cmdline appears only while typing : or /
+
+-- With cmdheight=0 there is no cmdline row to host the "showcmd" area (pending
+-- operators / partial commands like d, 3, "a). Route it into the statusline
+-- instead, where lualine renders it via the `%S` item. See :help 'showcmdloc'.
+vim.opt.showcmdloc = "statusline"
