@@ -44,12 +44,17 @@ return {
     -- Knobs (defaults shown):
     words        = {
       enabled = true,
-      debounce = 200,            -- ms before highlights update
+      -- Single debounce for ALL modes. CursorMovedI fires every keystroke, so a
+      -- larger value is what keeps insert mode from re-highlighting per char: the
+      -- timer resets on each keystroke and only runs document_highlight() once you
+      -- PAUSE for this long. Tradeoff: it also delays the normal-mode highlight by
+      -- the same amount, so don't crank it too high. Lower if normal mode feels laggy.
+      debounce = 500,            -- ms before highlights update (was 200)
       notify_jump = false,       -- toast on each jump
       notify_end = true,         -- toast when wrapping past the last ref
       foldopen = true,           -- open folds when jumping into them
       jumplist = true,           -- push a jumplist entry before jumping (so <C-o> returns)
-      modes = { "n", "i", "c" }, -- highlight references in these modes
+      modes = { "n", "v", "i" }, -- insert is back, but only fires after the debounce pause
     },
 
     -- [3] indent: indent guides + animated current-scope guide. Replaces

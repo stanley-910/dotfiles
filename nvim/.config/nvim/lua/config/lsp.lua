@@ -10,6 +10,10 @@ vim.diagnostic.config({
     },
   },
   underline = true,
+  -- true: refresh diagnostics live as you type (deliberate — preferred here).
+  -- This is just Neovim re-placing signs/underline; it does NOT involve noice.
+  -- The per-keystroke noice spam was its lsp.progress spinner, disabled in
+  -- noice.lua — a separate mechanism from this option.
   update_in_insert = true,
   virtual_text = false,
   virtual_lines = false,
