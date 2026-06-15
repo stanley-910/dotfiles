@@ -52,7 +52,42 @@ return {
           auto_insert = false,
         },
       },
-      documentation = { auto_show = false },
+      menu = {
+        -- Add a right-hand column spelling out the item KIND (Function, Module,
+        -- Constant, Snippet, …) next to the kind icon, so ambiguous icons (e.g.
+        -- Function/Method and Class/Struct/Interface share a glyph) are readable.
+        -- Default columns are { {'kind_icon'}, {'label','label_description'} }.
+        draw = {
+          columns = {
+            { "kind_icon" },
+            { "label", "label_description", gap = 1 },
+            { "kind" },
+          },
+        },
+      },
+      documentation = {
+        auto_show = true,
+        -- Wait 500ms on an item before popping docs, so the window doesn't
+        -- flicker in/out while arrowing quickly through the list.
+        auto_show_delay_ms = 500,
+        -- Match native LSP hover's frame (config/lsp.lua uses border="rounded").
+        window = { border = "rounded" },
+
+        -- NOTE: this docs window won't fully match native `K` hover, on purpose.
+        -- blink hand-rolls its treesitter highlighting (lib/window/docs.lua) and
+        -- only honors per-node `conceal`, NOT `conceal_lines`. Modern markdown
+        -- hides code-fence lines (```lang) via `conceal_lines`
+        -- (runtime/queries/markdown/highlights.scm), so blink shows the ``` and
+        -- language as literal text where native hover (Neovim's real
+        -- vim.treesitter highlighter) hides them.
+        --
+        -- A custom `draw` that builds the buffer with blink off and then attaches
+        -- the real highlighter (vim.treesitter.start(buf,"markdown")) DOES fix
+        -- it, but it reaches into blink internals (default_implementation, the
+        -- reused docs buffer) and is too fragile to keep. Revisit if blink gains
+        -- native conceal_lines support, or re-add the draw if the look matters
+        -- more than the fragility.
+      },
     },
 
     -- Command-line completion should open while typing commands. <C-j>/<C-k>
