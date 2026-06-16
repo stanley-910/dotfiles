@@ -14,7 +14,11 @@ return {
     "folke/flash.nvim",
     event = "VeryLazy",
     ---@type Flash.Config
-    opts = {},
+    opts = {
+      prompt = {
+        prefix = { { "󰌌", "FlashPromptIcon" } }, -- Replace with your preferred nerd icon
+      },
+    },
     keys = {
       { "s",       mode = { "n", "x", "o" }, function() require("flash").jump() end,              desc = "Flash" },
       { "S",       mode = { "n", "x", "o" }, function() require("flash").treesitter() end,        desc = "Flash Treesitter" },

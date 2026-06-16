@@ -6,6 +6,7 @@ local filetype_labels = {
 return {
   {
     "nvim-lualine/lualine.nvim",
+    event = "VeryLazy",
     dependencies = { "nvim-mini/mini.icons" },
     -- opts is a function (not a table) because the dashboard extension below
     -- resolves kanagawa palette colors at load time — kanagawa is in the rtp

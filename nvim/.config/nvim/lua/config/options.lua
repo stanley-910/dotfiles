@@ -53,3 +53,16 @@ vim.opt.cmdheight = 0 -- reclaim the bottom row; cmdline appears only while typi
 -- operators / partial commands like d, 3, "a). Route it into the statusline
 -- instead, where lualine renders it via the `%S` item. See :help 'showcmdloc'.
 vim.opt.showcmdloc = "statusline"
+
+-- Folding by treesitter syntax tree: functions, classes/tables, and block
+-- statements (if/for/while) each become a fold. Toggle the fold under the
+-- cursor with `za` (`zR`/`zM` open/close all). foldlevelstart=99 means files
+-- open fully UNFOLDED — you fold on demand rather than fighting closed folds on
+-- every open. foldcolumn="1" draws the (clickable) fold arrows that feed the
+-- "fold" component of the Snacks statuscolumn (lua/plugins/snacks.lua [12]);
+-- without a nonzero foldcolumn those arrows never render.
+-- See :help fold-expr and :help vim.treesitter.foldexpr().
+vim.opt.foldmethod = "expr"
+vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+vim.opt.foldlevelstart = 99
+vim.opt.foldcolumn = "1"

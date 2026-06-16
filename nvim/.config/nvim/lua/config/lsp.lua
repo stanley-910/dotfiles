@@ -1,14 +1,11 @@
 local lsp_group = vim.api.nvim_create_augroup("UserLspConfig", { clear = true })
 
 vim.diagnostic.config({
-  signs = {
-    text = {
-      [vim.diagnostic.severity.ERROR] = " ",
-      [vim.diagnostic.severity.WARN] = " ",
-      [vim.diagnostic.severity.INFO] = " ",
-      [vim.diagnostic.severity.HINT] = "󰌵 ",
-    },
-  },
+  -- No diagnostic signs in the gutter. NOTE: a table value here (even with an
+  -- empty `text`) keeps the sign handler ENABLED, so commenting out the glyphs
+  -- alone does not disable signs — `false` does. Severity still reads via the
+  -- `underline` below and the K hover/float.
+  signs = false,
   underline = true,
   -- true: refresh diagnostics live as you type (deliberate — preferred here).
   -- This is just Neovim re-placing signs/underline; it does NOT involve noice.

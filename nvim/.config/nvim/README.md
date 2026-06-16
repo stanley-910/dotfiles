@@ -12,6 +12,50 @@ brew install tree-sitter-cli
 
 `nvim-treesitter` on the `main` branch requires the `tree-sitter` CLI to build parsers. The Homebrew `tree-sitter` formula only installs the library; the executable comes from `tree-sitter-cli`.
 
+## Project sessions
+
+`config.sessions` is a small native-session wrapper around `:mksession`, wired from `init.lua` and the dashboard's `s` action.
+
+Behavior:
+
+- Autosave starts disabled for each Neovim instance, so quick edits do not overwrite a saved workspace.
+- `:SessionLoad`, `:SessionSelect`, dashboard `s`, and `:SessionSave` mark a session active; active sessions autosave on `VimLeavePre` when at least one normal file buffer is open.
+- `:SessionStop` disables autosave again for the current Neovim instance.
+- In git repos, the session key is `git root + branch`, so launching from a subdirectory still targets the repo-level branch session once a session is explicitly loaded or saved.
+- Outside git repos, the session key is the current working directory.
+- Session files live under `stdpath("state") .. "/sessions"` as `<sha>.vim` plus `<sha>.json` metadata.
+- Reopening the same git root/branch updates the same session files; stale sessions mainly come from deleted roots, deleted branches, moved projects, or orphaned metadata.
+- `:SessionSelect` opens a custom Snacks picker. `<CR>` switches to a session, `<C-d>`/`dd` deletes selected sessions, and `<C-p>`/`p` prunes stale sessions.
+- Switching sessions first prompts to save each modified normal file buffer. Modified scratch/special buffers cancel the switch because they do not have a normal file write path.
+- If the target session is another branch in the same dirty worktree, session switching opens an existing worktree for that branch or offers to create one under `~/Developer/worktrees`.
+
+Commands:
+
+```vim
+:SessionSave     " save the current git-root/branch or cwd session and enable autosave
+:SessionSelect   " open the Snacks session picker and enable autosave after restore
+:SessionLoad     " restore the session detected for the current git-root/branch or cwd and enable autosave
+:SessionStop     " disable autosave for this Neovim instance
+:SessionPrune    " prompt to remove stale sessions
+:SessionPrune!   " prune stale sessions without prompting
+```
+
+To bypass the dashboard and restore the detected session on startup, use a startup command instead of `-s` (`-s` is already Neovim's script-input flag):
+
+```sh
+nvim +SessionLoad
+```
+
+Useful doc anchors:
+
+```vim
+:help :mksession
+:help 'sessionoptions'
+:help v:this_session
+:help vim.fs.root()
+:help Snacks.picker.pick()
+```
+
 ## QuickBind prototype
 
 `config.quickbind` is a prototype for Obsidian Spacekeys-style quick binding on top of Neovim keymaps and which-key.

@@ -7,9 +7,7 @@ return {
       -- on-demand, fuller blame/history view, while gitsigns still owns signs,
       -- hunk navigation, staging/resetting, and the optional inline-blame toggle.
       current_line_blame = true,
-      current_line_blame_opts = {
-        delay = 0,
-      },
+      current_line_blame_opts = { delay = 0 },
       on_attach = function(bufnr)
         local gitsigns = require("gitsigns")
 

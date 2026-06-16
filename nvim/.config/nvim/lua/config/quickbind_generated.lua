@@ -6,12 +6,12 @@
 return {
   version = 1,
   groups = {
-    { lhs = "<leader>g", desc = "go" },
+    { lhs = "<leader>b", desc = "buffer" },
   },
   binds = {
-    { lhs = "<leader>L",     modes = { "n", "x" }, action = "command.Lazy",       desc = "Lazy" },
-    { lhs = "<leader>gh",    modes = { "n", "x" }, action = "command.Dashboard",  desc = "Dashboard" },
+    { lhs = "<leader>L", modes = { "n", "x" }, action = "command.Lazy", desc = "Lazy" },
     { lhs = "<leader><tab>", modes = { "n", "x" }, action = "command.BufferPick", desc = "BufferPick" },
-    { lhs = "<leader>-",     modes = { "n", "x" }, action = "command.Restart",    desc = "Restart Neovim" },
+    { lhs = "<leader>-", modes = { "n", "x" }, action = "command.Restart", desc = "Restart Neovim" },
+    { lhs = "<leader>bd", mode = "n", action = "command.BufferClose", desc = "BufferClose" },
   },
 }

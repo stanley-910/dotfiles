@@ -1,35 +1,65 @@
+-- Normal-mode <C-a>/<C-x> only flip a value at or to the RIGHT of the cursor
+-- (same as native Vim). Parking the cursor at end-of-line usually lands it on a
+-- trailing "," / ";" / ")" / "}", leaving the actual value just to the LEFT, so
+-- nothing flips. This wrapper runs dial as usual and ONLY when nothing changed
+-- (vim.b.changedtick is the "a flip happened" signal) steps the cursor left over
+-- the trailing run of whitespace/punctuation onto the value's last char and
+-- retries once. If there was still nothing to flip, the original cursor is
+-- restored. Because it acts solely on a no-op, cursor-on-value behavior is
+-- untouched — this only RESCUES the previously-dead end-of-line case. (count is
+-- captured up front and passed explicitly so g<C-a>'s count survives the second
+-- call.) Visual-mode maps below keep dial's own range and skip this.
+local function dial(direction, mode)
+  return function()
+    local manipulate = require("dial.map").manipulate
+    local count = vim.v.count1
+    local tick = vim.b.changedtick
+    manipulate(direction, mode, nil, count)
+    if vim.b.changedtick ~= tick then
+      return
+    end
+    local pos = vim.api.nvim_win_get_cursor(0) -- { row, 0-based col }
+    local line = vim.api.nvim_get_current_line()
+    local col = pos[2]
+    -- char under cursor is line:sub(col + 1, col + 1); walk left over the
+    -- trailing whitespace/punctuation to the end of the preceding value.
+    while col > 0 and line:sub(col + 1, col + 1):match("[%s%p]") do
+      col = col - 1
+    end
+    if col ~= pos[2] then
+      vim.api.nvim_win_set_cursor(0, { pos[1], col })
+      manipulate(direction, mode, nil, count)
+    end
+    if vim.b.changedtick == tick then
+      vim.api.nvim_win_set_cursor(0, pos)
+    end
+  end
+end
+
 return {
   "monaqa/dial.nvim",
   keys = {
     {
       "<C-a>",
-      function()
-        require("dial.map").manipulate("increment", "normal")
-      end,
+      dial("increment", "normal"),
       mode = "n",
       desc = "Increment smart value",
     },
     {
       "<C-x>",
-      function()
-        require("dial.map").manipulate("decrement", "normal")
-      end,
+      dial("decrement", "normal"),
       mode = "n",
       desc = "Decrement smart value",
     },
     {
       "g<C-a>",
-      function()
-        require("dial.map").manipulate("increment", "gnormal")
-      end,
+      dial("increment", "gnormal"),
       mode = "n",
       desc = "Increment smart value with count",
     },
     {
       "g<C-x>",
-      function()
-        require("dial.map").manipulate("decrement", "gnormal")
-      end,
+      dial("decrement", "gnormal"),
       mode = "n",
       desc = "Decrement smart value with count",
     },

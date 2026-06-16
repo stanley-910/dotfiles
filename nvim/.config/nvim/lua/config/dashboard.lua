@@ -16,7 +16,6 @@
 -- count so the layout never reflows.
 --
 -- SKELETONS (wired but waiting on infrastructure — see each site):
---   * jump `s` restore session  -> needs a session plugin (folke/persistence.nvim)
 --   * jump `p` browse projects  -> needs a projects picker
 --   * jump `g` lazygit          -> needs the lazygit binary (brew install lazygit)
 --   * github module             -> gh auth for live contribution heatmap/stats
@@ -294,12 +293,13 @@ local jump_actions = {
   { key = "/", label = "grep project",   hint = "SPC /",   action = pick("grep") },
   { key = "n", label = "scratch buffer", hint = "n",       action = ":enew" },
   { key = "r", label = "recent files",   hint = "r",       action = pick("recent") },
-  -- SKELETON: no session plugin installed yet (handoff suggests folke/persistence.nvim)
   {
     key = "s",
     label = "restore session",
     hint = "s",
-    action = stub("session restore is a stub — install folke/persistence.nvim")
+    action = function()
+      require("config.sessions").select()
+    end,
   },
   {
     key = "p",
@@ -313,7 +313,13 @@ local jump_actions = {
     hint = "g",
     action = function()
       if vim.fn.executable("lazygit") == 1 then
-        Snacks.lazygit()
+        Snacks.lazygit({
+          win = {
+            position = "float",
+            width = 0.95,
+            height = 0.95,
+          },
+        })
       else
         stub("lazygit binary not found — brew install lazygit")()
       end
@@ -1284,6 +1290,15 @@ local function lock_mouse_scroll(buf)
   end
 end
 
+-- vim.wo[win] assignments write with DEFAULT scope, which for a window-local
+-- option ALSO overwrites the global default. snacks parks its statuscolumn
+-- expression in that global default (vim.o.statuscolumn), so any chrome written
+-- through vim.wo[win] wipes it for the whole session and the gutter falls back
+-- to native signs. Always scope dashboard chrome writes to the target window.
+local function wlocal(win, opt, value)
+  pcall(vim.api.nvim_set_option_value, opt, value, { scope = "local", win = win })
+end
+
 local function save_win_chrome(win)
   if not vim.api.nvim_win_is_valid(win) or saved_winopts[win] then
     return
@@ -1308,10 +1323,13 @@ local function restore_win_chrome(win)
   end
 
   if vim.api.nvim_win_is_valid(win) then
-    local wo = vim.wo[win]
     for opt, value in pairs(saved_winopts[win] or normal_winopts) do
-      wo[opt] = value
+      wlocal(win, opt, value)
     end
+    -- statuscolumn must follow the live GLOBAL default (snacks owns it). The
+    -- per-window "" used for the dashboard would otherwise leave the editing
+    -- window with a native gutter — git on the left instead of the snacks column.
+    wlocal(win, "statuscolumn", vim.go.statuscolumn)
   end
   dashboard_wins[win] = nil
   saved_winopts[win] = nil
@@ -1337,12 +1355,11 @@ local function apply_chrome()
     if vim.bo[buf].filetype == "snacks_dashboard" then
       lock_mouse_scroll(buf)
       mark_dashboard_win(win)
-      local wo = vim.wo[win]
-      wo.number = false
-      wo.relativenumber = false
-      wo.statuscolumn = ""
-      wo.signcolumn = "no"
-      wo.foldcolumn = "0"
+      wlocal(win, "number", false)
+      wlocal(win, "relativenumber", false)
+      wlocal(win, "statuscolumn", "")
+      wlocal(win, "signcolumn", "no")
+      wlocal(win, "foldcolumn", "0")
     end
   end
 end

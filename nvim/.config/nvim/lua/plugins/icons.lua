@@ -1,12 +1,6 @@
 return {
   {
-    "nvim-mini/mini.icons",
+    "nvim-tree/nvim-web-devicons",
     opts = {},
-    config = function(_, opts)
-      local icons = require("mini.icons")
-
-      icons.setup(opts)
-      icons.mock_nvim_web_devicons()
-    end,
   },
 }

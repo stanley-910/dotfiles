@@ -170,33 +170,10 @@ map("x", "<M-k>", ":m '<-2<CR>gv=gv", opts("Move selection up"))
 
 map("t", "<Esc>", "<C-\\><C-n>", opts("Terminal normal mode"))
 
--- Terminal toggle state:
---   bufnr remembers the terminal buffer/process so reopening keeps the same shell.
---   winid remembers the visible split so the next toggle can close only that window.
-local terminal = { bufnr = nil, winid = nil }
-
-local function toggle_terminal()
-  if terminal.winid and vim.api.nvim_win_is_valid(terminal.winid) then
-    vim.api.nvim_win_close(terminal.winid, true)
-    terminal.winid = nil
-    return
-  end
-
-  vim.cmd("botright split")
-  terminal.winid = vim.api.nvim_get_current_win()
-  vim.api.nvim_win_set_height(terminal.winid, 12)
-
-  if terminal.bufnr and vim.api.nvim_buf_is_valid(terminal.bufnr) then
-    vim.api.nvim_win_set_buf(terminal.winid, terminal.bufnr)
-  else
-    vim.cmd("terminal")
-    terminal.bufnr = vim.api.nvim_get_current_buf()
-  end
-
-  vim.cmd("startinsert")
-end
-
-map({ "n", "t" }, "<M-/>", toggle_terminal, opts("Toggle terminal"))
+-- Terminal toggle (<M-/>) now lives in lua/plugins/snacks.lua via
+-- Snacks.terminal.toggle(). The global single-<Esc> map above still governs
+-- native/dap terminals; inside snacks terminals the buffer-local double-<Esc>
+-- takes precedence (single <Esc> passes through to the running TUI).
 
 map("n", "-", function()
   local oil = require_or_notify("oil", "oil.nvim")
@@ -229,12 +206,7 @@ map("n", "<Esc>", "<cmd>nohlsearch<CR><cmd>CloseFloatingWindows<CR><cmd>FlashCle
 map("n", "<C-c>", "<cmd>nohlsearch<CR><cmd>CloseFloatingWindows<CR><cmd>FlashClear<CR>",
   opts("Clear search highlight, floats, and flash"))
 
--- map("n", "gs", snacks_picker("lsp_symbols"), opts("Document symbols"))
-
--- <leader>g* was unused when added; gitsigns currently owns <leader>h*.
-map({ "n", "x" }, "<leader>gb", function()
-  require("snacks.gitbrowse")()
-end, opts("Open git URL in browser"))
+-- Snacks picker/gitbrowse owns <leader>g* maps in lua/plugins/snacks.lua.
 
 -- -----------------------------------------------------------------------------
 -- Editing
@@ -257,7 +229,7 @@ map("n", "<C-CR>", "viw", opts("Select inner word"))
 
 vim.api.nvim_create_autocmd("CmdwinEnter", {
   group = keymap_group,
-  callback = function(event)
+  callback = function(_)
     -- The command-line window uses normal mode, so the global <CR> -> ciw map
     -- would otherwise block executing history entries. Restore cmdwin's native
     -- <CR> behavior only for this special buffer. See :help cmdwin.
@@ -356,13 +328,7 @@ end, opts("Cycle picker/window"))
 -- LSP and diagnostics
 -- -----------------------------------------------------------------------------
 
-map("n", "gD", function()
-  vim.cmd("vsplit")
-  vim.lsp.buf.declaration()
-end, opts("Declaration in vertical split"))
-map("n", "gI", vim.lsp.buf.implementation, opts("Go to implementation"))
-map("n", "gy", vim.lsp.buf.type_definition, opts("Go to type definition"))
-
+-- Snacks picker owns gd/gD/gI/gy/grr/gs/gS in lua/plugins/snacks.lua.
 
 -- Format/Lint
 vim.keymap.set('n', '<leader>l', function()
@@ -383,20 +349,56 @@ local function dap_action(action)
   end
 end
 
-map("n", "<leader>dd", dap_action("continue"), opts("Debug continue/start"))
-map("n", "<leader>db", dap_action("toggle_breakpoint"), opts("Toggle breakpoint"))
-map("n", "<leader>dr", dap_action("run_last"), opts("Rerun last debug session"))
--- map("n", "<leader>Do", dap_action("step_over"), opts("Debug step over"))
--- map("n", "<leader>Di", dap_action("step_into"), opts("Debug step into"))
--- map("n", "<leader>Du", dap_action("step_out"), opts("Debug step out"))
--- map("n", "<leader>Dt", dap_action("terminate"), opts("Debug terminate"))
--- map("n", "<leader>Dr", function()
---   local dap = require_or_notify("dap", "nvim-dap")
---   if dap then
---     dap.repl.open()
---   end
--- end, opts("Debug REPL"))
+local function dap_view_action(action)
+  return function()
+    local dap_view = require_or_notify("dap-view", "nvim-dap-view")
+    if dap_view then
+      dap_view[action]()
+    end
+  end
+end
 
+local function dap_breakpoints()
+  return require("config.dap_breakpoints")
+end
+
+local function set_repeat(plug)
+  -- repeat.vim exposes repeat#set as an autoload function; calling it once is
+  -- what loads it, so exists('*repeat#set') is false before the first call.
+  pcall(vim.fn["repeat#set"], vim.keycode(plug), vim.v.count)
+end
+
+vim.keymap.set("n", "<Plug>(dap-toggle-breakpoint)", function()
+  dap_breakpoints().toggle()
+  set_repeat("<Plug>(dap-toggle-breakpoint)")
+end, { silent = true, desc = "Toggle breakpoint" })
+
+map("n", "<leader>dd", dap_action("continue"), opts("Debug continue/start"))
+map("n", "<leader>db", "<Plug>(dap-toggle-breakpoint)", opts("Toggle breakpoint", { remap = true }))
+map("n", "<leader>dc", function()
+  dap_breakpoints().set_conditional()
+end, opts("Set conditional breakpoint"))
+map("n", "<leader>dH", function()
+  dap_breakpoints().set_hit_condition()
+end, opts("Set breakpoint hit condition"))
+map("n", "<leader>dl", function()
+  dap_breakpoints().set_log_point()
+end, opts("Set logpoint"))
+map("n", "<leader>d?", function()
+  dap_breakpoints().inspect_current()
+end, opts("Inspect breakpoint"))
+map("n", "<leader>dr", dap_action("run_last"), opts("Rerun last debug session"))
+map("n", "<leader>dU", dap_view_action("toggle"), opts("Toggle debug UI"))
+
+map("n", "]b", function()
+  dap_breakpoints().jump(1)
+end, opts("Next breakpoint"))
+map("n", "[b", function()
+  dap_breakpoints().jump(-1)
+end, opts("Previous breakpoint"))
+map("n", "<leader>dB", function()
+  dap_breakpoints().pick()
+end, opts("Search debug breakpoints"))
 
 local function open_scratch_output(text)
   vim.cmd("botright 12split")
@@ -425,14 +427,12 @@ vim.api.nvim_create_user_command("LuaOutput", function(ctx)
 end, { range = true })
 
 
-map("x", "<leader>r", cmd("'<,'>lua"), opts("run visual selection"))
-map("n", "<leader>r", cmd(".lua"), opts("run line"))
-
-
 map("x", "<leader>r", cmd("'<,'>LuaOutput"), opts("run visual selection to split"))
 map("n", "<leader>r", cmd(".LuaOutput"), opts("run line to split"))
 
 map("n", "<M-x>", "x", opts("delete char"))
+
+map("n", "<leader>qa", cmd("qall"), opts("quit session"))
 
 
 map("n", "<leader>bo", cmd("BufferOrderByBufferNumber"), opts("Order buffers/#"))

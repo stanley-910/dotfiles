@@ -11,6 +11,20 @@ return {
         dark = "wave",
         light = "lotus",
       },
+      -- Flatten the gutter into the editor background: remap the wave bg_gutter
+      -- slot (#2A2A37 -> Normal bg #1F1F28). This covers SignColumn, LineNr,
+      -- CursorLineNr, FoldColumn AND the git/diff signs (GitSigns*, MiniDiffSign*)
+      -- which all share bg_gutter. Cosmetic bg_p1 groups (ColorColumn, Folded,
+      -- QuickFixLine, TabLineSel) keep their tint.
+      colors = {
+        theme = {
+          wave = {
+            ui = {
+              bg_gutter = "#1f1f28",
+            },
+          },
+        },
+      },
       overrides = function(colors)
         return {
           DropBarMenuHoverEntry = { -- for ./dropbar.lua

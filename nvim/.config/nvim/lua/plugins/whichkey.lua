@@ -30,8 +30,10 @@ return {
     spec = {
       { "<leader>h", group = "git hunks" },
       { "<leader>c", group = "code / LSP" },
-      { "<leader>D", group = "debug" },
+      { "<leader>d", group = "debug" },
       { "<leader>x", group = "diagnostics (trouble)" },
+      { "<leader>m", group = "marks / bookmarks" },
+      { "<leader>q", group = "sessions" },
       -- Bracket-motion prefixes are not under a leader, but can still be labeled:
       { "]",         group = "next" },
       { "[",         group = "prev" },
@@ -45,5 +47,11 @@ return {
       end,
       desc = "Buffer Local Keymaps (which-key)",
     },
+    { "<leader>ql", "<cmd>SessionLoad<CR>", desc = "Load current session" },
+    { "<leader>qp", "<cmd>SessionPrune<CR>", desc = "Prune stale sessions" },
+    { "<leader>qP", "<cmd>SessionPrune!<CR>", desc = "Prune stale sessions (no prompt)" },
+    { "<leader>qs", "<cmd>SessionSelect<CR>", desc = "Select session" },
+    { "<leader>qS", "<cmd>SessionSave<CR>", desc = "Save and activate session" },
+    { "<leader>qx", "<cmd>SessionStop<CR>", desc = "Stop session autosave" },
   },
 }

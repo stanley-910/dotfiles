@@ -2,6 +2,7 @@ return {
   "sphamba/smear-cursor.nvim",
   event = "VeryLazy",
   main = "smear_cursor",
+  enabled = true,
   opts = {
     -- README preset: smooth cursor without a long smear/trail. This keeps the
     -- cursor rectangular while easing visible jumps like paragraph motions.
