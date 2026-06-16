@@ -4,7 +4,7 @@ macos-titlebar-proxy-icon = hidden
 # theme = IC Orange PPL
 # theme = Tomorrow Night Bright
 # theme = Black Metal (Bathory)
-theme = TokyoNight Night
+theme = Gruvbox Dark Hard
 
 window-padding-x = 6
 window-padding-balance = true
