@@ -19,6 +19,40 @@ local function return_annotation(pos)
   })
 end
 
+local function split_init_args(params)
+  local args = {}
+  local start = 1
+  local depth = 0
+  local quote = nil
+  local escaped = false
+
+  for index = 1, #params do
+    local char = params:sub(index, index)
+
+    if quote ~= nil then
+      if escaped then
+        escaped = false
+      elseif char == "\\" then
+        escaped = true
+      elseif char == quote then
+        quote = nil
+      end
+    elseif char == '"' or char == "'" then
+      quote = char
+    elseif char == "(" or char == "[" or char == "{" then
+      depth = depth + 1
+    elseif char == ")" or char == "]" or char == "}" then
+      depth = math.max(depth - 1, 0)
+    elseif char == "," and depth == 0 then
+      table.insert(args, params:sub(start, index - 1))
+      start = index + 1
+    end
+  end
+
+  table.insert(args, params:sub(start))
+  return args
+end
+
 local function init_arg_name(raw_arg)
   local name = vim.trim(raw_arg)
   if name == "" or name == "*" or name == "/" then
@@ -43,7 +77,7 @@ local function init_assignments(indent)
     local params = args[1][1] or ""
     local lines = {}
 
-    for raw_arg in params:gmatch("[^,]+") do
+    for _, raw_arg in ipairs(split_init_args(params)) do
       local name = init_arg_name(raw_arg)
       if name ~= nil then
         table.insert(lines, ("self.%s = %s"):format(name, name))
