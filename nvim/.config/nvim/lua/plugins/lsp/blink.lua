@@ -28,7 +28,7 @@ return {
       ['<C-k>'] = { 'select_prev', 'fallback_to_mappings' },
       ['<C-n>'] = false,
       ['<C-p>'] = false,
-      -- Insert/select <Tab> orchestration lives in lua/plugins/mini-keymap.lua.
+      -- Insert/select <Tab> orchestration lives in lua/plugins/tabout.lua.
       ['<Tab>'] = false,
       ['<S-Tab>'] = false,
       ['<C-s>'] = { 'select_and_accept', 'fallback' },
@@ -134,11 +134,9 @@ return {
       },
     },
 
-    -- LuaSnip is installed (see lua/plugins/luasnip.lua) but inert. To route
-    -- blink's snippet expansion through LuaSnip's advanced node types, uncomment
-    -- the next line, then do boot step 2 in luasnip.lua and restart.
-    -- snippets = { preset = "luasnip" },
-
+    -- Route snippet expansion through LuaSnip so Lua-authored snippets under
+    -- lua/snippets/<filetype>.lua can use choice/dynamic/function nodes.
+    snippets = { preset = "luasnip" },
 
     -- Use Lua implementation to avoid needing Rust nightly and pre-built binaries
     -- This prevents the "No fuzzy matching library found" warning on startup

@@ -23,14 +23,14 @@ return {
 
       map_multistep({ "i", "s" }, "<Tab>", {
         blink_select_and_accept,
-        "vimsnippet_next",
+        "luasnip_next",
         "jump_after_tsnode",
         "jump_after_close",
         "increase_indent",
       })
 
       map_multistep({ "i", "s" }, "<S-Tab>", {
-        "vimsnippet_prev",
+        "luasnip_prev",
         "jump_before_tsnode",
         "jump_before_open",
         "decrease_indent",
