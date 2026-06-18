@@ -3,8 +3,11 @@ return {
     "nvim-mini/mini.keymap",
     version = "*",
     lazy = false,
-    config = function()
+    opts = {},
+    -- `config` is needed because map_multistep creates actual keymaps.
+    config = function(_, opts)
       local keymap = require("mini.keymap")
+      keymap.setup(opts)
       local map_multistep = keymap.map_multistep
 
       -- Keep <Tab> as a single orchestration layer instead of letting Blink,

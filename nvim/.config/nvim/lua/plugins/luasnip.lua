@@ -8,11 +8,14 @@
 return {
   "L3MON4D3/LuaSnip",
   version = "v2.*",
+  dependencies = { "rafamadriz/friendly-snippets" },
   -- Optional: enables regex-based transforms inside snippets. Needs `make` +
   -- a C toolchain. Omitted for now to keep install clean; add back if you want
   -- transform nodes:  build = "make install_jsregexp",
   event = "InsertEnter",
   opts = {},
+  -- `config` is needed for loader side effects; plain LuaSnip settings still go
+  -- in `opts` above so lazy.nvim's setup contract stays explicit.
   config = function(_, opts)
     require("luasnip").setup(opts)
 
