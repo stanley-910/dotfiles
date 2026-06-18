@@ -11,7 +11,7 @@ vim.diagnostic.config({
   -- This is just Neovim re-placing signs/underline; it does NOT involve noice.
   -- The per-keystroke noice spam was its lsp.progress spinner, disabled in
   -- noice.lua — a separate mechanism from this option.
-  update_in_insert = true,
+  update_in_insert = false,
   virtual_text = false,
   virtual_lines = false,
   severity_sort = true,
@@ -40,21 +40,30 @@ local function show_hover()
   })
 end
 
-local function focus_floating_window()
-  local windows = vim.api.nvim_list_wins()
+local function is_focusable_floating_window(win)
+  if not vim.api.nvim_win_is_valid(win) then
+    return false
+  end
 
+  local config = vim.api.nvim_win_get_config(win)
+  return config.relative ~= "" and config.focusable ~= false
+end
+
+local function focus_floating_window()
+  local current_win = vim.api.nvim_get_current_win()
+
+  -- `nvim_list_wins()` includes floating windows. Iterate backwards so the
+  -- newest/topmost hover or diagnostic float wins when several are open.
+  local windows = vim.api.nvim_list_wins()
   for i = #windows, 1, -1 do
     local win = windows[i]
-    if vim.api.nvim_win_is_valid(win) then
-      local config = vim.api.nvim_win_get_config(win)
-      if config.relative ~= "" and config.focusable ~= false then
-        vim.api.nvim_set_current_win(win)
-        return
-      end
+    if win ~= current_win and is_focusable_floating_window(win) then
+      vim.api.nvim_set_current_win(win)
+      return true
     end
   end
 
-  vim.notify("No focusable hover/diagnostic window", vim.log.levels.INFO)
+  return false
 end
 
 local function jump_diagnostic(count)
@@ -74,7 +83,6 @@ vim.api.nvim_create_autocmd("LspAttach", {
     local hover_cycle = {
       bufnr = nil,
       lnum = nil,
-      col = nil,
       state = "off",
     }
 
@@ -82,30 +90,21 @@ vim.api.nvim_create_autocmd("LspAttach", {
       hover_cycle = {
         bufnr = nil,
         lnum = nil,
-        col = nil,
         state = "off",
       }
     end
 
-    local function is_same_spot(cursor)
+    local function is_same_line(cursor)
       return hover_cycle.bufnr == event.buf
           and hover_cycle.lnum == cursor[1]
-          and hover_cycle.col == cursor[2]
     end
 
-    local function diagnostic_at_cursor(bufnr)
-      local cursor = vim.api.nvim_win_get_cursor(0)
-      local lnum = cursor[1] - 1
-      local col = cursor[2]
-
-      for _, diagnostic in ipairs(vim.diagnostic.get(bufnr, { lnum = lnum })) do
-        local start_col = diagnostic.col or 0
-        local end_col = diagnostic.end_col or start_col + 1
-
-        if col >= start_col and col <= end_col then
-          return diagnostic
-        end
-      end
+    local function has_diagnostic_on_line(bufnr, cursor)
+      -- `lnum` filters diagnostics spanning this 0-indexed line. Keep K's
+      -- diagnostic half line-based instead of duplicating open_float's
+      -- character-position filtering. See :help vim.diagnostic.GetOpts and
+      -- :help vim.diagnostic.Opts.Float.
+      return next(vim.diagnostic.get(bufnr, { lnum = cursor[1] - 1 })) ~= nil
     end
 
     local function has_floating_window()
@@ -140,27 +139,26 @@ vim.api.nvim_create_autocmd("LspAttach", {
         end
 
         local cursor = vim.api.nvim_win_get_cursor(0)
-        if not is_same_spot(cursor) then
+        if not is_same_line(cursor) then
           reset_hover_cycle()
         end
       end,
-      desc = "Reset K hover cycle when leaving the popup anchor",
+      desc = "Reset K hover cycle when leaving the popup line",
     })
 
     vim.keymap.set("n", "K", function()
       local cursor = vim.api.nvim_win_get_cursor(0)
-      local same_spot = is_same_spot(cursor)
-      if same_spot and hover_cycle.state ~= "off" and not has_floating_window() then
+      local same_line = is_same_line(cursor)
+      if same_line and hover_cycle.state ~= "off" and not has_floating_window() then
         reset_hover_cycle()
-        same_spot = false
+        same_line = false
       end
-      local has_diagnostic = diagnostic_at_cursor(event.buf) ~= nil
+      local has_diagnostic = has_diagnostic_on_line(event.buf, cursor)
 
-      if not same_spot then
+      if not same_line then
         hover_cycle = {
           bufnr = event.buf,
           lnum = cursor[1],
-          col = cursor[2],
           state = has_diagnostic and "diagnostic" or "hover",
         }
       elseif has_diagnostic then
@@ -180,7 +178,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
       close_floating_windows()
 
       if hover_cycle.state == "diagnostic" then
-        show_diagnostic_float(event.buf, "cursor")
+        show_diagnostic_float(event.buf, "line")
       elseif hover_cycle.state == "hover" then
         show_hover()
       end
@@ -190,22 +188,30 @@ vim.api.nvim_create_autocmd("LspAttach", {
       desc = "Cycle diagnostic and hover",
     })
 
-    vim.keymap.set("n", "gK", show_hover, {
+    vim.keymap.set("n", "<M-w>", function()
+      if focus_floating_window() then
+        return
+      end
+
+      vim.cmd.wincmd("w")
+    end, {
       buffer = event.buf,
       silent = true,
-      desc = "Show hover documentation",
+      desc = "Focus hover/diagnostic window or cycle windows",
     })
 
-    vim.keymap.set("n", "<leader><down>", focus_floating_window, {
-      buffer = event.buf,
-      silent = true,
-      desc = "Focus hover/diagnostic window",
-    })
-
-    -- vim.keymap.set("n", "grr", "<cmd>Trouble lsp_references open focus=true<CR>", {
+    -- why do I need this when K does the same thing?
+    -- vim.keymap.set("n", "gK", show_hover, {
     --   buffer = event.buf,
     --   silent = true,
-    --   desc = "References (Trouble)",
+    --   desc = "Show hover documentation",
+    -- })
+
+    -- can just ctrl w - w
+    -- vim.keymap.set("n", "<leader><down>", focus_floating_window, {
+    --   buffer = event.buf,
+    --   silent = true,
+    --   desc = "Focus hover/diagnostic window",
     -- })
 
     vim.keymap.set("n", "]d", function()
