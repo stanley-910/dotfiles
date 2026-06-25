@@ -501,13 +501,21 @@ local function session_for_root_branch(root, branch)
   end
 end
 
+local function load_dap_breakpoints()
+  local path = vim.fn.stdpath("state") .. "/dap-breakpoints/" .. vim.fn.sha256(vim.fn.getcwd()) .. ".json"
+  if vim.fn.filereadable(path) == 1 then
+    pcall(vim.cmd, "silent! DapBreakpointsLoad")
+  end
+end
+
 local function open_root(root, branch)
   if root and root ~= "" then
     vim.cmd("cd " .. vim.fn.fnameescape(root))
   end
 
   pcall(vim.cmd, "silent! %bwipeout!")
-  M.active = true
+  set_active(true)
+  load_dap_breakpoints()
   notify("Opened " .. basename(root) .. " on '" .. branch .. "'; no saved session exists there yet")
   return true
 end
@@ -543,7 +551,8 @@ function M.load(item)
   end
 
   vim.v.this_session = item.session
-  M.active = true
+  set_active(true)
+  load_dap_breakpoints()
   notify("Restored " .. label(item))
   return true
 end

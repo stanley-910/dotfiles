@@ -22,6 +22,7 @@ local config = vim.deepcopy(defaults)
 local data ---@type table?
 local data_path ---@type string?
 local loaded_files = {} ---@type table<string, boolean>
+local loading_project = false
 
 local function notify(message, level)
   if config.notify then
@@ -59,13 +60,27 @@ local function line_at(bufnr, lnum)
   return vim.api.nvim_buf_get_lines(bufnr, lnum - 1, lnum, false)[1] or ""
 end
 
+local function normalize_path(path)
+  local normalized = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
+  return normalized == "/" and normalized or normalized:gsub("/$", "")
+end
+
 local function buffer_path(bufnr)
   local name = vim.api.nvim_buf_get_name(bufnr)
   if name == "" then
     return nil
   end
 
-  return vim.fs.normalize(vim.fn.fnamemodify(name, ":p"))
+  return normalize_path(name)
+end
+
+local function project_path(path, root)
+  if not path or path == "" then
+    return nil
+  end
+
+  local normalized = normalize_path(path)
+  return vim.startswith(normalized, root .. "/") and normalized or nil
 end
 
 local function read_json(path)
@@ -226,11 +241,19 @@ function M.save()
   local breakpoints = require("dap.breakpoints")
   local current = breakpoints.get()
   local persisted, path = store()
-  local files = vim.deepcopy(persisted.files or {})
+  local root = normalize_path(persisted.cwd or vim.fn.getcwd())
+  local files = {}
+
+  for file, records in pairs(persisted.files or {}) do
+    local project_file = project_path(file, root)
+    if project_file then
+      files[project_file] = records
+    end
+  end
 
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
     if vim.api.nvim_buf_is_loaded(bufnr) then
-      local file = buffer_path(bufnr)
+      local file = project_path(buffer_path(bufnr), root)
       if file then
         files[file] = nil
       end
@@ -238,7 +261,7 @@ function M.save()
   end
 
   for bufnr, buffer_breakpoints in pairs(current) do
-    local file = buffer_path(bufnr)
+    local file = project_path(buffer_path(bufnr), root)
     if file and #buffer_breakpoints > 0 then
       files[file] = vim.tbl_map(function(breakpoint)
         return serialize_breakpoint(bufnr, breakpoint)
@@ -255,20 +278,20 @@ function M.load_for_buffer(bufnr, opts)
   opts = opts or {}
 
   if not vim.api.nvim_buf_is_loaded(bufnr) then
-    return
+    return 0
   end
 
   local file = buffer_path(bufnr)
   local already_loaded = file and loaded_files[file] and not opts.force
   if not file or already_loaded then
-    return
+    return 0
   end
 
   local persisted = store()
   local records = persisted.files[file]
   if type(records) ~= "table" or vim.tbl_isempty(records) then
     loaded_files[file] = true
-    return
+    return 0
   end
 
   local breakpoints = require("dap.breakpoints")
@@ -293,15 +316,53 @@ function M.load_for_buffer(bufnr, opts)
 
   loaded_files[file] = true
 
-  if opts.force then
+  if opts.force and not opts.quiet then
     notify(("Restored %d DAP breakpoint(s)"):format(restored))
   end
+
+  return restored
 end
 
 function M.load_all(opts)
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
     M.load_for_buffer(bufnr, opts)
   end
+end
+
+function M.load_project(opts)
+  opts = opts or {}
+
+  local persisted = store()
+  local root = normalize_path(persisted.cwd or vim.fn.getcwd())
+  local loaded = 0
+  local restored = 0
+  local previous_loading_project = loading_project
+
+  loading_project = true
+  local ok, err = pcall(function()
+    for file, records in pairs(persisted.files or {}) do
+      if type(records) == "table" and not vim.tbl_isempty(records) then
+        local normalized = project_path(file, root)
+        if normalized and vim.fn.filereadable(normalized) == 1 then
+          local bufnr = vim.fn.bufadd(normalized)
+          vim.fn.bufload(bufnr)
+          restored = restored + M.load_for_buffer(bufnr, { force = true, quiet = true })
+          loaded = loaded + 1
+        end
+      end
+    end
+  end)
+  loading_project = previous_loading_project
+
+  if not ok then
+    error(err)
+  end
+
+  if opts.force then
+    notify(("Restored %d DAP breakpoint(s) across %d project buffer(s)"):format(restored, loaded))
+  end
+
+  return loaded, restored
 end
 
 local function breakpoint_at(bufnr, lnum)
@@ -538,7 +599,9 @@ function M.setup(opts)
   vim.api.nvim_create_autocmd("BufReadPost", {
     group = group,
     callback = function(event)
-      M.load_for_buffer(event.buf)
+      if not loading_project then
+        M.load_for_buffer(event.buf)
+      end
     end,
   })
 
@@ -549,8 +612,8 @@ function M.setup(opts)
 
   vim.api.nvim_create_user_command("DapBreakpointsSave", M.save, { desc = "Save DAP breakpoints" })
   vim.api.nvim_create_user_command("DapBreakpointsLoad", function()
-    M.load_all({ force = true })
-  end, { desc = "Load DAP breakpoints" })
+    M.load_project({ force = true })
+  end, { desc = "Load saved DAP breakpoints for current project" })
   vim.api.nvim_create_user_command("DapBreakpointsClearSaved", M.clear_all, { desc = "Clear saved DAP breakpoints" })
 
   M.load_all()
