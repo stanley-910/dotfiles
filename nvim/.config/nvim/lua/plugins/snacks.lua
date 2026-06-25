@@ -10,11 +10,6 @@
 -- very-early events like bigfile/quickfile), so it is not lazy-loaded. This is
 -- folke's documented recommendation.
 --
--- KNOWN OVERLAPS with the current config — do NOT enable these without a plan:
---   picker   -> Snacks now owns files/grep/LSP picker flows.
---   explorer -> Oil already owns file-tree navigation on `-`; revisit only if
---               replacing Oil wholesale.
---
 -- See: https://github.com/folke/snacks.nvim  (per-module docs under /docs)
 return {
   "folke/snacks.nvim",
@@ -145,29 +140,41 @@ return {
       enabled = true,
     },
 
-    -- [10] rename: a pure helper module (no setup/opts/enabled needed) for FILE
+    -- [10] lazygit: open Lazygit in a large Snacks terminal float. Keeps Snacks
+    -- defaults: generate a theme from the current colorscheme and set Lazygit's
+    -- edit preset so file opens route back into this Neovim.
+    -- Wired to <leader>gg below.
+    lazygit      = {
+      win = {
+        position = "float",
+        width = 0.95,
+        height = 0.95,
+      },
+    },
+
+    -- [11] rename: a pure helper module (no setup/opts/enabled needed) for FILE
     -- renames, not symbol renames. Snacks.rename.rename_file() performs a file
     -- move and sends LSP workspace/willRenameFiles + didRenameFiles so imports
     -- can update. Oil integration lives in oil.lua; Snacks explorer/picker uses
     -- the same helper internally for its explorer_rename action.
 
-    -- [11] scroll: smooth scrolling for normal/mouse scrolls while respecting
+    -- [12] scroll: smooth scrolling for normal/mouse scrolls while respecting
     -- scrolloff. No keymaps needed; it animates native scrolling commands.
-    -- Defaults were a little floaty; keep it smooth but faster.
+    -- Keep the animation present but short so scrolling feels responsive.
     scroll       = {
       enabled = true,
       animate = {
-        duration = { step = 8, total = 120 },
+        duration = { step = 5, total = 80 },
         easing = "linear",
       },
       animate_repeat = {
-        delay = 100,
-        duration = { step = 4, total = 35 },
+        delay = 60,
+        duration = { step = 3, total = 25 },
         easing = "linear",
       },
     },
 
-    -- [12] statuscolumn: replace the default gutter with Snacks' composed
+    -- [13] statuscolumn: replace the default gutter with Snacks' composed
     -- status column. It keeps native number/relativenumber behavior and gives
     -- git its own column LEFT of the number, with marks/breakpoints (and fold
     -- icons) in the column to the RIGHT. Diagnostic signs are disabled in
@@ -191,6 +198,10 @@ return {
     -- rendering and places real vim signs, which "sign" picks up. We use "sign",
     -- NOT Snacks' built-in "mark" component, because "mark" only draws a-zA-Z
     -- marks and filters out builtin/bookmark marks.
+    --
+    -- render-markdown.nvim's code-block language signs are disabled at the
+    -- source (lua/plugins/markdown.lua: code.sign = false), so they do not
+    -- compete with real signs in this column.
     statuscolumn = {
       enabled = true,
       left = { "git" },
@@ -205,7 +216,7 @@ return {
       refresh = 50,
     },
 
-    -- [13] dashboard: "Ledger" start screen — modular two-pane layout from the
+    -- [14] dashboard: "Ledger" start screen — modular two-pane layout from the
     -- design handoff (pure typography, dot leaders, toggleable right-column
     -- modules). ALL layout/modules/keys live in lua/config/dashboard.lua;
     -- `sections` is a function so that file only loads when the dashboard
@@ -222,7 +233,16 @@ return {
       end,
     },
 
-    -- [14] picker: Snacks now owns files/grep/LSP picker flows plus vim.ui.select
+    -- [15] explorer: Snacks' file explorer is a picker in disguise. Keep it
+    -- available on <leader>e, but do NOT let it replace directory buffers:
+    -- Oil remains the default `nvim .` / `:edit dir` explorer.
+    -- See snacks.nvim-explorer and snacks.nvim-picker-sources-explorer.
+    explorer     = {
+      enabled = true,
+      replace_netrw = false,
+    },
+
+    -- [16] picker: Snacks now owns files/grep/LSP picker flows plus vim.ui.select
     -- so plugins using the generic selection API get the same picker UI.
     picker       = {
       enabled = true,
@@ -274,6 +294,65 @@ return {
         },
       },
       sources = {
+        notifications = {
+          win = {
+            preview = {
+              wo = {
+                wrap = true,
+                linebreak = true,
+                breakindent = true,
+              }
+            }
+          }
+        },
+        oil_dirs = {
+          title = "Directories",
+          finder = function(opts, ctx)
+            local cmd = vim.fn.executable("fd") == 1 and "fd"
+                or vim.fn.executable("fdfind") == 1 and "fdfind"
+                or nil
+
+            if not cmd then
+              vim.schedule(function()
+                Snacks.notify.error("fd/fdfind is required for the directory picker")
+              end)
+              return {}
+            end
+
+            local cwd = opts.cwd or vim.uv.cwd() or "."
+
+            return require("snacks.picker.source.proc").proc({
+              cmd = cmd,
+              cwd = cwd,
+              args = {
+                "--type", "d",
+                "--color", "never",
+                "--hidden",
+                "--exclude", ".git",
+                ".",
+              },
+              transform = function(item)
+                item.cwd = cwd
+                item.file = item.text
+                item.dir = true
+                return item
+              end,
+            }, ctx)
+          end,
+          format = "file",
+          preview = "directory",
+          confirm = function(picker, item)
+            local dir = item and Snacks.picker.util.path(item)
+            picker:close()
+
+            if dir then
+              vim.schedule(function()
+                require("oil").open(dir)
+              end)
+            end
+          end,
+        },
+
         lsp_symbols = {
           -- Show the nested outline instead of a flat fuzzy list, and keep the
           -- containing class/object/module visible while filtering so matches
@@ -298,7 +377,7 @@ return {
       },
     },
 
-    -- [15] terminal: on-demand toggle/float terminals. NOT a needs_setup snack,
+    -- [17] terminal: on-demand toggle/float terminals. NOT a needs_setup snack,
     -- so there is no `enabled` flag — Snacks.terminal.* works whenever snacks is
     -- loaded; this block only sets defaults. Replaces the hand-rolled
     -- toggle_terminal() that used to live in lua/config/keymap.lua.
@@ -358,7 +437,7 @@ return {
     { "<leader>.",  function() Snacks.scratch() end,                                        desc = "Toggle Scratch Buffer" },
     { "<leader>S",  function() Snacks.scratch.select() end,                                 desc = "Select Scratch Buffer" },
     -- terminal
-    { "<M-/>",      function() Snacks.terminal.toggle() end,                                 desc = "Toggle Terminal", mode = { "n", "t" } },
+    { "<M-/>",      function() Snacks.terminal.toggle() end,                                desc = "Toggle Terminal",            mode = { "n", "t" } },
     -- find
     { "<leader>fb", function() Snacks.picker.buffers() end,                                 desc = "Buffers" },
     { "<leader>fc", function() Snacks.picker.files({ cwd = vim.fn.stdpath("config") }) end, desc = "Find Config File" },
@@ -368,19 +447,14 @@ return {
     { "<leader>fr", function() Snacks.picker.recent() end,                                  desc = "Recent" },
     -- git
     { "<leader>gb", function() Snacks.picker.git_branches() end,                            desc = "Git Branches" },
+    { "<leader>gg", function() Snacks.lazygit() end,                                        desc = "Lazygit" },
     { "<leader>gl", function() Snacks.picker.git_log() end,                                 desc = "Git Log" },
     { "<leader>gL", function() Snacks.picker.git_log_line() end,                            desc = "Git Log Line" },
     { "<leader>gs", function() Snacks.picker.git_status() end,                              desc = "Git Status" },
     { "<leader>gS", function() Snacks.picker.git_stash() end,                               desc = "Git Stash" },
-    {
-      "<leader>gd",
-      function()
-        Snacks.picker.git_diff({ cmd_args = { "HEAD", "--unified=0" } })
-      end,
-      desc = "Git Diff (Hunks)",
-    },
+    { "<leader>gd", function() Snacks.picker.git_diff() end,                                desc = "Git Diff (Hunks)" },
     { "<leader>gf", function() Snacks.picker.git_log_file() end,                            desc = "Git Log File" },
-    { "<leader>gB", function() Snacks.gitbrowse() end,                                      desc = "Git Browse",       mode = { "n", "x" } },
+    { "<leader>gB", function() Snacks.gitbrowse() end,                                      desc = "Git Browse",                 mode = { "n", "x" } },
     -- gh
     { "<leader>gi", function() Snacks.picker.gh_issue() end,                                desc = "GitHub Issues (open)" },
     { "<leader>gI", function() Snacks.picker.gh_issue({ state = "all" }) end,               desc = "GitHub Issues (all)" },
@@ -409,6 +483,8 @@ return {
     { "<leader>sR", function() Snacks.picker.resume() end,                                  desc = "Resume" },
     { "<leader>su", function() Snacks.picker.undo() end,                                    desc = "Undo History" },
     { "<leader>uC", function() Snacks.picker.colorschemes() end,                            desc = "Colorschemes" },
+    { "<leader>fd", function() Snacks.picker.oil_dirs() end,                                desc = "Find Directories (Oil)" },
+    { "<leader>e",  function() Snacks.explorer() end,                                       desc = "Explorer" },
     -- LSP
     { "gd",         function() Snacks.picker.lsp_definitions() end,                         desc = "Goto Definition" },
     { "gD",         function() Snacks.picker.lsp_declarations() end,                        desc = "Goto Declaration" },
