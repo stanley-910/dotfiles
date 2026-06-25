@@ -63,6 +63,8 @@ If changing the port, the MCP config must also use the matching `--browserUrl ht
 
 Chrome DevTools MCP tools can dump a full accessibility tree, network body, trace, or page snapshot into the conversation. Treat those calls as expensive. The goal is to return the smallest JSON answer that proves or disproves the current hypothesis.
 
+Context Mode is optional in Pi. Do not tell the user they must register `context-mode` as an MCP server for Chrome DevTools MCP. If `ctx_*` tools are unavailable, preserve context with narrow `evaluate_script` calls, built-in tool filters, artifact file paths, and focused file reads. Use `ctx_*` tools only when they are already available and the user wants that workflow.
+
 Use this order of preference:
 
 1. **Programmatic page query** with `chrome_devtools_evaluate_script` returning a narrow JSON object.
