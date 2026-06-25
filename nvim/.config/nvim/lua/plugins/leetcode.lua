@@ -123,6 +123,69 @@ local function ensure_tool_configs(opts)
   })
 end
 
+local function enable_curl_impersonate()
+  -- LeetCode's run/submit endpoints (/problems/<slug>/interpret_solution/) sit
+  -- behind Cloudflare bot protection. leetcode.nvim sends those requests via
+  -- plenary.curl, which shells out to the system `curl`. Cloudflare inspects the
+  -- TLS handshake, sees it is not a real browser, and returns HTTP 403 with
+  -- `cf-mitigated: challenge`. The plugin then maps any 401/403 to the
+  -- misleading "Your cookie may have expired, or LeetCode has temporarily
+  -- restricted API access" message (leetcode/api/utils.lua), so re-pasting the
+  -- cookie never helps. The dashboard/auth keeps working because that goes
+  -- through /graphql/, which is not challenged.
+  --
+  -- Fix: route plenary.curl through curl-impersonate, a curl build that mimics a
+  -- real Chrome TLS fingerprint, so Cloudflare lets the request through.
+  -- plenary reads this global at call time (plenary/curl.lua: `command =
+  -- vim.g.plenary_curl_bin_path or "curl"`). It is global, but in this config
+  -- only leetcode.nvim uses plenary.curl, so the blast radius is just LeetCode.
+  --
+  -- The binary is NOT tracked in dotfiles (it is a 3.6MB self-contained Mach-O).
+  -- Install (Apple Silicon), grabbing the `curl-impersonate` + `curl_chrome136`
+  -- wrapper from the lexiforest/curl-impersonate release:
+  --   dest="$HOME/.local/share/curl-impersonate"; mkdir -p "$dest"
+  --   url=https://github.com/lexiforest/curl-impersonate/releases/download/v1.5.6/curl-impersonate-v1.5.6.arm64-macos.tar.gz
+  --   curl -fsSL "$url" | tar -xz -C "$dest" curl-impersonate curl_chrome136
+  --   chmod +x "$dest"/curl-impersonate "$dest"/curl_chrome136
+  -- The wrapper locates the binary via `dir=${0%/*}`, so both files must live in
+  -- the same directory and it must be invoked by absolute path. To revert: delete
+  -- that directory and this block.
+  local wrapper = vim.fn.expand("~/.local/share/curl-impersonate/curl_chrome136")
+  if vim.uv.fs_stat(wrapper) then
+    vim.g.plenary_curl_bin_path = wrapper
+  end
+end
+
+local function install_import_fold_autocmd(opts)
+  -- leetcode.nvim already ships `editor.fold_imports = true`, which folds the
+  -- injected `# @leet imports start/end` block when a question buffer opens.
+  -- It does so with the Ex `:fold` command (leetcode-ui/question.lua
+  -- Question:editor_fold_imports), and `:fold` ONLY works when 'foldmethod' is
+  -- "manual" or "marker". Our global config uses treesitter expr folding
+  -- (lua/config/options.lua: foldmethod="expr"), so that `:fold` throws E350,
+  -- gets swallowed by the plugin's pcall, and the imports never collapse.
+  --
+  -- 'foldmethod' is WINDOW-local, so flip it to "manual" on the window showing
+  -- the solution buffer. win_set_buf -> nvim_win_set_buf fires BufWinEnter
+  -- synchronously, just before the plugin runs its fold, so foldmethod is
+  -- already "manual" by the time `:fold` lands. We give up treesitter folding
+  -- inside these scratch files, which is fine for a single-function solution.
+  --
+  -- Scoped to *.py under storage.home; widen the pattern (e.g. "*.{py,cpp}") if
+  -- you want the same behavior for other languages.
+  local storage = opts.storage or {}
+  local home = vim.fn.expand(storage.home or vim.fs.joinpath(vim.fn.stdpath("data"), "leetcode"))
+
+  vim.api.nvim_create_autocmd("BufWinEnter", {
+    group = vim.api.nvim_create_augroup("leetcode_fold_imports", { clear = true }),
+    pattern = vim.fs.joinpath(home, "*.py"),
+    desc = "Use manual folds in LeetCode Python buffers so fold_imports works",
+    callback = function()
+      vim.opt_local.foldmethod = "manual"
+    end,
+  })
+end
+
 return {
   "kawre/leetcode.nvim",
 
@@ -177,7 +240,9 @@ return {
   },
 
   config = function(_, opts)
+    enable_curl_impersonate()
     install_menu_key_overrides()
+    install_import_fold_autocmd(opts)
     ensure_tool_configs(opts)
     require("leetcode").setup(opts)
     require("config.leetcode_debug").setup()
