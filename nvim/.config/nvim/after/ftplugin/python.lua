@@ -8,3 +8,7 @@ vim.keymap.set("x", "K", "<Nop>", {
   silent = true,
   desc = "Disable pydoc lookup on selection",
 })
+-- opening parens tab should only be '4' not '8'
+vim.g.python_indent = vim.tbl_extend("force", vim.g.python_indent or {}, {
+  open_paren = "shiftwidth()",
+})
