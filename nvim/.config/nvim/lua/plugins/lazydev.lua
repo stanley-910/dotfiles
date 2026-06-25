@@ -14,12 +14,20 @@ return {
         return false
       end
 
-      -- Respect explicit project LuaLS config if one is added later.
-      if vim.uv.fs_stat(root .. "/.luarc.json") or vim.uv.fs_stat(root .. "/.luarc.jsonc") then
+      local in_config = file == config_dir or vim.startswith(file, config_dir .. "/")
+      if not in_config then
         return false
       end
 
-      return file == config_dir or vim.startswith(file, config_dir .. "/")
+      -- Respect an explicit LuaLS config inside the Neovim config if one is
+      -- added later. Do not let the repo-level ~/dotfiles/.luarc.json disable
+      -- LazyDev here: LuaLS currently chooses the dotfiles git root as the
+      -- workspace, but this file still belongs to the Neovim config.
+      if vim.uv.fs_stat(config_dir .. "/.luarc.json") or vim.uv.fs_stat(config_dir .. "/.luarc.jsonc") then
+        return false
+      end
+
+      return true
     end,
     library = {
       -- Snacks ships Lua annotations for `Snacks`, `snacks.Config`, and picker

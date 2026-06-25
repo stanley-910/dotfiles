@@ -9,18 +9,28 @@ return {
   -- for OTHER Lua projects that ship their own .luarc.json — letting that project win
   -- instead of force-feeding it our Neovim setup.
   on_init = function(client)
+    local config_dir = vim.uv.fs_realpath(vim.fn.stdpath('config'))
+
     if client.workspace_folders then
-      local path = client.workspace_folders[1].name
+      local root = vim.uv.fs_realpath(client.workspace_folders[1].name)
+      local root_contains_config = root
+          and config_dir
+          and (root == config_dir or vim.startswith(config_dir, root .. '/'))
+
       if
-        path ~= vim.fn.stdpath('config')
-        and (vim.uv.fs_stat(path .. '/.luarc.json') or vim.uv.fs_stat(path .. '/.luarc.jsonc'))
+        root
+        and root ~= config_dir
+        and not root_contains_config
+        and (vim.uv.fs_stat(root .. '/.luarc.json') or vim.uv.fs_stat(root .. '/.luarc.jsonc'))
       then
         return -- real project with its own .luarc — don't override it
       end
     end
 
+    client.config.settings = client.config.settings or {}
+
     -- 'force' deep-merge keeps lspconfig's codeLens/hint and adds our keys on top.
-    client.config.settings.Lua = vim.tbl_deep_extend('force', client.config.settings.Lua, {
+    client.config.settings.Lua = vim.tbl_deep_extend('force', client.config.settings.Lua or {}, {
       runtime = {
         version = 'LuaJIT', -- Neovim embeds LuaJIT, not PUC Lua 5.x
         -- Resolve require('config.x') the way Neovim does, so go-to-definition and
