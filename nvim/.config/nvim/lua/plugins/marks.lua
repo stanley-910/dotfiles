@@ -124,6 +124,15 @@ return {
       "lazy",
       "mason",
     },
+    excluded_buftypes = {
+      "acwrite",
+      "help",
+      "nofile",
+      "nowrite",
+      "prompt",
+      "quickfix",
+      "terminal",
+    },
 
     -- Bookmark group 0 gets a distinct flag glyph; groups 1..9 keep the default
     -- "!@#$%^&*(" signs. virt_text/annotate left at defaults (off).
@@ -147,6 +156,44 @@ return {
   -- exactly (incl. gutter bg), or "NonText" for the dimmest look.
   config = function(_, opts)
     require("marks").setup(opts)
+
+    local excluded_filetypes = {}
+    for _, ft in ipairs(opts.excluded_filetypes or {}) do
+      excluded_filetypes[ft] = true
+    end
+
+    local excluded_buftypes = {}
+    for _, bt in ipairs(opts.excluded_buftypes or {}) do
+      excluded_buftypes[bt] = true
+    end
+
+    local function clear_excluded_buffer_marks(buf)
+      if not vim.api.nvim_buf_is_valid(buf) then
+        return
+      end
+
+      local buftype = vim.api.nvim_get_option_value("buftype", { buf = buf })
+      local filetype = vim.api.nvim_get_option_value("filetype", { buf = buf })
+      if not excluded_buftypes[buftype] and not excluded_filetypes[filetype] then
+        return
+      end
+
+      vim.fn.sign_unplace("MarkSigns", { buffer = buf })
+      local ok, marks = pcall(require, "marks")
+      if ok and marks.mark_state then
+        marks.mark_state.buffers[buf] = nil
+      end
+    end
+
+    local transient_marks_group = vim.api.nvim_create_augroup("UserMarksTransientBuffers", { clear = true })
+    vim.api.nvim_create_autocmd({ "BufEnter", "FileType", "TermOpen", "WinEnter" }, {
+      group = transient_marks_group,
+      desc = "Hide marks.nvim signs in transient buffers",
+      callback = function(event)
+        clear_excluded_buffer_marks(event.buf)
+      end,
+    })
+
     local function dim_mark_num()
       vim.api.nvim_set_hl(0, "MarkSignNumHL", { link = "Comment" })
     end

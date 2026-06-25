@@ -40,6 +40,17 @@ return {
       view_search = false,   -- lualine `searchcount` already renders [cur/total]
     },
 
+    -- Route `:!cmd` shell output to a split. With cmdheight=0 + noice's
+    -- default `mini` message view, short shell output like `:!echo hello` can
+    -- flash as a transient mini-message and look like it never printed.
+    -- `cmdline_output` is Noice's documented split view for command output.
+    routes = {
+      {
+        view = "cmdline_output",
+        filter = { event = "msg_show", cmdline = "^:%s*!" },
+      },
+    },
+
     -- vim.notify() routing stays on (Snacks renders it). Long single messages
     -- open in a split instead of forcing a pager-style hit-enter.
     notify = { enabled = true },

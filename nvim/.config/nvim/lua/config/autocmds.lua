@@ -1,4 +1,4 @@
-local group = vim.api.nvim_create_augroup("UserAutocmds", { clear = true })
+local group = vim.api.nvim_create_augroup("UserAutocmds", { clear = true }) -- don't duplicate autocommands on reload
 
 vim.api.nvim_create_autocmd("TextYankPost", {
   group = group,
@@ -108,13 +108,21 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 -- • data: (`any`) Arbitrary data passed from
 -- :h FileType state: <amatch> is the new value of 'filetype'.
 
+
+
 vim.api.nvim_create_autocmd("FileType", {
   group = group,
   pattern = "help",
-  desc = "Show help pages as listed right splits",
-  callback = function(args)
-    -- :help already opened the help buffer in a window; move that window right.
-    vim.bo[args.buf].buflisted = true
+  desc = "Show help pages as right splits with minimal gutter",
+  callback = function()
+    -- Leave help buffers unlisted unless you really want them in buffer pickers.
+    -- vim.bo.buflisted = true
+
+    -- get rid of empty gutter space
+    vim.opt_local.signcolumn = "no"
+    vim.opt_local.foldcolumn = "1"
+    vim.opt_local.statuscolumn = ""
+
     vim.cmd.wincmd("L")
   end,
 })
