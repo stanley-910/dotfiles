@@ -36,14 +36,12 @@ Currently installed through settings:
 - `npm:@juicesharp/rpiv-args` — `$ARGUMENTS` / `$1` expansion for RPIV skills
 - `npm:@juicesharp/rpiv-i18n` — localization support used by RPIV packages
 - `npm:@juicesharp/rpiv-ask-user-question` — structured clarification tool used by RPIV skills
-- `npm:@tintinweb/pi-subagents` — RPIV-compatible Claude-Code-style `Agent` subagent tools
 - `npm:pi-mcp-adapter` — MCP bridge used by the Pi setup
-- `npm:context-mode` — large-output/context-mode tools and skills
-- `npm:@vigolium/piolium` — Piolium theme/resources; package skills are disabled in settings
-- `npm:@juicesharp/rpiv-advisor` — RPIV advisor package
 - `npm:@juicesharp/rpiv-web-tools` — RPIV web/search tooling
 - `npm:@that-yolanda/pi-context` — extra Pi context utilities
 - `npm:pi-rewind` — session/history rewind utilities
+- `npm:@tintinweb/pi-subagents` — Claude-Code-style subagent tooling package
+- `npm:@juicesharp/rpiv-advisor` — RPIV advisor package
 
 The earlier local workflow prototype is parked at
 `~/.config/pi/agent/extensions-disabled/workflow/index.ts` so it does not collide
