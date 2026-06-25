@@ -1,9 +1,9 @@
 ---
-name: prepper-drift-audit
-description: Audit macOS bootstrap drift by comparing the current machine against dotfiles Prepper/bootstrap scripts plus the previous local snapshot, then produce reports and patch suggestions. Use when the user mentions Prepper drift, bootstrap drift, fresh-Mac scripts, Brewfile drift, installed app/package drift, or macOS defaults drift.
+name: dotfiles-drift
+description: Audit macOS dotfiles/bootstrap drift by comparing the current machine against Prepper/bootstrap scripts, Brewfile declarations, and the previous local snapshot, then produce reports and patch suggestions. Use when the user mentions dotfiles drift, Prepper drift, bootstrap drift, fresh-Mac scripts, Brewfile drift, installed app/package drift, or macOS defaults drift.
 ---
 
-# Prepper Drift Audit
+# Dotfiles Drift
 
 ## Goal
 
@@ -19,10 +19,10 @@ Help keep the dotfiles bootstrap path honest. The audit is read-only against the
 From the dotfiles repo:
 
 ```bash
-python3 agents/.agents/skills/prepper-drift-audit/scripts/audit_prepper_drift.py --repo .
+python3 agents/.agents/skills/dotfiles-drift/scripts/audit_dotfiles_drift.py --repo .
 ```
 
-The script prints the report path, saves the report under `.rpiv/artifacts/prepper-drift/`, and stores private snapshots under `~/.local/state/prepper-drift-audit/`.
+The script prints the report path and stores both reports and private snapshots under `~/.local/state/dotfiles-drift/`.
 
 ## Workflow for agents
 

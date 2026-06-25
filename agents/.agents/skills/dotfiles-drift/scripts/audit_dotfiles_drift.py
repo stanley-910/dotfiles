@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit drift between this Mac and the dotfiles Prepper/bootstrap scripts.
+"""Audit drift between this Mac and the dotfiles bootstrap scripts.
 
 Read-only against system state. Writes a Markdown report plus a private JSON
 snapshot so future runs can show machine-to-machine drift.
@@ -698,7 +698,7 @@ def generate_report(
     lang_diffs = language_diffs(previous, current)
 
     lines_out: list[str] = []
-    lines_out.append("# Prepper Drift Audit\n")
+    lines_out.append("# Dotfiles Drift Audit\n")
     lines_out.append(f"- Repo: `{repo_path}`\n")
     lines_out.append(f"- Generated: `{snapshot['metadata']['generated_at']}`\n")
     lines_out.append(f"- Snapshot written: `{snapshot_path}`\n")
@@ -854,13 +854,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repo", default=".", help="dotfiles repo root (default: current directory)")
     parser.add_argument(
         "--state-dir",
-        default=str(Path.home() / ".local/state/prepper-drift-audit"),
+        default=str(Path.home() / ".local/state/dotfiles-drift"),
         help="private snapshot directory",
     )
     parser.add_argument(
         "--report",
         default=None,
-        help="Markdown report path (default: .rpiv/artifacts/prepper-drift/<timestamp>.md)",
+        help="Markdown report path (default: <state-dir>/reports/<timestamp>.md)",
     )
     parser.add_argument(
         "--defaults-scope",
@@ -902,7 +902,7 @@ def main() -> int:
     write_json(snapshot_path, snapshot)
     write_json(latest_path, snapshot)
 
-    report_path = Path(args.report).expanduser() if args.report else repo / ".rpiv/artifacts/prepper-drift" / f"{timestamp}.md"
+    report_path = Path(args.report).expanduser() if args.report else state_dir / "reports" / f"{timestamp}.md"
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report = generate_report(repo, snapshot, previous, snapshot_path)
     report_path.write_text(report)
