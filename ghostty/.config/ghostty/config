@@ -1,12 +1,12 @@
 # title = "zsh"
-# macos-titlebar-style = hidden
+macos-titlebar-style = hidden
 macos-titlebar-proxy-icon = hidden
 # theme = IC Orange PPL
 # theme = Tomorrow Night Bright
-# theme = Black Metal (Bathory)
-theme = Gruvbox Dark Hard
+theme = Black Metal (Bathory)
+# theme = Gruvbox Dark Hard
 
-window-padding-x = 6
+window-padding-x = 5
 window-padding-balance = true
 window-save-state = always
 font-feature = -liga
