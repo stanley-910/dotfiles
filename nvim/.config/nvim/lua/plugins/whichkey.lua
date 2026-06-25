@@ -3,6 +3,8 @@ return {
   event = "VeryLazy",
   -- Group names map a key prefix to a label shown in the which-key popup.
   -- See :help which-key.nvim-which-key-mappings (the `spec` / group field).
+  dependencies = { "nvim-tree/nvim-web-devicons" },
+
   opts = {
     delay = 100,
 

@@ -48,7 +48,7 @@ return {
     },
     -- Optional dependency for file icons. The central mini.icons spec also
     -- provides the compatibility shim some icon consumers still expect.
-    dependencies = { "nvim-mini/mini.icons" },
+    dependencies = { "nvim-tree/nvim-web-devicons" },
     -- Lazy loading is not recommended because it is very tricky to make it work correctly in all situations.
     lazy = false,
   },

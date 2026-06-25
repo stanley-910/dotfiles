@@ -19,10 +19,10 @@ return {
   build = ":TSInstall html",
 
   dependencies = {
-    "nvim-lua/plenary.nvim",            -- required: core utilities
-    "MunifTanjim/nui.nvim",             -- required: UI components
-    "folke/snacks.nvim",                -- picker provider
-    "nvim-mini/mini.icons",             -- dashboard / file icons (Nerd Font)
+    "nvim-lua/plenary.nvim", -- required: core utilities
+    "MunifTanjim/nui.nvim",  -- required: UI components
+    "folke/snacks.nvim",     -- picker provider
+    "nvim-tree/nvim-web-devicons"
   },
 
   ---@type lc.UserConfig
