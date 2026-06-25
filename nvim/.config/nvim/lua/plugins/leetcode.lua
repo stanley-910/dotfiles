@@ -165,6 +165,13 @@ local function install_import_fold_autocmd(opts)
   -- (lua/config/options.lua: foldmethod="expr"), so that `:fold` throws E350,
   -- gets swallowed by the plugin's pcall, and the imports never collapse.
   --
+  -- This is a latent upstream bug (silently breaks the default-on `fold_imports`
+  -- for anyone with foldmethod=expr/indent/syntax, e.g. treesitter folding). The
+  -- clean fix lives in the plugin's own Question:editor_fold_imports: since it
+  -- owns this scratch buffer, force foldmethod=manual on self.winid before the
+  -- `:fold` when the current method can't create manual folds. If that ever
+  -- lands upstream (no issue/PR as of 2026-06), delete this whole function.
+  --
   -- 'foldmethod' is WINDOW-local, so flip it to "manual" on the window showing
   -- the solution buffer. win_set_buf -> nvim_win_set_buf fires BufWinEnter
   -- synchronously, just before the plugin runs its fold, so foldmethod is
