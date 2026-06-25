@@ -10,7 +10,7 @@ return {
   end,
   config = function()
     require("nvim-surround").setup({})
-    vim.keymap.set("x", "gS", "<Plug>(nvim-surround-visual)", {
+    vim.keymap.set("x", "S", "<Plug>(nvim-surround-visual)", {
       desc = "Add surround to selection",
     })
   end,

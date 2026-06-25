@@ -13,20 +13,6 @@ return {
       end,
       desc = "Toggle split/join syntax node",
     },
-    {
-      "<leader>tj",
-      function()
-        require("treesj").join()
-      end,
-      desc = "Join syntax node",
-    },
-    {
-      "<leader>ts",
-      function()
-        require("treesj").split()
-      end,
-      desc = "Split syntax node",
-    },
   },
   opts = {
     -- TreeSJ's defaults are <space>m/<space>j/<space>s; keep mappings explicit

@@ -12,6 +12,6 @@ return {
     { lhs = "<leader>L", modes = { "n", "x" }, action = "command.Lazy", desc = "Lazy" },
     { lhs = "<leader><tab>", modes = { "n", "x" }, action = "command.BufferPick", desc = "BufferPick" },
     { lhs = "<leader>-", modes = { "n", "x" }, action = "command.Restart", desc = "Restart Neovim" },
-    { lhs = "<leader>bd", mode = "n", action = "command.BufferClose", desc = "BufferClose" },
+    { lhs = "<leader>x", mode = "n", action = "command.BufferClose", desc = "BufferClose" },
   },
 }

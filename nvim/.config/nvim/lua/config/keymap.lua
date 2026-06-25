@@ -109,8 +109,8 @@ map({ "n", "x" }, "L", "$", opts("End of Line"))
 map({ "n", "x" }, "<C-j>", "8j", opts("Move down 8 lines"))
 map({ "n", "x" }, "<C-k>", "8k", opts("Move up 8 lines"))
 
-map("n", "n", "nzzzv", opts("Next search result centered"))
-map("n", "N", "Nzzzv", opts("Previous search result centered"))
+-- map("n", "n", "nzzzv", opts("Next search result centered"))
+-- map("n", "N", "Nzzzv", opts("Previous search result centered"))
 -- map("n", "<C-d>", "<C-d>zz", opts("Half-page down centered"))
 -- map("n", "<C-u>", "<C-u>zz", opts("Half-page up centered"))
 map("n", "''", "''zz", opts("Jump back centered"))
@@ -218,6 +218,7 @@ map({ "n", "x" }, "Q", function()
 end, opts("Code actions"))
 
 map("n", "R", ".", opts("Repeat last change"))
+map("n", "<leader>R", "R", opts("Replace mode"))
 map("n", "Y", "y$", opts("Yank to end of line"))
 map("x", "Y", "y", opts("Yank selection"))
 -- Zed muscle memory: jump to the value after the last '=' on the current line.
@@ -270,9 +271,7 @@ map("i", "<C-a>", "<C-o>I", opts("Beginning of line"))
 map("i", "<C-e>", "<C-o>A", opts("End of line"))
 map("i", "<M-d>", " <Esc>ce", opts("Change next word"))
 map("i", "<M-BS>", "<C-w>", opts("Delete word back"))
-map("i", "<C-p>", "<C-o>{", opts("Previous paragraph"))
-map("i", "<C-n>", "<C-o>}", opts("Next paragraph"))
-map("i", "<C-S-n>", "<C-c>o", opts("Open line below")) -- use in conjunction with C-n
+map("i", "<C-c>", "<Esc>", opts("Normal mode, fire InsertLeave")) -- reason why is diagnostics don't redraw unless autocmd InsertLeave happens, and <C-c> doens't fire it, only Esc
 
 
 -- Command-line history. Blink cmdline completion explicitly disables these
@@ -431,8 +430,43 @@ map("x", "<leader>r", cmd("'<,'>LuaOutput"), opts("run visual selection to split
 map("n", "<leader>r", cmd(".LuaOutput"), opts("run line to split"))
 
 map("n", "<M-x>", "x", opts("delete char"))
+map("x", "<CR>", "c", opts("change selection"))
+map("n", "<S-CR>", "viwo", opts("highlight word quick"))
 
 map("n", "<leader>qa", cmd("qall"), opts("quit session"))
 
 
 map("n", "<leader>bo", cmd("BufferOrderByBufferNumber"), opts("Order buffers/#"))
+map("n", "<leader>bx", cmd("BufferCloseAllButCurrentOrPinned"), opts("Close all but current/pinned buffers"))
+
+
+-- Plugin-spec helpers: only expose these in files under
+-- stdpath("config")/lua/plugins/*.lua. The realpath comparison keeps this
+-- working when ~/.config/nvim is a symlink into ~/dotfiles.
+local plugin_config_dir = vim.fs.joinpath(vim.fn.stdpath("config"), "lua", "plugins")
+local plugin_config_dir_real = vim.uv.fs_realpath(plugin_config_dir) or plugin_config_dir
+
+vim.api.nvim_create_autocmd({ "BufEnter", "BufFilePost" }, {
+  group = keymap_group,
+  pattern = "*.lua",
+  callback = function(event)
+    local file = vim.api.nvim_buf_get_name(event.buf)
+    local file_real = vim.uv.fs_realpath(file) or file
+
+    if not vim.startswith(file_real, plugin_config_dir_real .. "/") then
+      return
+    end
+
+    map("n", "<leader>pg", cmd("PluginGithub"), opts("Open plugin GitHub", { buffer = event.buf }))
+    map("n", "<leader>pd", cmd("PluginDeepwiki"), opts("Open plugin DeepWiki", { buffer = event.buf }))
+  end,
+})
+
+
+-- sessions keymaps
+map("n", "<leader>ql", cmd("SessionLoad"), opts("Load current session"))
+map("n", "<leader>qp", cmd("SessionPrune"), opts("Prune stale sessions"))
+map("n", "<leader>qP", cmd("SessionPrune!"), opts("Prune stale sessions (no prompt)"))
+map("n", "<leader>qs", cmd("SessionSelect"), opts("Select session"))
+map("n", "<leader>qw", cmd("SessionSave"), opts("Save and activate session"))
+map("n", "<leader>qx", cmd("SessionStop"), opts("Stop session autosave"))

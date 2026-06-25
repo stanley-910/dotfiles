@@ -54,7 +54,7 @@ return {
     smear_between_buffers = false,
     smear_to_cmd = false,
 
-    smear_insert_mode = true,
+    smear_insert_mode = false,
     stiffness_insert_mode = 0.9,
     trailing_stiffness_insert_mode = 0.9,
     damping_insert_mode = 0.95,

@@ -6,7 +6,7 @@ return {
   },
   opts = {
     timeout = 3,
-    maxkeys = 5,
-    position = "bottom-right",
+    maxkeys = 8,
+    position = "bottom-center",
   },
 }

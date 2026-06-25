@@ -2,7 +2,7 @@ return {
   {
     "folke/trouble.nvim",
     cmd = "Trouble",
-    dependencies = { "nvim-mini/mini.icons" },
+    dependencies = { "nvim-tree/nvim-web-devicons" },
     opts = {
       modes = {
         buffer_diagnostics = {
@@ -13,17 +13,17 @@ return {
     },
     keys = {
       {
-        "<leader>xx",
+        "<leader>td",
         "<cmd>Trouble buffer_diagnostics close<cr><cmd>Trouble diagnostics toggle focus=true<cr>",
         desc = "Diagnostics (Trouble)",
       },
       {
-        "<leader>xX",
+        "<leader>tb",
         "<cmd>Trouble diagnostics close<cr><cmd>Trouble buffer_diagnostics toggle focus=true<cr>",
         desc = "Buffer Diagnostics (Trouble)",
       },
       {
-        "<leader>cs",
+        "<leader>ts",
         "<cmd>Trouble symbols toggle focus=false<cr>",
         desc = "Symbols (Trouble)",
       },
@@ -33,12 +33,12 @@ return {
         desc = "LSP Definitions / references / ... (Trouble)",
       },
       {
-        "<leader>xL",
+        "<leader>tl",
         "<cmd>Trouble loclist toggle focus=true<cr>",
         desc = "Location List (Trouble)",
       },
       {
-        "<leader>xQ",
+        "<leader>tq",
         "<cmd>Trouble qflist toggle focus=true<cr>",
         desc = "Quickfix List (Trouble)",
       },

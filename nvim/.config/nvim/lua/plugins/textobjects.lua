@@ -36,13 +36,10 @@ return {
       select = {
         -- Direct select maps are intentionally not defined here; mini.ai owns a/i.
         -- Keep linewise defaults available for any future direct select_textobject use.
-        selection_modes = {
-          ["@function.outer"] = "V",
-          ["@class.outer"] = "V",
-          ["@conditional.outer"] = "V",
-          ["@loop.outer"] = "V",
-          ["@block.outer"] = "V",
-        },
+        selection_modes = { ["@function.outer"] = "V", ["@class.outer"] = "V" },
+        -- ["@conditional.outer"] = "V",
+        -- ["@loop.outer"] = "V",
+        -- ["@block.outer"] = "V",
       },
       move = {
         set_jumps = true,
@@ -64,7 +61,9 @@ return {
     map("[o", "goto_previous_start", "@loop.outer", "Previous loop")
     map("]i", "goto_next_start", "@conditional.outer", "Next conditional")
     map("[i", "goto_previous_start", "@conditional.outer", "Previous conditional")
-    map("]r", "goto_next_start", "@parameter.outer", "Next parameter/argument")
-    map("[r", "goto_previous_start", "@parameter.outer", "Previous parameter/argument")
+    map("]p", "goto_next_start", "@parameter.outer", "Next parameter/argument")
+    map("[p", "goto_previous_start", "@parameter.outer", "Previous parameter/argument")
+    map("]k", "goto_next_start", "@comment.outer", "Next comment")
+    map("[k", "goto_previous_start", "@comment.outer", "Previous comment")
   end,
 }

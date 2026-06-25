@@ -50,11 +50,5 @@ return {
       end,
       desc = "Buffer Local Keymaps (which-key)",
     },
-    { "<leader>ql", "<cmd>SessionLoad<CR>", desc = "Load current session" },
-    { "<leader>qp", "<cmd>SessionPrune<CR>", desc = "Prune stale sessions" },
-    { "<leader>qP", "<cmd>SessionPrune!<CR>", desc = "Prune stale sessions (no prompt)" },
-    { "<leader>qs", "<cmd>SessionSelect<CR>", desc = "Select session" },
-    { "<leader>qS", "<cmd>SessionSave<CR>", desc = "Save and activate session" },
-    { "<leader>qx", "<cmd>SessionStop<CR>", desc = "Stop session autosave" },
   },
 }
