@@ -589,9 +589,8 @@ if [[ -t 0 ]]; then
   _cursor_insert                                       # set at shell startup
 fi
 
-# Node is provided by Homebrew (on PATH from .zshenv). nvm removed — it had no
-# installed versions and nothing referenced it. Reinstate here if you ever need
-# per-project node switching (or prefer a faster manager like fnm/volta).
+# Node is provided by Homebrew (on PATH from .zshenv). No shell-level Node
+# version manager is loaded here, so Homebrew upgrades are visible immediately.
 
 # TheFuck command correction — lazy-loaded so we don't spawn Python at every
 # shell startup. The alias is registered on first use, then this wrapper removes

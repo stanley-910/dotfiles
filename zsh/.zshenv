@@ -17,8 +17,8 @@ fi
 # Cargo (Rust) — only if installed via rustup
 [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
 
-# Node.js (Homebrew)
-export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
+# Node.js is provided by Homebrew's unversioned /opt/homebrew/bin/node.
+# Avoid prepending versioned node@XX formula paths here; they can shadow upgrades.
 
 # Python
 export PATH="/usr/local/opt/python/libexec/bin:$PATH"
