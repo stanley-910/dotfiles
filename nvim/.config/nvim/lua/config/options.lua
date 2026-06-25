@@ -66,3 +66,14 @@ vim.opt.foldmethod = "expr"
 vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
 vim.opt.foldlevelstart = 99
 vim.opt.foldcolumn = "1"
+
+
+-- default split options affect oil.nvim
+vim.opt.splitright = true
+
+-- remove EOB '~' characters
+vim.opt.fillchars = {
+  eob = " ",
+  diff = "╱",
+  vert = "│"
+}
