@@ -4,20 +4,63 @@ return {
   -- loading the plugin itself from a keymap is too late for that setup path and
   -- leaves _G.dropbar nil when calling dropbar.api directly.
   lazy = false,
-  dependencies = {
-    {
-      -- dropbar uses telescope-fzf-native as a standalone fuzzy engine; this
-      -- does not require keeping telescope.nvim itself installed.
-      "nvim-telescope/telescope-fzf-native.nvim",
-      build = "make",
+  opts = {
+    bar = {
+      sources = function(buf, _)
+        local sources = require("dropbar.sources")
+        local utils = require("dropbar.utils")
+
+        if vim.bo[buf].ft == "markdown" then
+          return {
+            sources.path,
+            sources.markdown,
+          }
+        end
+
+        if vim.bo[buf].buftype == "terminal" then
+          return {
+            sources.terminal,
+          }
+        end
+
+        return {
+          -- Show only the file name from the path source, then semantic context.
+          -- See :help dropbar-options and :help dropbar-path.
+          sources.path,
+          utils.source.fallback({
+            sources.lsp,
+            sources.treesitter,
+          }),
+        }
+      end,
+    },
+    sources = {
+      path = {
+        max_depth = 1,
+      },
     },
   },
-  config = function()
-    require("dropbar").setup()
-
-    local dropbar_api = require("dropbar.api")
-    vim.keymap.set("n", "<leader>;", dropbar_api.pick, { desc = "Pick symbols in winbar" })
-    vim.keymap.set("n", "[;", dropbar_api.goto_context_start, { desc = "Go to start of current context" })
-    vim.keymap.set("n", "];", dropbar_api.select_next_context, { desc = "Select next context" })
-  end,
+  keys = {
+    {
+      "<leader>;",
+      function()
+        require("dropbar.api").pick()
+      end,
+      desc = "Pick symbols in winbar",
+    },
+    {
+      "[;",
+      function()
+        require("dropbar.api").goto_context_start()
+      end,
+      desc = "Go to start of current context",
+    },
+    {
+      "];",
+      function()
+        require("dropbar.api").select_next_context()
+      end,
+      desc = "Select next context",
+    },
+  },
 }
