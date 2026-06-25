@@ -12,7 +12,7 @@ Stagger commits by stow package (the "tool") — one package per commit, never m
 cursor, fastfetch, ghostty, git, jetbrains, nvim, scripts, starship, sioyek, zsh
 
 **Selective file stow** (`stow --restow --no-folding -v <pkg>`):
-agents, claude, karabiner, pi, tmux, yazi, zed
+agents, claude, karabiner, lazygit, pi, tmux, yazi, zed
 
 Use `--no-folding` when the app writes runtime data (plugins, extensions, backups, installed packages) into the same config directory. This prevents those files from being tracked.
 

@@ -1,0 +1,12 @@
+git:
+  pagers:
+    - pager: diff-so-fancy
+  autoStageResolvedConflicts: true
+
+os:
+  # Conflict/merge editor: your full nvim config (theme, treesitter, options,
+  # keymaps) + diffview-plus merge tool. Sessions don't auto-restore on launch
+  # and the VimLeavePre autosave is guarded (M.active=false), so nothing is
+  # clobbered. diffview-plus is lazy-loaded via its `cmd = {"DiffviewOpen"}`.
+  edit: 'nvim -c DiffviewOpen {{filename}}'
+  editInTerminal: true
