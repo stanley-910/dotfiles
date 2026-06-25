@@ -34,6 +34,7 @@ return {
       { "<leader>x", group = "diagnostics (trouble)" },
       { "<leader>m", group = "marks / bookmarks" },
       { "<leader>q", group = "sessions" },
+      { "<leader>T", group = "timer" },
       -- Bracket-motion prefixes are not under a leader, but can still be labeled:
       { "]",         group = "next" },
       { "[",         group = "prev" },
