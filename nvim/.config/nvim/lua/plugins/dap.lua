@@ -163,7 +163,9 @@ return {
     local function open_debug_ui(args)
       local ok, err = pcall(dapui.open, args)
       if ok then
-        return true
+        -- nvim-dap listener contract: returning boolean true unregisters the
+        -- listener. Keep this nil so dap-ui opens for every future session.
+        return
       end
 
       -- nvim-dap-ui keeps split window ids internally. If one dap-ui window is
@@ -174,11 +176,28 @@ return {
       if not ok then
         vim.notify(("nvim-dap-ui failed to open: %s"):format(err), vim.log.levels.ERROR)
       end
-      return ok
     end
 
     local function close_debug_ui()
       pcall(dapui.close)
+    end
+
+    local function is_leetcode_debug_session(session)
+      local config = session and session.config
+      local name = config and config.name
+      local program = config and config.program
+      local leetcode_debug_dir = vim.fs.joinpath(vim.fn.stdpath("cache"), "leetcode", "debug")
+
+      return type(name) == "string"
+          and vim.startswith(name, "LeetCode: ")
+          and type(program) == "string"
+          and vim.startswith(vim.fs.normalize(program), vim.fs.normalize(leetcode_debug_dir) .. "/")
+    end
+
+    local function close_non_leetcode_debug_ui(session)
+      if not is_leetcode_debug_session(session) then
+        close_debug_ui()
+      end
     end
 
     local function current_debug_expression()
@@ -372,14 +391,33 @@ return {
       saved_keymaps = {}
     end
 
+    local function restore_non_leetcode_debug_keymaps(session)
+      if not is_leetcode_debug_session(session) then
+        restore_debug_keymaps()
+      end
+    end
+
+    local function close_leetcode_debug_ui_on_session_end(old_session, new_session)
+      -- :help dap-listeners-on_session: this fires for new sessions, focus
+      -- changes, and when the last remaining session finishes. Use that final
+      -- no-new-session transition for LeetDebug cleanup so there is no delayed
+      -- timer from a previous run that can close the next run's freshly-opened
+      -- dap-ui windows.
+      if new_session == nil and is_leetcode_debug_session(old_session) then
+        close_debug_ui()
+        restore_debug_keymaps()
+      end
+    end
+
     dap.listeners.before.attach["user_dapui"] = open_debug_ui
     dap.listeners.before.launch["user_dapui"] = open_debug_ui
-    dap.listeners.before.event_terminated["user_dapui"] = close_debug_ui
-    dap.listeners.before.event_exited["user_dapui"] = close_debug_ui
+    dap.listeners.before.event_terminated["user_dapui"] = close_non_leetcode_debug_ui
+    dap.listeners.before.event_exited["user_dapui"] = close_non_leetcode_debug_ui
+    dap.listeners.on_session["user_leetcode_debug_dapui"] = close_leetcode_debug_ui_on_session_end
 
     dap.listeners.after.event_initialized["user_debug_keymaps"] = save_and_set_debug_keymaps
-    dap.listeners.before.event_terminated["user_debug_keymaps"] = restore_debug_keymaps
-    dap.listeners.before.event_exited["user_debug_keymaps"] = restore_debug_keymaps
+    dap.listeners.before.event_terminated["user_debug_keymaps"] = restore_non_leetcode_debug_keymaps
+    dap.listeners.before.event_exited["user_debug_keymaps"] = restore_non_leetcode_debug_keymaps
 
     require("config.dap_breakpoints").setup()
   end,
