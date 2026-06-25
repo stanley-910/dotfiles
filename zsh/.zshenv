@@ -42,6 +42,11 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 # Silence zoxide doctor warning in non-interactive shells
 export _ZO_DOCTOR=0
 
+# XDG Base Directory — set explicitly so XDG-aware tools (lazygit, etc.) resolve
+# config to ~/.config instead of macOS's ~/Library/Application Support. Must be
+# an actual export; the ${XDG_CONFIG_HOME:-...} fallbacks below don't set it.
+export XDG_CONFIG_HOME="$HOME/.config"
+
 # Keep history dotfiles out of $HOME — relocate to XDG state dir.
 # (zsh's own HISTFILE lives in .zshrc with the rest of the history settings.)
 export LESSHISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/less/history"
