@@ -98,7 +98,7 @@ brew "tree"
 # ============================================================================
 
 # Node.js - JavaScript runtime
-# brew "node@20"
+# brew "node"
 
 # Python - Programming language
 # brew "python@3.12"

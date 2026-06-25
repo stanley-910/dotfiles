@@ -13,8 +13,8 @@
 # Development Languages & Runtimes
 # ============================================================================
 
-# Node.js - JavaScript runtime (specific version you had)
-brew "node@20"
+# Node.js - JavaScript runtime (current Homebrew stable)
+brew "node"
 
 # Python versions - You had multiple versions installed
 brew "python@3.12"
