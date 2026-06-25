@@ -119,9 +119,9 @@ vim.api.nvim_create_autocmd("FileType", {
     -- vim.bo.buflisted = true
 
     -- get rid of empty gutter space
-    vim.opt_local.signcolumn = "no"
-    vim.opt_local.foldcolumn = "1"
-    vim.opt_local.statuscolumn = ""
+    -- vim.opt_local.signcolumn = "no"
+    -- vim.opt_local.foldcolumn = "1"
+    -- vim.opt_local.statuscolumn = ""
 
     vim.cmd.wincmd("L")
   end,

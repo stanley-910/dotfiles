@@ -331,7 +331,8 @@ local jump_actions = {
     hint = "c",
     action = pick("files", { cwd = vim.fn.stdpath("config") })
   },
-  { key = "L", label = "lazy", hint = "SPC L", action = ":Lazy" },
+  { key = "l", label = "lazy", hint = "SPC L", action = ":Lazy" },
+  { key = "L", label = "leetcode", hint = ":Leet", action = ":Leet" },
   { key = "q", label = "quit", hint = "q",     action = ":qa" },
 }
 
