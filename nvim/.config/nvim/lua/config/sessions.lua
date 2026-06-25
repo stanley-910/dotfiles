@@ -35,6 +35,23 @@ local defaults = {
 M.opts = vim.deepcopy(defaults)
 M.active = false
 
+local function emit_state_changed()
+  vim.api.nvim_exec_autocmds("User", { pattern = "SessionStateChanged", modeline = false })
+end
+
+local function set_active(active)
+  if M.active == active then
+    return
+  end
+
+  M.active = active
+  emit_state_changed()
+end
+
+function M.is_active()
+  return M.active
+end
+
 local function notify(msg, level)
   if M.opts.notify then
     vim.notify(msg, level or vim.log.levels.INFO, { title = "sessions" })
@@ -371,7 +388,7 @@ function M.save(opts)
   ctx.updated = os.time()
   write_json(ctx.meta, ctx)
   vim.v.this_session = ctx.session
-  M.active = true
+  set_active(true)
 
   if not opts.quiet then
     notify("Saved " .. label(ctx))
@@ -794,7 +811,7 @@ function M.setup(opts)
   end, { desc = "Restore session for current project/branch" })
 
   vim.api.nvim_create_user_command("SessionStop", function()
-    M.active = false
+    set_active(false)
     notify("Session autosave stopped")
   end, { desc = "Disable session autosave for this Neovim instance" })
 
