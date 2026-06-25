@@ -29,8 +29,23 @@ return {
         return {
           DropBarMenuHoverEntry = { -- for ./dropbar.lua
             fg = colors.theme.ui.fg,
-            bg = colors.palette.waveBlue1
+            bg = colors.palette.waveBlue1,
           },
+          -- 'fillchars' uses DiffDelete for diff filler lines. Keep the
+          -- diagonal glyph quiet instead of painting deleted-space rows red.
+          DiffDelete = {
+            fg = colors.theme.ui.nontext,
+            bg = "NONE",
+          },
+          Normal = {
+            bg = "#16161D",
+            -- fg = "#DCD7BA" -- default
+          },
+          WinSeparator = {
+            fg = colors.theme.syn.comment,
+            bold = true
+          }
+
           -- SignColumn = {
           --   bg = "NONE"
           -- },

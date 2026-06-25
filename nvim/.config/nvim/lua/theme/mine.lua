@@ -1,12 +1,11 @@
+---@diagnostic disable: undefined-global
 --
 -- mine.lua — a Lush colorscheme spec (dark)
 -- ---------------------------------------------------------------------------
 -- WORKFLOW
 --   1. :e this file, then run  :Lushify   (live preview turns on)
---   2. Pick anchor colors with minty:  <leader>uH (:Huefy) → copy hex
---      Explore shades with:            <leader>uS (:Shades)
---   3. Paste hex into the PALETTE block below as hsl("#rrggbb").
---      Tune the ~25 BASE groups — every linked group downstream follows.
+--   2. Paste candidate hex colors into the PALETTE block below as hsl("#rrggbb").
+--   3. Tune the ~25 BASE groups — every linked group downstream follows.
 --   4. When happy, :colorscheme mine   (loads via colors/mine.lua)
 --
 -- THREE MECHANICS
@@ -25,24 +24,33 @@ return lush(function(injected_functions)
   local sym     = injected_functions.sym
 
   -- ══ PALETTE ════════════════════════════════════════════════════════════
-  -- Name colors by ROLE, not hue. Anchor these 8-10 with :Huefy, then DERIVE
+  -- Name colors by ROLE, not hue. Anchor these 8-10 by hand, then DERIVE
   -- the rest with .li()/.da()/.sa()/.de()/.ro() instead of hand-picking.
-  local bg      = hsl("#0a0a0d")   -- << REPLACE >> editor background
-  local fg      = hsl("#dcd7ba")   -- << REPLACE >> default foreground
-  local bg_dim  = bg.da(20)        -- darker bg (gutters, float)
+  local bg      = hsl("#000000")   -- << REPLACE >> editor background
+  local fg      = hsl("#cdd6f4")   -- << REPLACE >> default foreground
+  local bg_dim  = bg.da(8)         -- darker bg (gutters, float)
   local bg_lite = bg.li(8)         -- lighter bg (cursorline, selection base)
-  local muted   = fg.da(45).de(20) -- comments / non-text (low contrast on purpose)
+  local muted   = fg.da(55).de(80) -- comments / non-text (low contrast on purpose)
   local sel     = hsl("#223249")   -- << REPLACE >> visual selection bg
 
-  -- accents — anchor with :Huefy, keep saturation modest for large areas
-  local red     = hsl("#e46876") -- << REPLACE >> errors
-  local orange  = hsl("#ffa066") -- << REPLACE >> constants / numbers
-  local yellow  = hsl("#e6c384") -- << REPLACE >> warnings
+  local warm    = hsl("#fc8a1e")   -- your muted purple, for blue/teal/purple
+  local cool    = hsl("#98bb6c")   -- a saturated orange, for red/orange/yellow
+
+  -- local purple  = hsl "#bf8ff3"
+  local purple = cool.hue(280).sa(20).li(6)
+  local blue    = hsl "#89b4fa"
+  local teal    = hsl "#94e2d5"
+  local orange = warm
+
+
+
+  local red     = warm.hue(0)
+  local yellow  = warm.hue(48)
   local green   = hsl("#98bb6c") -- << REPLACE >> strings
-  local teal    = hsl("#7aa89f") -- << REPLACE >> types
-  local blue    = hsl("#7e9cd8") -- << REPLACE >> functions
-  local purple  = hsl("#957fb8") -- << REPLACE >> keywords
+
   local cyan    = hsl("#7fb4ca") -- << REPLACE >> specials / operators
+
+  -- accents — keep saturation modest for large areas
 
   return {
     -- ══ EDITOR / UI (base) ═══════════════════════════════════════════════
