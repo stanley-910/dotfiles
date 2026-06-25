@@ -5,7 +5,7 @@
 --   :help dap-adapter
 --   :help dap-configuration
 --   :help dap-api
---   :help dap-view
+--   :help dapui
 return {
   "mfussenegger/nvim-dap",
   lazy = true,
@@ -22,55 +22,41 @@ return {
     "DapStepOver",
     "DapTerminate",
     "DapToggleBreakpoint",
+    "DapToggleFalseBreakpoint",
+  },
+  keys = {
+    {
+      "<leader>df",
+      function()
+        vim.cmd("DapToggleFalseBreakpoint")
+      end,
+      desc = "Debug false breakpoint toggle",
+    },
+    {
+      "<leader>dw",
+      function()
+        vim.cmd("DapAddWatch")
+      end,
+      desc = "Add debug watch under cursor",
+    },
   },
   dependencies = {
     "tpope/vim-repeat",
-    {
-      "igorlfs/nvim-dap-view",
-      ---@module 'dap-view'
-      ---@type dapview.Config
-      opts = {
-        winbar = {
-          -- Put the watch list first because it is the highest-signal view while
-          -- stepping through small scripts and experiments.
-          default_section = "watches",
-          controls = {
-            enabled = true,
-            position = "right",
-          },
-        },
-        windows = {
-          size = 0.25,
-          position = "below",
-          terminal = {
-            size = 0.35,
-            position = "right",
-          },
-        },
-        keymaps = {
-          base = {
-            next_view = "<Tab>",
-            prev_view = "<S-Tab>",
-          },
-        },
-        virtual_text = {
-          enabled = true,
-          position = "eol",
-        },
-        -- Open the UI with a debug session and close it when the last session
-        -- exits, while preserving terminal output for post-run inspection.
-        auto_toggle = "keep_terminal",
-      },
-    },
+    "nvim-neotest/nvim-nio",
+    "rcarriga/nvim-dap-ui",
   },
   config = function()
     local dap = require("dap")
+    local dapui = require("dapui")
+
+    dapui.setup()
 
     vim.api.nvim_set_hl(0, "DapBreakpoint", { fg = "#fb4934" })
     vim.api.nvim_set_hl(0, "DapBreakpointCondition", { fg = "#fabd2f" })
     vim.api.nvim_set_hl(0, "DapLogPoint", { fg = "#83a598" })
     vim.api.nvim_set_hl(0, "DapStopped", { fg = "#b8bb26" })
     vim.api.nvim_set_hl(0, "DapBreakpointRejected", { fg = "#928374" })
+    vim.api.nvim_set_hl(0, "DapBreakpointDisabled", { fg = "#928374" })
 
     vim.fn.sign_define("DapBreakpoint", { text = "●", texthl = "DapBreakpoint", numhl = "DapBreakpoint" })
     vim.fn.sign_define("DapBreakpointCondition", {
@@ -85,10 +71,11 @@ return {
       texthl = "DapBreakpointRejected",
       numhl = "DapBreakpointRejected",
     })
-
-    -- DAP's default switchbuf can steal focus into the dap-view terminal split
-    -- when the terminal is on the right. Prefer visible/source windows first.
-    dap.defaults.fallback.switchbuf = "usevisible,usetab,newtab"
+    vim.fn.sign_define("DapBreakpointDisabled", {
+      text = "○",
+      texthl = "DapBreakpointDisabled",
+      numhl = "DapBreakpointDisabled",
+    })
 
     local function first_executable(names)
       for _, name in ipairs(names) do
@@ -140,40 +127,222 @@ return {
         justMyCode = true,
         pythonPath = project_python,
       },
+      {
+        type = "debugpy",
+        request = "launch",
+        name = "Launch madden-agent uvicorn",
+        module = "uvicorn",
+        args = {
+          "src.server:app",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8000",
+          "--log-level",
+          "debug",
+        },
+        cwd = "${workspaceFolder}",
+        console = "integratedTerminal",
+        justMyCode = false,
+        pythonPath = project_python,
+      },
+
+      {
+        type = "debugpy",
+        request = "attach",
+        name = "Attach madden-agent debugpy :5678",
+        connect = {
+          host = "127.0.0.1",
+          port = 5678,
+        },
+        cwd = "${workspaceFolder}",
+        justMyCode = false,
+      },
     }
 
-    local function close_debug_ui()
-      require("dap-view").close(true)
+    local function open_debug_ui(args)
+      local ok, err = pcall(dapui.open, args)
+      if ok then
+        return true
+      end
+
+      -- nvim-dap-ui keeps split window ids internally. If one dap-ui window is
+      -- closed manually, a later `open()` can try to resize a stale id and raise
+      -- "Invalid window id". Closing resets dap-ui's layout state, then retry.
+      pcall(dapui.close)
+      ok, err = pcall(dapui.open, args)
+      if not ok then
+        vim.notify(("nvim-dap-ui failed to open: %s"):format(err), vim.log.levels.ERROR)
+      end
+      return ok
     end
 
-    local function add_debug_watch()
-      require("dap-view").add_expr()
+    local function close_debug_ui()
+      pcall(dapui.close)
     end
+
+    local function current_debug_expression()
+      local mode = vim.fn.mode()
+      if mode == "v" or mode == "V" or mode == "\022" then
+        local lines = require("dapui.util").get_selection(vim.fn.getpos("v"), vim.fn.getpos("."))
+        return lines and table.concat(lines, "\n") or ""
+      end
+
+      return vim.fn.expand("<cexpr>")
+    end
+
+    local function add_debug_watch(expr)
+      if expr == nil or expr == "" then
+        expr = current_debug_expression()
+      end
+      expr = vim.trim(expr or "")
+      if expr == "" then
+        expr = vim.fn.input("Watch expression: ")
+      end
+      if expr == nil or vim.trim(expr) == "" then
+        return
+      end
+
+      -- `watches.add()` is dap-ui's public watch API. Use table indexing to
+      -- keep lua-language-server quiet across dap-ui annotation versions.
+      dapui["elements"]["watches"].add(expr)
+      open_debug_ui()
+    end
+
+    vim.api.nvim_create_user_command("DapAddWatch", function(opts)
+      add_debug_watch(opts.args)
+    end, {
+      nargs = "*",
+      desc = "Add an nvim-dap-ui watch expression",
+    })
 
     local function debug_hover()
-      require("dap-view").hover(nil, true)
+      dapui.eval(nil, { enter = true })
     end
 
     local function open_debug_watches()
-      require("dap-view").jump_to_view("watches")
+      dapui.float_element("watches", { enter = true })
     end
+
+    local function open_debug_repl()
+      dapui.float_element("repl", { enter = true })
+    end
+
+    local breakpoint_sign_group = "dap_breakpoints"
+
+    local function breakpoint_condition_is_false(bp)
+      local condition = bp and bp.condition
+      return type(condition) == "string" and vim.trim(condition):lower() == "false"
+    end
+
+    local function breakpoint_sign_name(bp)
+      if bp.state and bp.state.verified == false then
+        return "DapBreakpointRejected"
+      end
+      if breakpoint_condition_is_false(bp) then
+        return "DapBreakpointDisabled"
+      end
+      if type(bp.condition) == "string" and vim.trim(bp.condition) ~= "" then
+        return "DapBreakpointCondition"
+      end
+      if type(bp.logMessage) == "string" and vim.trim(bp.logMessage) ~= "" then
+        return "DapLogPoint"
+      end
+      return "DapBreakpoint"
+    end
+
+    local function refresh_breakpoint_signs(bufnr)
+      local ok, breakpoints = pcall(require("dap.breakpoints").get, bufnr)
+      if not ok then
+        return
+      end
+
+      for buf, bps in pairs(breakpoints) do
+        if vim.api.nvim_buf_is_valid(buf) then
+          local placed_ok, placed = pcall(vim.fn.sign_getplaced, buf, { group = breakpoint_sign_group })
+          local signs = placed_ok and placed[1] and placed[1].signs or {}
+          local signs_by_line = {}
+
+          for _, sign in ipairs(signs) do
+            signs_by_line[sign.lnum] = signs_by_line[sign.lnum] or {}
+            table.insert(signs_by_line[sign.lnum], sign)
+          end
+
+          for _, bp in ipairs(bps) do
+            for _, sign in ipairs(signs_by_line[bp.line] or {}) do
+              vim.fn.sign_place(sign.id, breakpoint_sign_group, breakpoint_sign_name(bp), buf, {
+                lnum = bp.line,
+                priority = 21,
+              })
+            end
+          end
+        end
+      end
+    end
+
+    local function current_line_breakpoint()
+      local bufnr = vim.api.nvim_get_current_buf()
+      local lnum = vim.api.nvim_win_get_cursor(0)[1]
+      local breakpoints = require("dap.breakpoints").get(bufnr)[bufnr] or {}
+
+      for _, bp in ipairs(breakpoints) do
+        if bp.line == lnum then
+          return bp
+        end
+      end
+    end
+
+    local function toggle_false_breakpoint()
+      if breakpoint_condition_is_false(current_line_breakpoint()) then
+        dap.set_breakpoint()
+      else
+        dap.set_breakpoint("false")
+      end
+      refresh_breakpoint_signs(vim.api.nvim_get_current_buf())
+    end
+
+    vim.api.nvim_create_user_command("DapToggleFalseBreakpoint", toggle_false_breakpoint, {
+      desc = "Toggle a disabled breakpoint via condition=false",
+    })
+
+    local function refresh_all_breakpoint_signs()
+      refresh_breakpoint_signs()
+    end
+
+    dap.listeners.after.event_initialized["user_disabled_breakpoint_signs"] = function()
+      vim.defer_fn(refresh_all_breakpoint_signs, 100)
+    end
+    dap.listeners.after.event_stopped["user_disabled_breakpoint_signs"] = refresh_all_breakpoint_signs
 
     ---@type { mode: string, lhs: string, rhs: function, desc: string }[]
     local debug_keymaps = {
-      { mode = "n", lhs = "<M-l>", rhs = dap.step_over, desc = "Debug step over" },
-      { mode = "n", lhs = "<M-j>", rhs = dap.step_into, desc = "Debug step into" },
-      { mode = "n", lhs = "<M-k>", rhs = dap.step_out, desc = "Debug step out" },
-      { mode = "n", lhs = "<leader>do", rhs = dap.step_over, desc = "Debug step over" },
-      { mode = "n", lhs = "<leader>di", rhs = dap.step_into, desc = "Debug step into" },
-      { mode = "n", lhs = "<leader>du", rhs = dap.step_out, desc = "Debug step out" },
-      { mode = "n", lhs = "<leader>dt", rhs = dap.terminate, desc = "Debug terminate" },
-      { mode = "n", lhs = "<leader>dR", rhs = dap.repl.open, desc = "Debug REPL" },
-      { mode = "n", lhs = "<leader>dC", rhs = close_debug_ui, desc = "Close debug UI and terminal" },
-      { mode = "n", lhs = "<leader>dw", rhs = add_debug_watch, desc = "Add debug watch" },
-      { mode = "x", lhs = "<leader>dw", rhs = add_debug_watch, desc = "Add debug watch" },
-      { mode = "n", lhs = "<leader>dh", rhs = debug_hover, desc = "Debug hover" },
-      { mode = "x", lhs = "<leader>dh", rhs = debug_hover, desc = "Debug hover" },
+      { mode = "n", lhs = "<C-S-l>",      rhs = dap.step_over,      desc = "Debug step over" },
+      { mode = "n", lhs = "<C-S-j>",      rhs = dap.step_into,      desc = "Debug step into" },
+      { mode = "n", lhs = "<C-S-k>",      rhs = dap.step_out,       desc = "Debug step out" },
+      { mode = "n", lhs = "<leader>do", rhs = dap.step_over,      desc = "Debug step over" },
+      { mode = "n", lhs = "<leader>di", rhs = dap.step_into,      desc = "Debug step into" },
+      { mode = "n", lhs = "<leader>du", rhs = dap.step_out,       desc = "Debug step out" },
+      { mode = "n", lhs = "<leader>dt", rhs = dap.terminate,      desc = "Debug terminate" },
+      { mode = "n", lhs = "<leader>dR", rhs = open_debug_repl,    desc = "Debug REPL" },
+      { mode = "n", lhs = "<leader>dC", rhs = close_debug_ui,     desc = "Close debug UI and terminal" },
+      { mode = "n", lhs = "<leader>dw", rhs = add_debug_watch,    desc = "Add debug watch under cursor" },
+      { mode = "x", lhs = "<leader>dw", rhs = add_debug_watch,    desc = "Add selected debug watch" },
+      { mode = "n", lhs = "<leader>dh", rhs = debug_hover,        desc = "Debug hover" },
+      { mode = "x", lhs = "<leader>dh", rhs = debug_hover,        desc = "Debug hover" },
       { mode = "n", lhs = "<leader>dW", rhs = open_debug_watches, desc = "Open debug watches" },
+      { mode = "n", lhs = "<leader>dF", rhs = toggle_false_breakpoint, desc = "Debug false breakpoint toggle" },
+      {
+        mode = "n",
+        lhs = "<leader>dv",
+        rhs = function()
+          local ok = pcall(dapui.toggle)
+          if not ok then
+            pcall(dapui.close)
+            open_debug_ui()
+          end
+        end,
+        desc = "Debug UI toggle",
+      },
     }
     ---@type table<string, table|false>
     local saved_keymaps = {}
@@ -202,6 +371,11 @@ return {
       end
       saved_keymaps = {}
     end
+
+    dap.listeners.before.attach["user_dapui"] = open_debug_ui
+    dap.listeners.before.launch["user_dapui"] = open_debug_ui
+    dap.listeners.before.event_terminated["user_dapui"] = close_debug_ui
+    dap.listeners.before.event_exited["user_dapui"] = close_debug_ui
 
     dap.listeners.after.event_initialized["user_debug_keymaps"] = save_and_set_debug_keymaps
     dap.listeners.before.event_terminated["user_debug_keymaps"] = restore_debug_keymaps

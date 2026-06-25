@@ -349,11 +349,11 @@ local function dap_action(action)
   end
 end
 
-local function dap_view_action(action)
+local function dap_ui_action(action)
   return function()
-    local dap_view = require_or_notify("dap-view", "nvim-dap-view")
-    if dap_view then
-      dap_view[action]()
+    local dapui = require_or_notify("dapui", "nvim-dap-ui")
+    if dapui then
+      dapui[action]()
     end
   end
 end
@@ -388,7 +388,7 @@ map("n", "<leader>d?", function()
   dap_breakpoints().inspect_current()
 end, opts("Inspect breakpoint"))
 map("n", "<leader>dr", dap_action("run_last"), opts("Rerun last debug session"))
-map("n", "<leader>dU", dap_view_action("toggle"), opts("Toggle debug UI"))
+map("n", "<leader>dU", dap_ui_action("toggle"), opts("Toggle debug UI"))
 
 map("n", "]b", function()
   dap_breakpoints().jump(1)
