@@ -46,7 +46,7 @@ local function start_custom_timer()
       return
     end
 
-    vim.ui.input({ prompt = "Timer name: ", default = "Work" }, function(name)
+    vim.ui.input({ prompt = "Timer name: ", default = "" }, function(name)
       if name == nil then
         return
       end
