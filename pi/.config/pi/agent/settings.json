@@ -4,7 +4,7 @@
   "defaultModel": "gpt-5.5",
   "defaultThinkingLevel": "xhigh",
   "compaction": {
-    "enabled": false
+    "enabled": true
   },
   "enableInstallTelemetry": false,
   "doubleEscapeAction": "tree",
@@ -31,7 +31,8 @@
     "npm:@that-yolanda/pi-context",
     "npm:pi-rewind",
     "npm:@tintinweb/pi-subagents",
-    "npm:@juicesharp/rpiv-advisor"
+    "npm:@juicesharp/rpiv-advisor",
+    "npm:context-mode"
   ],
   "autocompleteMaxVisible": 20,
   "enabledModels": [
