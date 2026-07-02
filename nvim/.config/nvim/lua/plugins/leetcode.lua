@@ -218,6 +218,13 @@ return {
     -- Solving language. Switch per-question at runtime with :Leet lang.
     lang = "python3",
 
+    -- TODO: relocate solution attempts to a version-controlled path. Add a
+    -- `storage = { home = "~/..." }` block so :Leet sources/writes attempts in a
+    -- git-tracked dir instead of the default ~/.local/share/nvim/leetcode. The
+    -- helpers ensure_tool_configs() and install_import_fold_autocmd() already
+    -- read opts.storage.home, so they'll follow automatically. Existing files in
+    -- the old default dir won't migrate -- move them by hand if history matters.
+
     -- Reuse the existing Snacks picker install for problem/tab/lang pickers.
     picker = { provider = "snacks-picker" },
 
