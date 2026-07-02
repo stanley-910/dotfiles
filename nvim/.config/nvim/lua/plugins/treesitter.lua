@@ -11,6 +11,11 @@ local highlighter_filetypes = {
   "typescript",
   "typescriptreact",
   "bash",
+  "go",
+  "gomod",
+  "gosum",
+  "gowork",
+  "java"
 }
 
 -- Parsers to install. The `main` branch dropped master's declarative
@@ -38,6 +43,13 @@ local ensure_installed = {
   "tsx",             -- parser for the `typescriptreact` filetype
   "typescript",
   "bash",
+
+  -- go has multiple parsers for its multiple filetypes
+  "go",
+  "gomod",
+  "gosum",
+  "gowork",
+  "java"
 
 
 }

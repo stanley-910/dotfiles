@@ -130,6 +130,30 @@ return {
       win = {
         style = "scratch",
       },
+      win_by_ft = {
+        go = {
+          keys = {
+            run = {
+              "<cr>",
+              function(self)
+                vim.api.nvim_buf_call(self.buf, function()
+                  vim.cmd("silent write")
+                end)
+
+                Snacks.terminal({ "go", "run", vim.api.nvim_buf_get_name(self.buf) }, {
+                  interactive = false,
+                  win = {
+                    position = "bottom",
+                    height = 12,
+                  },
+                })
+              end,
+              desc = "Run Go scratch",
+              mode = "n",
+            },
+          },
+        },
+      },
     },
 
     -- [9] gitbrowse: open the current repo/file/selection/commit in the system
