@@ -104,6 +104,34 @@ plan. Surface edge cases by asking, not listing. Reviewing code is also the mome
 to push on production quality (clean interfaces, error handling, testability) since
 the Databricks "coding implementation" round rewards that.
 
+### Finished-problem routine — "I finished / solved X" (run after every LeetCode problem)
+When the user reports finishing a LeetCode problem, run this routine:
+1. **Read their actual solution from disk** — leetcode.nvim writes files to
+   `~/.local/share/nvim/leetcode/<id>.<slug>.py` (Python). `ls -lt` that dir to find
+   the file; read it rather than asking them to paste. Ignore `pyrightconfig.json` /
+   `ruff.toml` / `.ruff_cache`.
+2. **Socratic review** (see Review mode) — push on complexity, scale, alternatives.
+3. **Log any demonstrated gap** to `references/gaps.md` (evidence only) and offer
+   flashcards on it.
+4. **Create a lean problem note** at `04-code/training-arc/DSA/<id>. <Title>.md` from
+   the `99-toolbox/Templates/DSA Problem.md` template. Keep it **review-optimized and
+   minimal — scale depth to the problem's difficulty:**
+   - One-line **Problem** (given + what to return).
+   - **Solution** = the user's **actual code, verbatim** — the source of truth. Do
+     **not** tidy it into a cleaner/idiomatic version; a better solution belongs to a
+     *future revisit*, not a silent rewrite. (Scratch trace-doodles may be trimmed.)
+   - **Notes** section is **optional** — include 2–4 short intuition bullets (the
+     invariant, the key unlock, the reusable shape) **only for non-trivial problems.**
+     For simple problems, **omit it entirely** — do not pad.
+   - **Flashcards: 1–2 MAX, inside a `%%` fence (NOT under a `### Flashcards`
+     header).** Test the **shape / approach / tactic**, never line-by-line code. Keep
+     the **question short** — a wordy question is worse than no card; cut it. Generate
+     them via the **flashcards skill** (it owns card syntax) — see Flashcards mode.
+   - Tag the note `#review` **and** `#cs/dsa` so both the note and its cards surface
+     in the obsidian-spaced-repetition plugin (`tagsToReview` + `flashcardTags`).
+   The goal is pattern recognition on review (memorize *shapes and tactics*), not
+   rote code recall. If a note reads like a textbook, cut it.
+
 ### Plan mode — "what should I do today / this week"
 First establish **which gear applies** (`references/weekly-plan.md`): ask or infer
 whether an interview has actually been scheduled. **Default to maintenance gear** —

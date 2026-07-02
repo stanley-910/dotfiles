@@ -23,12 +23,18 @@ mobile/Bluetooth, QoS internals). The Boot.dev HTTP trio covers most of the
 - VPN conceptually (tunnel, encryption)
 - LAN vs WAN vs VPC
 - Symmetric vs asymmetric encryption; certificate authority
+- SSH **key-auth model** (public/private keypair, what the handshake proves, why no
+  password crosses the wire) — promoted from "just a term" because it's the most
+  concrete instance of asymmetric crypto, reinforcing the green-tier crypto node.
+  SSH *protocol internals* (cipher-suite negotiation, channel multiplexing, binary
+  packet protocol) stay out of scope (network-engineer territory).
 - BGP exists and routes between ISPs
 
 ## Just know the term exists
-- DHCP (auto IP assignment), ARP (IP→MAC), SSH (encrypted remote shell),
+- DHCP (auto IP assignment), ARP (IP→MAC),
   SMTP/IMAP (email), FTP/SFTP (file transfer), NTP (time sync),
   Wireshark (packet capture)
+  (SSH moved up to "understand conceptually" — see above.)
 
 ## One-afternoon resource
 Cloudflare Learning Center articles on DNS, TLS, and TCP/IP. Pair with the Boot.dev
