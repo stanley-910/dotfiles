@@ -550,6 +550,12 @@ function auto_venv() {
 # EXTERNAL TOOL INITIALIZATION
 # ==============================================================================
 
+# SDKMAN — interactive Java/JVM SDK manager. Defines the `sdk` shell function
+# and optional project auto-env hooks. Keep the install/state location in
+# .zshenv via SDKMAN_DIR, but do not source SDKMAN there because non-interactive
+# agent shells should avoid the startup cost and PATH/JAVA_HOME mutation.
+[[ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]] && source "$SDKMAN_DIR/bin/sdkman-init.sh"
+
 # Starship prompt
 # Check that the function `starship_zle-keymap-select()` is defined to fix vim mode enable.
 # xref: https://github.com/starship/starship/issues/3418

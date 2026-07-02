@@ -43,20 +43,37 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 export _ZO_DOCTOR=0
 
 # XDG Base Directory — set explicitly so XDG-aware tools (lazygit, etc.) resolve
-# config to ~/.config instead of macOS's ~/Library/Application Support. Must be
-# an actual export; the ${XDG_CONFIG_HOME:-...} fallbacks below don't set it.
+# to ~/.config, ~/.local/share, ~/.local/state, and ~/.cache instead of macOS's
+# ~/Library/Application Support or top-level dotdirs. Must be actual exports;
+# ${XDG_*:-...} fallbacks below don't set them for child processes.
 export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_STATE_HOME="$HOME/.local/state"
+export XDG_CACHE_HOME="$HOME/.cache"
+
+# SDKMAN — keep SDKMAN's install/state out of ~/.sdkman. The interactive
+# `sdk` shell function is sourced from .zshrc, not here.
+export SDKMAN_DIR="$XDG_DATA_HOME/sdkman"
+
+# Go — keep the toolchain's user files out of ~/go and macOS Application Support.
+# Homebrew owns the `go` binary under /opt/homebrew; `go install` drops command
+# binaries in ~/.local/bin, which is already on PATH above.
+export GOPATH="$XDG_DATA_HOME/go"
+export GOBIN="$HOME/.local/bin"
+export GOMODCACHE="$GOPATH/pkg/mod"
+export GOCACHE="$XDG_CACHE_HOME/go-build"
+export GOENV="$XDG_CONFIG_HOME/go/env"
 
 # Keep history dotfiles out of $HOME — relocate to XDG state dir.
 # (zsh's own HISTFILE lives in .zshrc with the rest of the history settings.)
-export LESSHISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/less/history"
-export PYTHON_HISTORY="${XDG_STATE_HOME:-$HOME/.local/state}/python/history"
+export LESSHISTFILE="$XDG_STATE_HOME/less/history"
+export PYTHON_HISTORY="$XDG_STATE_HOME/python/history"
 
 # Pi Coding Agent — move global config/state out of ~/.pi for XDG compliance.
 # Keep this in .zshenv so interactive Pi sessions and non-interactive agent
 # subshells agree on the same runtime directories.
-export PI_CODING_AGENT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/pi/agent"
-export PI_CODING_AGENT_SESSION_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/pi/sessions"
+export PI_CODING_AGENT_DIR="$XDG_CONFIG_HOME/pi/agent"
+export PI_CODING_AGENT_SESSION_DIR="$XDG_STATE_HOME/pi/sessions"
 
 # Source local secrets (API keys, tokens) — not tracked by git
 [[ -f ~/.secrets/env ]] && source ~/.secrets/env
