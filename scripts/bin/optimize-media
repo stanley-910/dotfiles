@@ -433,6 +433,9 @@ process_file() {
   if $BACKUP; then
     mkdir -p "$(dirname "$f")/_originals"
     cp -p "$f" "$(dirname "$f")/_originals/$base"
+    # backups land pre-optimization with no xattr; stamp them so Clop's
+    # watched-folder feature doesn't re-encode (destroy) them
+    mark_clop_optimised "$(dirname "$f")/_originals/$base"
   fi
 
   # preserve dates like Clop's copyCreationModificationDates: carry the original
