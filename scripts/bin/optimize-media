@@ -239,15 +239,11 @@ jpeg_quality() {
 optimize_jpeg() {
   if [[ -n "$CJPEGLI" ]] && (( $(jpeg_quality "$1") > JPEG_MAX )); then
     # source quality above target: re-encode with jpegli, then copy EXIF back.
-    # Match the source's chroma subsampling: cjpegli defaults to 4:4:4, which
-    # is ~20% larger and not what camera JPEGs (4:2:0) use.
-    local ss
-    case "$([[ -n "$IDENTIFY" ]] && "$IDENTIFY" -format '%[jpeg:sampling-factor]' "$1" 2>/dev/null)" in
-      1x1,1x1,1x1) ss=444 ;;
-      2x1,1x1,1x1) ss=422 ;;
-      1x2,1x1,1x1) ss=440 ;;
-      *)           ss=420 ;;
-    esac
+    # Chroma: 4:2:0 like Clop (Fuji writes 4:2:2 JPEGs — keeping it costs ~15%
+    # for no visible gain at photo resolutions). Only 4:4:4 sources stay 4:4:4,
+    # since downsampling those visibly smears colored text in screenshots.
+    local ss=420
+    [[ "$([[ -n "$IDENTIFY" ]] && "$IDENTIFY" -format '%[jpeg:sampling-factor]' "$1" 2>/dev/null)" == "1x1,1x1,1x1" ]] && ss=444
     "$CJPEGLI" "$1" "$2" -q "$JPEG_MAX" --chroma_subsampling="$ss" 2>/dev/null || return 1
     $STRIP_METADATA || copy_metadata "$1" "$2"
   else
