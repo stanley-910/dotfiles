@@ -148,6 +148,14 @@ If using a custom agent with frontmatter `model:`, either:
 
 Do not use fuzzy model names for audit-critical agents. If fuzzy/default is used, record it honestly in the ledger.
 
+Route by context ceiling. A slice's working set (repo reads + prompt + output) must fit the worker:
+
+- `github-copilot/claude-opus-4.8` — 200K ctx. Deepest reasoning. Only slices ≤~150K (leave headroom for 64K output).
+- `github-copilot/gpt-5.5` — 400K ctx. Larger token loads, breadth, second opinion.
+- `github-copilot/claude-sonnet-4.6` — 1M ctx. Huge-context scouting/reads.
+- `github-copilot/gpt-5.4-mini` / `github-copilot/gpt-5-mini` — cheap mechanical fan-out.
+- `github-copilot/gpt-5.3-codex` — code-only implementation slices with no cross-contract risk.
+
 ## UI-visible agent labels
 
 The active Agents view shows the Agent tool `description`. Put the model tag there.
@@ -305,6 +313,11 @@ Rules:
 - If same-wave slices may conflict, use separate worktrees. Do not serialize only because conflicts are possible.
 - Serialize only when a slice needs another slice's actual code output, not just its contract.
 
+Slice sizing:
+
+- Target every slice so its working set fits ≤200K tokens, so any worker (including `opus-4.8`) can take it.
+- Split before exceeding 200K. Only route an unsplittable >200K slice to a larger-context worker (`gpt-5.5` ≤400K, `claude-sonnet-4.6` ≤1M).
+
 ## Implementation agents
 
 One implementation agent per slice.
@@ -315,6 +328,7 @@ Agent:
 - thinking `low` for mechanical/docs/tests/prompts slices
 - thinking `medium` default for well-scoped implementation when orchestrator provides exact files/contracts/tests
 - thinking `high` only for schema/storage, auth, money/checkout, concurrency/idempotency, privacy/logging, or broad cross-layer slices
+- for code-only slices with no cross-contract risk, prefer `model="github-copilot/gpt-5.3-codex"`
 - use `run_in_background: true`
 - run parallel wave agents in one tool message
 
