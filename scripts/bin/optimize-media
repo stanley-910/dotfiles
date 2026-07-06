@@ -163,13 +163,22 @@ fi
 
 # video: Clop hard-codes aggressive; normal uses videoH264Args() (tier .fast)
 VF=$(( VID_FACTOR < 5 ? 5 : VID_FACTOR ))
+X264_CRF=$(calc "18 + ($VF - 5) / 95 * 12" 17 32)
+if   (( VF < 20 )); then X264_PRESET=veryfast
+elif (( VF < 40 )); then X264_PRESET=fast
+elif (( VF < 60 )); then X264_PRESET=medium
+elif (( VF < 85 )); then X264_PRESET=slow
+else X264_PRESET=slower; fi
+# software encode, used directly on Intel/aggressive and as the fallback when
+# VideoToolbox can't take the input (e.g. >4K resolutions exceed H.264 hw limits)
+VIDEO_ARGS_SW=(-vcodec h264 -tag:v avc1 -preset "$X264_PRESET" -crf "$X264_CRF")
 if $AGGRESSIVE && [[ -z "$FACTOR" ]]; then
   VIDEO_ARGS=(-vcodec h264 -tag:v avc1 -preset veryslow -crf 28)
+  VIDEO_ARGS_SW=("${VIDEO_ARGS[@]}")
 elif [[ $ARCH == arm64 ]]; then
   VT_Q=$(calc "70 - ($VF - 5) / 95 * 45" 25 75)
   VIDEO_ARGS=(-vcodec h264_videotoolbox -q:v "$VT_Q" -tag:v avc1)
 else
-  X264_CRF=$(calc "18 + ($VF - 5) / 95 * 12" 17 32)
   VIDEO_ARGS=(-vcodec h264 -tag:v avc1 -preset veryfast -crf "$X264_CRF")
 fi
 
@@ -277,9 +286,14 @@ optimize_heif() { # $3 = "--avif" for avif
 }
 
 optimize_video() {
-  "$FFMPEG" -y -hide_banner -loglevel error -i "$1" \
-    "${VIDEO_ARGS[@]}" -c:a copy -map 0:v -map 0:a'?' \
-    -movflags +faststart "$2" 2>/dev/null || return 1
+  # Clop-style retry ladder: primary encoder -> software x264 -> software with
+  # relaxed stream mapping (lets ffmpeg pick streams / transcode odd audio)
+  ff() { "$FFMPEG" -y -nostdin -hide_banner -loglevel error -i "$1" "${@:3}" "$2" 2>/dev/null && [[ -s "$2" ]]; }
+  ff "$1" "$2" "${VIDEO_ARGS[@]}" -c:a copy -map 0:v -map 0:a'?' -movflags +faststart ||
+    { [[ "${VIDEO_ARGS[*]}" != "${VIDEO_ARGS_SW[*]}" ]] &&
+      ff "$1" "$2" "${VIDEO_ARGS_SW[@]}" -c:a copy -map 0:v -map 0:a'?' -movflags +faststart; } ||
+    ff "$1" "$2" "${VIDEO_ARGS_SW[@]}" -movflags +faststart ||
+    return 1
   $STRIP_METADATA || copy_metadata "$1" "$2"
 }
 
@@ -362,6 +376,23 @@ process_file() {
     heic|heif)     optimizer=optimize_heif;  [[ -n "$HEIFENC" ]]   || missing=heif-enc ;;
     avif)          optimizer="optimize_heif_avif"; [[ -n "$HEIFENC" ]] || missing=heif-enc ;;
     mp4|mov|m4v)   $SKIP_VIDEOS && return 0
+                   # video re-encodes are always lossy with no quality gate, so
+                   # honor the optimised xattr (ours or Clop's) to stay idempotent
+                   if xattr -p clop.optimisation.status "$f" >/dev/null 2>&1; then
+                     printf "  %-42s %9s  already optimized (xattr)\n" "$base" "$(human "$(fsize "$f")")"
+                     return 0
+                   fi
+                   # beyond H.264 hardware limits (e.g. Fuji 6.2K 10-bit masters):
+                   # software encode takes 10+ min for seconds of footage and
+                   # downgrades to 8-bit — leave pro-format sources alone
+                   local dims w h
+                   dims=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$f" </dev/null 2>/dev/null | head -1)
+                   IFS=, read -r w h _ <<< "$dims"   # ffprobe csv has a trailing comma
+                   if [[ -n "$w" && -n "$h" ]] && (( w > 4096 || h > 4096 )); then
+                     printf "  %-42s %9s  skipped (%sx%s exceeds H.264 hardware limits — pro-format master)\n" \
+                       "$base" "$(human "$(fsize "$f")")" "$w" "$h"
+                     return 0
+                   fi
                    optimizer=optimize_video; [[ -n "$FFMPEG" ]]    || missing=ffmpeg ;;
     pdf)           optimizer=optimize_pdf;   [[ -n "$GS" ]]        || missing="gs (ghostscript)" ;;
     *)             return 0 ;;
@@ -379,10 +410,12 @@ process_file() {
     return 0
   fi
 
+  # </dev/null: the file list streams in on stdin (find -print0 | while read),
+  # and stdin-hungry tools (ffmpeg, gs) would otherwise eat filenames from it
   local ok=true
   case "$optimizer" in
-    optimize_heif_avif) optimize_heif "$f" "$candidate" --avif || ok=false ;;
-    *)                  "$optimizer" "$f" "$candidate"         || ok=false ;;
+    optimize_heif_avif) optimize_heif "$f" "$candidate" --avif </dev/null || ok=false ;;
+    *)                  "$optimizer" "$f" "$candidate" </dev/null         || ok=false ;;
   esac
 
   if ! $ok || [[ ! -s "$candidate" ]]; then
