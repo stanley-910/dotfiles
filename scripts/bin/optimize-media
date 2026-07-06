@@ -1,0 +1,467 @@
+#!/usr/bin/env bash
+#
+# optimize-media — Clop-faithful media optimizer for images, video, and PDF.
+#
+# Replicates Clop's (github.com/FuzzyIdeas/Clop) actual optimization pipeline,
+# verified against its source (Images.swift, Video.swift, PDF.swift, Shared.swift):
+#
+#   jpeg  jpegoptim --keep-all --force --max <q> [--auto-mode on arm64]
+#   png   pngquant --force --speed <s> --quality 0-<q>
+#   gif   gifsicle -O<n> --lossy=<n> [--colors=<n>] --threads=<ncpu>
+#   webp  cwebp -mt -q <q> -sharp_yuv -metadata all
+#   heic  sips -> png -> heif-enc -q <q>          (avif: heif-enc --avif)
+#   video ffmpeg h264_videotoolbox -q:v <q>        (normal, arm64 hw encode)
+#         ffmpeg h264 -preset veryslow -crf 28     (aggressive, Clop hard-codes this)
+#   pdf   gs -dPDFSETTINGS=/screen + Clop's full arg set (lossless JPEG
+#         passthrough at 300dpi; downsampled DCT below that)
+#
+# Everything Clop derives from its 5..100 compression-factor slider is
+# reproduced with the exact formulas from Shared.swift:
+#   factor 30 = Clop "normal", factor 64 = Clop "aggressive" (images/pdf)
+#   video defaults to Clop's videoCompression default: hw "fast" tier, factor 50
+#
+# Safety, matching Clop's behavior:
+#   - candidate is built in a temp dir; the original is replaced ONLY if smaller
+#   - EXIF/metadata kept by default (jpegoptim --keep-all, exiftool copy-back
+#     for video/heic); --strip-metadata opts into Clop's strip behavior
+#   - file modification time restored after replacement (Clop's preserveDates);
+#     on APFS this also pulls the birth time back to the original mtime
+#   - RAW files (raf/dng/cr2/...) are never matched, never touched
+#
+# New machine? Run `optimize-media-setup` (same dir): installs all Homebrew
+# tools and builds cjpegli from pinned source. Missing tools also fall back to
+# Clop's bundled binaries when the app is installed
+# (~/Library/Application Scripts/com.lowtechguys.Clop/bin/<arch>).
+#
+# Usage:
+#   optimize-media <file-or-dir>... [options]
+#     --aggressive, -a      Clop aggressive preset (factor 64; video -> x264 veryslow crf28)
+#     --factor N            set the Clop slider directly (5..100, overrides both presets)
+#     --backup              copy each original to <its dir>/_originals/ before replacing
+#     --dry-run             show what would run, change nothing
+#     --strip-metadata      strip EXIF like Clop's "strip metadata" setting (default: keep)
+#     --skip-videos         don't touch video files
+#     --pdf-dpi N           downsample PDF images to N dpi (default 300 = lossless pass)
+#
+set -euo pipefail
+
+# ---------------------------------------------------------------- args
+
+PATHS=()
+AGGRESSIVE=false
+BACKUP=false
+DRY_RUN=false
+STRIP_METADATA=false
+SKIP_VIDEOS=false
+FACTOR=""
+PDF_DPI=300
+
+usage() {
+  cat <<'EOF'
+Usage:
+  optimize-media <file-or-dir>... [options]
+    --aggressive, -a      Clop aggressive preset (factor 64; video -> x264 veryslow crf28)
+    --factor N            set the Clop slider directly (5..100, overrides both presets)
+    --backup              copy each original to <its dir>/_originals/ before replacing
+    --dry-run, -n         show what would run, change nothing
+    --strip-metadata      strip EXIF like Clop's "strip metadata" setting (default: keep)
+    --skip-videos         don't touch video files
+    --pdf-dpi N           downsample PDF images to N dpi (default 300 = lossless pass)
+EOF
+  exit "${1:-0}"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --aggressive|-a)   AGGRESSIVE=true ;;
+    --factor)          FACTOR="$2"; shift ;;
+    --factor=*)        FACTOR="${1#*=}" ;;
+    --backup)          BACKUP=true ;;
+    --dry-run|-n)      DRY_RUN=true ;;
+    --strip-metadata)  STRIP_METADATA=true ;;
+    --skip-videos)     SKIP_VIDEOS=true ;;
+    --pdf-dpi)         PDF_DPI="$2"; shift ;;
+    --pdf-dpi=*)       PDF_DPI="${1#*=}" ;;
+    -h|--help)         usage ;;
+    -*)                echo "unknown option: $1" >&2; usage 1 ;;
+    *)                 PATHS+=("$1") ;;
+  esac
+  shift
+done
+
+[[ ${#PATHS[@]} -eq 0 ]] && usage 1
+
+# ---------------------------------------------------------------- tools
+
+ARCH=$(uname -m)
+CLOP_BIN="$HOME/Library/Application Scripts/com.lowtechguys.Clop/bin/$([[ $ARCH == arm64 ]] && echo arm64 || echo x86)"
+
+tool() { # resolve a tool: PATH first, then Clop's bundled binaries
+  command -v "$1" 2>/dev/null && return 0
+  [[ -x "$CLOP_BIN/$1" ]] && { echo "$CLOP_BIN/$1"; return 0; }
+  return 1
+}
+
+JPEGOPTIM=$(tool jpegoptim || true)
+# jpegli (Google's improved JPEG encoder, same one Clop links into its
+# jpegoptim) compresses 20-40% smaller than libjpeg-turbo at equal quality.
+# Standalone build: github.com/google/jpegli -> ~/.local/bin/cjpegli
+CJPEGLI=$(tool cjpegli || true)
+IDENTIFY=$(command -v identify 2>/dev/null || true)
+PNGQUANT=$(tool pngquant || true)
+GIFSICLE=$(tool gifsicle || true)
+CWEBP=$(tool cwebp || true)
+HEIFENC=$(tool heif-enc || true)
+FFMPEG=$(tool ffmpeg || true)
+GS=$(tool gs || true)
+EXIFTOOL=$(tool exiftool || true)
+
+NCPU=$(sysctl -n hw.ncpu 2>/dev/null || echo 4)
+
+# NOTE: Clop passes --auto-mode to its jpegli-backed jpegoptim; Homebrew's
+# libjpeg-turbo build (1.5.6) hangs on some progressive JPEGs with that flag,
+# so we deliberately do NOT use it — cjpegli handles all re-encoding anyway.
+
+# ---------------------------------------------------------------- factor math
+# Exact formulas from Clop's Shared.swift (CompressionQuality extension).
+
+# clamp(round(expr), min, max) — matches Swift's .rounded() (half away from zero)
+calc() {
+  awk "BEGIN { v = $1; v = (v < 0) ? int(v - 0.5) : int(v + 0.5); \
+       if (v < $2) v = $2; if (v > $3) v = $3; print v }"
+}
+
+# COMPRESSION_FACTOR_NORMAL = 30, COMPRESSION_FACTOR_AGGRESSIVE = 64
+if [[ -n "$FACTOR" ]]; then
+  IMG_FACTOR=$FACTOR
+  VID_FACTOR=$FACTOR
+elif $AGGRESSIVE; then
+  IMG_FACTOR=64
+  VID_FACTOR=64
+else
+  IMG_FACTOR=30
+  VID_FACTOR=50   # Clop's videoCompression default: tier .fast, factor 50
+fi
+
+JPEG_MAX=$(calc "85 - ($IMG_FACTOR - 30) * 55/70" 25 95)
+PNG_MAX=$(calc "100 - ($IMG_FACTOR - 30) * 75/70" 25 100)
+CONV_Q=$(calc "75 - $IMG_FACTOR * 0.5" 20 90)          # cwebp / heif-enc -q
+
+if   (( IMG_FACTOR < 40 )); then PNG_SPEED=4
+elif (( IMG_FACTOR < 60 )); then PNG_SPEED=3
+elif (( IMG_FACTOR < 85 )); then PNG_SPEED=2
+else PNG_SPEED=1; fi
+
+if   (( IMG_FACTOR >= 50 )); then GIF_O=3
+elif (( IMG_FACTOR >= 20 )); then GIF_O=2
+else GIF_O=1; fi
+GIF_LOSSY=$(calc "30 + ($IMG_FACTOR - 30) * 50/34" 0 200)
+GIF_COLORS_ARG=""
+if (( IMG_FACTOR >= 50 )); then
+  GIF_COLORS_ARG="--colors=$(calc "256 - ($IMG_FACTOR - 50) * 192/50" 32 256)"
+fi
+
+# video: Clop hard-codes aggressive; normal uses videoH264Args() (tier .fast)
+VF=$(( VID_FACTOR < 5 ? 5 : VID_FACTOR ))
+if $AGGRESSIVE && [[ -z "$FACTOR" ]]; then
+  VIDEO_ARGS=(-vcodec h264 -tag:v avc1 -preset veryslow -crf 28)
+elif [[ $ARCH == arm64 ]]; then
+  VT_Q=$(calc "70 - ($VF - 5) / 95 * 45" 25 75)
+  VIDEO_ARGS=(-vcodec h264_videotoolbox -q:v "$VT_Q" -tag:v avc1)
+else
+  X264_CRF=$(calc "18 + ($VF - 5) / 95 * 12" 17 32)
+  VIDEO_ARGS=(-vcodec h264 -tag:v avc1 -preset veryfast -crf "$X264_CRF")
+fi
+
+# pdf: aggressive = one DPI stop below normal (resolvePDFDPI); <300 dpi = lossy pass
+PDF_DPI_STOPS=(300 250 200 150 100 72 48)
+if $AGGRESSIVE; then
+  for stop in "${PDF_DPI_STOPS[@]}"; do
+    if (( stop < PDF_DPI )); then PDF_DPI=$stop; break; fi
+  done
+fi
+(( PDF_DPI < 48 )) && PDF_DPI=48
+(( PDF_DPI > 300 )) && PDF_DPI=300
+
+# ---------------------------------------------------------------- helpers
+
+WORK=$(mktemp -d "${TMPDIR:-/tmp}/optimize-media.XXXXXX")
+trap 'rm -rf "$WORK"' EXIT
+
+fsize() { stat -f%z "$1"; }
+lower() { tr '[:upper:]' '[:lower:]'; }
+human() { awk -v b="$1" 'BEGIN { s = "B KB MB GB"; split(s, u); i = 1;
+          while (b >= 1024 && i < 4) { b /= 1024; i++ }
+          printf (i == 1) ? "%d%s" : "%.1f%s", b, u[i] }'; }
+
+count=0; replaced=0; total_before=0; total_after=0
+
+# copy EXIF/XMP/quicktime tags from $1 onto $2 (Clop's copyExif for video/heic)
+copy_metadata() {
+  [[ -n "$EXIFTOOL" ]] || return 0
+  "$EXIFTOOL" -overwrite_original -q -q -extractEmbedded \
+    -tagsFromFile "$1" -All:All -icc_profile "$2" 2>/dev/null || true
+}
+
+# Clop marks optimized files with this xattr and its watched-folder feature
+# skips files carrying it — set it so the app never double-optimizes our output
+mark_clop_optimised() {
+  xattr -w clop.optimisation.status true "$1" 2>/dev/null || true
+}
+
+# Clop's stripExif: drop everything but resolution, orientation, color tags
+strip_metadata() {
+  [[ -n "$EXIFTOOL" ]] || return 0
+  "$EXIFTOOL" -overwrite_original -q -q -XResolution=72 -YResolution=72 -all= \
+    -tagsFromFile @ -XResolution -YResolution -Orientation \
+    -ColorSpaceTags -icc_profile "$1" 2>/dev/null || true
+}
+
+# ---------------------------------------------------------------- optimizers
+# Each takes (input, candidate-output-path) and builds the candidate in $WORK.
+
+# estimated source JPEG quality; 101 = unknown, assume re-encode is worth trying
+jpeg_quality() {
+  local q=""
+  [[ -n "$IDENTIFY" ]] && q=$("$IDENTIFY" -format %Q "$1" 2>/dev/null || true)
+  echo "${q:-101}"
+}
+
+optimize_jpeg() {
+  if [[ -n "$CJPEGLI" ]] && (( $(jpeg_quality "$1") > JPEG_MAX )); then
+    # source quality above target: re-encode with jpegli, then copy EXIF back.
+    # Match the source's chroma subsampling: cjpegli defaults to 4:4:4, which
+    # is ~20% larger and not what camera JPEGs (4:2:0) use.
+    local ss
+    case "$([[ -n "$IDENTIFY" ]] && "$IDENTIFY" -format '%[jpeg:sampling-factor]' "$1" 2>/dev/null)" in
+      1x1,1x1,1x1) ss=444 ;;
+      2x1,1x1,1x1) ss=422 ;;
+      1x2,1x1,1x1) ss=440 ;;
+      *)           ss=420 ;;
+    esac
+    "$CJPEGLI" "$1" "$2" -q "$JPEG_MAX" --chroma_subsampling="$ss" 2>/dev/null || return 1
+    $STRIP_METADATA || copy_metadata "$1" "$2"
+  else
+    # already at/below target quality (or no cjpegli): jpegoptim, which only
+    # does a lossless huffman pass unless estimated quality exceeds --max
+    cp "$1" "$2"
+    local args=(--keep-all --force "--max=$JPEG_MAX" --quiet)
+    $STRIP_METADATA && args=(--strip-all --force "--max=$JPEG_MAX" --quiet)
+    "$JPEGOPTIM" "${args[@]}" "$2" >/dev/null 2>&1
+  fi
+}
+
+optimize_png() {
+  "$PNGQUANT" --force --speed "$PNG_SPEED" --quality "0-$PNG_MAX" --output "$2" -- "$1" 2>/dev/null
+  $STRIP_METADATA && strip_metadata "$2"
+  true
+}
+
+optimize_gif() {
+  # shellcheck disable=SC2086
+  "$GIFSICLE" -O"$GIF_O" --lossy="$GIF_LOSSY" $GIF_COLORS_ARG \
+    --threads="$NCPU" --output "$2" "$1" 2>/dev/null
+}
+
+optimize_webp() {
+  local meta=all; $STRIP_METADATA && meta=icc
+  "$CWEBP" -quiet -mt -q "$CONV_Q" -sharp_yuv -metadata "$meta" "$1" -o "$2" 2>/dev/null
+}
+
+optimize_heif() { # $3 = "--avif" for avif
+  local png="$WORK/heif-in.png"
+  sips -s format png "$1" --out "$png" >/dev/null 2>&1 || return 1
+  "$HEIFENC" ${3:-} -q "$CONV_Q" -o "$2" "$png" >/dev/null 2>&1 || return 1
+  rm -f "$png"
+  $STRIP_METADATA || copy_metadata "$1" "$2"
+}
+
+optimize_video() {
+  "$FFMPEG" -y -hide_banner -loglevel error -i "$1" \
+    "${VIDEO_ARGS[@]}" -c:a copy -map 0:v -map 0:a'?' \
+    -movflags +faststart "$2" 2>/dev/null || return 1
+  $STRIP_METADATA || copy_metadata "$1" "$2"
+}
+
+optimize_pdf() {
+  local lossy
+  if (( PDF_DPI < 300 )); then lossy=true; else lossy=false; fi
+  local mono_dpi=$(( PDF_DPI < 300 ? 300 : PDF_DPI ))
+
+  # GS_BASE_ARGS + gsResolutionArgs + gs(Lossy|Lossless)Args + output args,
+  # then GS_PRE_ARGS (distiller QFactor 0.68 + DOCINFO-skip pdfmark), input,
+  # GS_POST_ARGS (blank Producer/ModDate/CreationDate) — verbatim from PDF.swift.
+  local opt_args
+  if $lossy; then
+    opt_args=(-dAutoFilterColorImages=false -dAutoFilterGrayImages=false
+      -dAutoFilterMonoImages=true -dColorImageFilter=/DCTEncode
+      -dDownsampleColorImages=true -dDownsampleGrayImages=true
+      -dDownsampleMonoImages=true -dGrayImageFilter=/DCTEncode
+      -dPassThroughJPEGImages=false -dPassThroughJPXImages=false
+      -dShowAcroForm=false)
+  else
+    opt_args=(-dAutoFilterColorImages=false -dAutoFilterGrayImages=false
+      -dAutoFilterMonoImages=false -dColorImageFilter=/DCTEncode
+      -dDownsampleColorImages=false -dDownsampleGrayImages=false
+      -dDownsampleMonoImages=false -dGrayImageFilter=/DCTEncode
+      -dPassThroughJPEGImages=true -dPassThroughJPXImages=true
+      -dShowAcroForm=true)
+  fi
+
+  "$GS" \
+    -dALLOWPSTRANSPARENCY -dAutoRotatePages=/None -dBATCH \
+    -dCannotEmbedFontPolicy=/Warning -dColorConversionStrategy=/RGB \
+    -dCompatibilityLevel=1.6 -dCompressFonts=true -dCompressPages=true \
+    -dCompressStreams=true -dConvertCMYKImagesToRGB=true \
+    -dConvertImagesToIndexed=false -dCreateJobTicket=false \
+    -dDetectDuplicateImages=true -dDoThumbnails=false -dEmbedAllFonts=true \
+    -dEncodeColorImages=true -dEncodeGrayImages=true -dEncodeMonoImages=true \
+    -dFastWebView=false -dGrayDetection=true -dHaveTransparency=true \
+    -dLZWEncodePages=true -dMaxBitmap=0 -dMonoImageFilter=/CCITTFaxEncode \
+    -dNOPAUSE -dNOPROMPT -dOptimize=true -dParseDSCComments=false \
+    -dParseDSCCommentsForDocInfo=false -dPDFNOCIDFALLBACK \
+    -dPDFSETTINGS=/screen -dPreserveAnnots=true -dPreserveCopyPage=false \
+    -dPreserveDeviceN=true -dPreserveEPSInfo=false \
+    -dPreserveHalftoneInfo=false -dPreserveOPIComments=false \
+    -dPreserveOverprintSettings=true -dPreserveSeparation=true \
+    -dPrinted=false -dProcessColorModel=/DeviceRGB -dSAFER \
+    -dSubsetFonts=true -dTransferFunctionInfo=/Preserve -dUCRandBGInfo=/Remove \
+    -dColorImageDownsampleThreshold=1.0 -dColorImageDownsampleType=/Bicubic \
+    -dColorImageResolution="$PDF_DPI" \
+    -dGrayImageDownsampleThreshold=1.0 -dGrayImageDownsampleType=/Bicubic \
+    -dGrayImageResolution="$PDF_DPI" \
+    -dMonoImageDownsampleThreshold=1.0 -dMonoImageDownsampleType=/Bicubic \
+    -dMonoImageResolution="$mono_dpi" \
+    "${opt_args[@]}" \
+    -dColorConversionStrategy=/RGB -sDEVICE=pdfwrite \
+    -sFONTPATH="$HOME/Library/Fonts:/Library/Fonts:/System/Library/Fonts" \
+    -o "$2" \
+    -c '<< /ColorImageDict << /QFactor 0.68 /Blend 1 /HSamples [2 1 1 2] /VSamples [2 1 1 2] >> >> setdistillerparams << /ColorACSImageDict << /QFactor 0.68 /Blend 1 /HSamples [2 1 1 2] /VSamples [2 1 1 2] >> >> setdistillerparams << /GrayImageDict << /QFactor 0.68 /Blend 1 /HSamples [2 1 1 2] /VSamples [2 1 1 2] >> >> setdistillerparams << /GrayACSImageDict << /QFactor 0.68 /Blend 1 /HSamples [2 1 1 2] /VSamples [2 1 1 2] >> >> setdistillerparams' \
+    -f \
+    -c '/originalpdfmark { //pdfmark } bind def /pdfmark { { { counttomark pop } stopped { /pdfmark errordict /unmatchedmark get exec stop } if dup type /nametype ne { /pdfmark errordict /typecheck get exec stop } if dup /DOCINFO eq { (Skipping DOCINFO pdfmark\n) print cleartomark exit } if originalpdfmark exit } loop } def' \
+    -f "$1" \
+    -c '/pdfmark { originalpdfmark } bind def' -f \
+    -c '[ /Producer () /ModDate () /CreationDate () /DOCINFO pdfmark' -f \
+    >/dev/null 2>&1
+}
+
+# ---------------------------------------------------------------- per-file
+
+process_file() {
+  local f=$1 ext base size_before size_after candidate optimizer missing=""
+  base=$(basename "$f")
+  ext=$(echo "${f##*.}" | lower)
+  candidate="$WORK/candidate.$ext"
+  rm -f "$candidate"
+
+  case "$ext" in
+    jpg|jpeg)      optimizer=optimize_jpeg;  [[ -n "$JPEGOPTIM" ]] || missing=jpegoptim ;;
+    png)           optimizer=optimize_png;   [[ -n "$PNGQUANT" ]]  || missing=pngquant ;;
+    gif)           optimizer=optimize_gif;   [[ -n "$GIFSICLE" ]]  || missing=gifsicle ;;
+    webp)          optimizer=optimize_webp;  [[ -n "$CWEBP" ]]     || missing=cwebp ;;
+    heic|heif)     optimizer=optimize_heif;  [[ -n "$HEIFENC" ]]   || missing=heif-enc ;;
+    avif)          optimizer="optimize_heif_avif"; [[ -n "$HEIFENC" ]] || missing=heif-enc ;;
+    mp4|mov|m4v)   $SKIP_VIDEOS && return 0
+                   optimizer=optimize_video; [[ -n "$FFMPEG" ]]    || missing=ffmpeg ;;
+    pdf)           optimizer=optimize_pdf;   [[ -n "$GS" ]]        || missing="gs (ghostscript)" ;;
+    *)             return 0 ;;
+  esac
+
+  if [[ -n "$missing" ]]; then
+    printf "  %-42s skipped (%s not installed)\n" "$base" "$missing"
+    return 0
+  fi
+
+  size_before=$(fsize "$f")
+
+  if $DRY_RUN; then
+    printf "  %-42s %9s  would optimize (%s)\n" "$base" "$(human "$size_before")" "${optimizer#optimize_}"
+    return 0
+  fi
+
+  local ok=true
+  case "$optimizer" in
+    optimize_heif_avif) optimize_heif "$f" "$candidate" --avif || ok=false ;;
+    *)                  "$optimizer" "$f" "$candidate"         || ok=false ;;
+  esac
+
+  if ! $ok || [[ ! -s "$candidate" ]]; then
+    printf "  %-42s %9s  failed, original untouched\n" "$base" "$(human "$size_before")"
+    return 0
+  fi
+
+  size_after=$(fsize "$candidate")
+  count=$((count + 1))
+  total_before=$((total_before + size_before))
+
+  if (( size_after >= size_before )); then
+    total_after=$((total_after + size_before))
+    mark_clop_optimised "$f"
+    printf "  %-42s %9s  already optimal\n" "$base" "$(human "$size_before")"
+    return 0
+  fi
+
+  if $BACKUP; then
+    mkdir -p "$(dirname "$f")/_originals"
+    cp -p "$f" "$(dirname "$f")/_originals/$base"
+  fi
+
+  # preserve dates like Clop's copyCreationModificationDates: carry the original
+  # mtime on a stamp file, restore it after the swap (APFS pulls birth time down too)
+  touch -r "$f" "$WORK/stamp"
+  mv -f "$candidate" "$f"
+  touch -r "$WORK/stamp" "$f"
+  mark_clop_optimised "$f"
+
+  replaced=$((replaced + 1))
+  total_after=$((total_after + size_after))
+  printf "  %-42s %9s -> %9s  (%s%% saved)\n" "$base" \
+    "$(human "$size_before")" "$(human "$size_after")" \
+    "$(awk -v a="$size_before" -v b="$size_after" 'BEGIN { printf "%.0f", (1 - b/a) * 100 }')"
+}
+
+# ---------------------------------------------------------------- main
+
+MODE=normal; $AGGRESSIVE && MODE=aggressive; [[ -n "$FACTOR" ]] && MODE="custom factor=$FACTOR"
+echo "optimize-media — mode: $MODE (image factor=$IMG_FACTOR, video factor=$VID_FACTOR)"
+if [[ -n "$CJPEGLI" ]]; then
+  echo "  jpeg   cjpegli -q $JPEG_MAX (jpegli) / jpegoptim lossless pass when already <= q$JPEG_MAX"
+else
+  echo "  jpeg   jpegoptim --max=$JPEG_MAX $($STRIP_METADATA && echo --strip-all || echo --keep-all)"
+fi
+echo "  png    pngquant --quality=0-$PNG_MAX --speed=$PNG_SPEED"
+echo "  gif    gifsicle -O$GIF_O --lossy=$GIF_LOSSY $GIF_COLORS_ARG"
+echo "  webp   cwebp -q $CONV_Q -sharp_yuv"
+echo "  heic   heif-enc -q $CONV_Q"
+$SKIP_VIDEOS || echo "  video  ffmpeg ${VIDEO_ARGS[*]}"
+PDF_MODE='(lossless pass)'; (( PDF_DPI < 300 )) && PDF_MODE='(lossy, downsampled)'
+echo "  pdf    gs @ ${PDF_DPI}dpi $PDF_MODE"
+echo
+
+for path in "${PATHS[@]}"; do
+  if [[ -f "$path" ]]; then
+    process_file "$path"
+  elif [[ -d "$path" ]]; then
+    while IFS= read -r -d '' file; do
+      process_file "$file"
+    done < <(find "$path" -type f -not -path "*/_originals/*" \( \
+        -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' \
+        -o -iname '*.webp' -o -iname '*.heic' -o -iname '*.heif' -o -iname '*.avif' \
+        -o -iname '*.mp4' -o -iname '*.mov' -o -iname '*.m4v' -o -iname '*.pdf' \) -print0)
+  else
+    echo "not found: $path" >&2
+  fi
+done
+
+echo
+if $DRY_RUN; then
+  echo "Dry run — nothing was modified."
+elif (( count > 0 )); then
+  echo "Done. $replaced of $count files replaced."
+  if (( total_before > 0 )); then
+    echo "Total: $(human "$total_before") -> $(human "$total_after") ($(awk -v a="$total_before" -v b="$total_after" 'BEGIN { printf "%.1f", (1 - b/a) * 100 }')% saved)"
+  fi
+  if $BACKUP; then echo "Originals backed up to _originals/ next to each file."; fi
+else
+  echo "No optimizable media found."
+fi
