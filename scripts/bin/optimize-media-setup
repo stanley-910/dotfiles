@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+#
+# optimize-media-setup — one-shot machine setup for optimize-media.
+#
+# Installs the Homebrew runtime tools and builds cjpegli (Google's jpegli
+# JPEG encoder) from pinned source into ~/.local/bin. jpegli has no Homebrew
+# formula and no macOS release binaries anywhere — Google only ships it
+# embedded in other products — so a small source build is the only clean,
+# app-independent way to get it. See scripts/bin/optimize-media for why it
+# matters: ~20-40% smaller JPEGs than libjpeg-turbo at equal quality.
+#
+# Idempotent: skips anything already installed. `--force` rebuilds cjpegli.
+#
+set -euo pipefail
+
+# Known-good commit of https://github.com/google/jpegli (verified 2026-07-05,
+# built clean on arm64 macOS 15/Darwin 25). Bump deliberately, then re-verify.
+JPEGLI_COMMIT=031a0077f5799a6041004267fc12b956c1f52a20
+DEST="$HOME/.local/bin/cjpegli"
+
+FORCE=false
+[[ "${1:-}" == "--force" ]] && FORCE=true
+
+# ---------------------------------------------------------------- brew deps
+
+command -v brew >/dev/null || { echo "Homebrew required first: https://brew.sh"; exit 1; }
+
+# runtime tools optimize-media shells out to, keyed by the binary it needs
+need_formulae() {
+  local missing=()
+  command -v jpegoptim >/dev/null || missing+=(jpegoptim)
+  command -v pngquant  >/dev/null || missing+=(pngquant)
+  command -v gifsicle  >/dev/null || missing+=(gifsicle)
+  command -v cwebp     >/dev/null || missing+=(webp)
+  command -v heif-enc  >/dev/null || missing+=(libheif)
+  command -v identify  >/dev/null || missing+=(imagemagick)
+  command -v exiftool  >/dev/null || missing+=(exiftool)
+  command -v ffmpeg    >/dev/null || missing+=(ffmpeg)
+  [[ -x "$(brew --prefix)/bin/gs" ]] || missing+=(ghostscript)
+  # build-time deps for cjpegli (cmake/ninja) + libs it links against
+  if [[ ! -x $DEST ]] || $FORCE; then
+    command -v cmake >/dev/null || missing+=(cmake)
+    command -v ninja >/dev/null || missing+=(ninja)
+    for lib in giflib jpeg-turbo libpng; do
+      brew list --versions "$lib" >/dev/null 2>&1 || missing+=("$lib")
+    done
+  fi
+  echo "${missing[@]:-}"
+}
+
+MISSING=$(need_formulae)
+if [[ -n "$MISSING" ]]; then
+  # shellcheck disable=SC2086
+  echo "==> brew install $MISSING"
+  # shellcheck disable=SC2086
+  brew install $MISSING
+else
+  echo "==> all Homebrew tools present"
+fi
+
+# ---------------------------------------------------------------- cjpegli
+
+if [[ -x $DEST ]] && ! $FORCE; then
+  echo "==> cjpegli already installed at $DEST (use --force to rebuild)"
+else
+  echo "==> building cjpegli from google/jpegli @ ${JPEGLI_COMMIT:0:12}"
+  BUILD=$(mktemp -d "${TMPDIR:-/tmp}/jpegli-build.XXXXXX")
+  trap 'rm -rf "$BUILD"' EXIT
+
+  # shallow-fetch the pinned commit (git clone can't --depth a raw sha)
+  git -C "$BUILD" init -q
+  git -C "$BUILD" remote add origin https://github.com/google/jpegli
+  git -C "$BUILD" fetch -q --depth 1 origin "$JPEGLI_COMMIT"
+  git -C "$BUILD" checkout -q FETCH_HEAD
+  git -C "$BUILD" submodule -q update --init --recursive --depth 1
+
+  cmake -S "$BUILD" -B "$BUILD/out" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DBUILD_TESTING=OFF \
+    > "$BUILD/cmake.log" 2>&1 || { tail -20 "$BUILD/cmake.log"; exit 1; }
+  ninja -C "$BUILD/out" cjpegli \
+    > "$BUILD/ninja.log" 2>&1 || { tail -20 "$BUILD/ninja.log"; exit 1; }
+
+  mkdir -p "$(dirname "$DEST")"
+  install -m 755 "$BUILD/out/tools/cjpegli" "$DEST"
+  echo "==> installed $DEST"
+fi
+
+# ---------------------------------------------------------------- smoke test
+
+SMOKE=$(mktemp -d "${TMPDIR:-/tmp}/cjpegli-smoke.XXXXXX")
+magick -size 32x32 gradient:red-blue "$SMOKE/t.png" 2>/dev/null \
+  || sips -s format png -z 32 32 /System/Library/CoreServices/DefaultDesktop.heic --out "$SMOKE/t.png" >/dev/null 2>&1 || true
+if [[ -f "$SMOKE/t.png" ]] && "$DEST" "$SMOKE/t.png" "$SMOKE/t.jpg" -q 85 2>/dev/null && [[ -s "$SMOKE/t.jpg" ]]; then
+  echo "==> smoke test passed: cjpegli encodes correctly"
+else
+  echo "==> WARNING: smoke test failed — run: $DEST <some.png> /tmp/out.jpg -q 85" >&2
+fi
+rm -rf "$SMOKE"
+
+echo "==> done — optimize-media is fully set up"
