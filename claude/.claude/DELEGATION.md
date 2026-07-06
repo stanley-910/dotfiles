@@ -83,12 +83,27 @@ wrapper's Claude model did the work.
 
 No conversation dump. Only what the worker needs to decide and act.
 
-## Report back — simple, clear
+## Report back — match shape to role
+
+Implement / verify / merge (a strict 4-line status is right here):
 
     STATUS: CLEAN | BLOCKED | PARTIAL
     CHANGED: <path — one line each, or none>
     VERIFY: <command — result>
     BLOCKERS: <unresolved only, or none>
+
+Research spike / scout / claim-check (read-only — 4 lines is too little; the
+body is the deliverable, but stay bounded ≤ ~60 lines and lead with evidence):
+
+    STATUS: ANSWERED | PARTIAL | BLOCKED
+    FINDINGS:
+    - <claim> — evidence (file:line or source)
+    - ...
+    OPEN: <unknowns / unverified assumptions, or none>
+    RECOMMEND: <the answer or next step, 1–2 lines>
+
+Pick the schema in the handoff. Never pad an implement report to look like
+findings, or compress a spike into a status line.
 
 ## Ledger row (driver notes + final report)
 
