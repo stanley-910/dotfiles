@@ -1,13 +1,10 @@
 ---
 description: Open the MR/PR this session is working on
-allowed-tools: Bash(agent-link:*), Bash(*/agent-link *)
+disable-model-invocation: true
+allowed-tools: Bash(*/agent-link open mr*)
 ---
 
-Open the merge/pull request for this session's work:
+!`~/dotfiles/scripts/bin/agent-link open mr 2>&1`
 
-1. Run `agent-link open mr` (Bash) with your working tree as cwd — the worktree
-   you created for this session, not the main checkout. Use the absolute path
-   `~/dotfiles/scripts/bin/agent-link` if it's not on PATH.
-2. If it reports nothing recorded and you created or know an MR this session,
-   record it first (`agent-link mr <url>`) and rerun.
-3. If no MR exists yet, say so plainly — do not create one.
+The command above already ran and opened the link if one was recorded. Relay
+its one-line output verbatim and stop — run nothing else.

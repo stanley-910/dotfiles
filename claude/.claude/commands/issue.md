@@ -1,14 +1,10 @@
 ---
 description: Open the issue this session is working on
-allowed-tools: Bash(agent-link:*), Bash(*/agent-link *)
+disable-model-invocation: true
+allowed-tools: Bash(*/agent-link open issue*)
 ---
 
-Open the issue this session grabbed:
+!`~/dotfiles/scripts/bin/agent-link open issue 2>&1`
 
-1. Run `agent-link open issue` (Bash) with your working tree as cwd — the
-   worktree you created for this session, not the main checkout. Use the
-   absolute path `~/dotfiles/scripts/bin/agent-link` if it's not on PATH.
-2. If it reports nothing recorded and you know which issue this session is
-   working (you grabbed one earlier), record it first
-   (`agent-link issue <url>`) and rerun.
-3. If this session has no associated issue, say so plainly.
+The command above already ran and opened the link if one was recorded. Relay
+its one-line output verbatim and stop — run nothing else.
