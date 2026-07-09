@@ -33,3 +33,11 @@ end, { desc = "Open this plugin's GitHub repo" })
 vim.api.nvim_create_user_command("PluginDeepwiki", function()
   open_plugin_url("https://deepwiki.com/")
 end, { desc = "Open this plugin's DeepWiki page" })
+
+-- LSP tail log autocmd
+
+vim.api.nvim_create_user_command("LspTailLog", function()
+  vim.cmd("botright split | terminal tail -f " .. vim.lsp.log.get_filename())
+end, { desc = "Follow LSP RPC Log" })
+
+

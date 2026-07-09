@@ -66,6 +66,37 @@ local function visual_search_selection()
   vim.fn.setreg("/", [[\V]] .. vim.fn.escape(text, [[\/]]))
   vim.cmd("normal! nzzzv")
 end
+
+-- Copy current visual range as `/absolute/path:start_line:end_line`.
+-- `getregionpos(getpos("v"), getpos("."))` is the doc-backed way to read
+-- the current visual selection from a Lua callback. See :help vim.keymap.set().
+local function copy_visual_location()
+  local path = vim.api.nvim_buf_get_name(0)
+  if path == "" then
+    vim.notify("Current buffer has no file name", vim.log.levels.WARN)
+    return
+  end
+
+  local region = vim.fn.getregionpos(vim.fn.getpos("v"), vim.fn.getpos("."), {
+    type = "v",
+    exclusive = false,
+    eol = false,
+  })
+
+  if #region == 0 then
+    return
+  end
+
+  local start_line = region[1][1][2]
+  local end_line = region[#region][1][2]
+  if start_line > end_line then
+    start_line, end_line = end_line, start_line
+  end
+
+  local location = ("%s:%d:%d"):format(vim.fs.abspath(path), start_line, end_line)
+  vim.fn.setreg("+", location, "c")
+  vim.notify("Copied " .. location)
+end
 -- Question::use /teach skill to teach me about Vim 'magic' modes for substitution and regex search
 --
 
@@ -240,6 +271,7 @@ vim.api.nvim_create_autocmd("CmdwinEnter", {
 
 map("n", "<leader>o", "O<Esc>jo<Esc>", opts("Open surrounding blank lines"))
 map("n", "<leader>y", cmd("%yank"), opts("Yank whole buffer"))
+map("x", "<leader>y", copy_visual_location, opts("Copy visual location"))
 -- Reselect after visual indent without putting `gv` in the redo stream.
 -- Returning the native operator keeps :help visual-repeat intact, while the
 -- scheduled `gv` restores the selection for repeated manual indents.

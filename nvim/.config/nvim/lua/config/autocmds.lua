@@ -126,3 +126,4 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.cmd.wincmd("L")
   end,
 })
+
