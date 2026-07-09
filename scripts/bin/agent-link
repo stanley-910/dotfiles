@@ -143,7 +143,7 @@ recorded_worktrees() {
 # The single worktree read commands act on.
 #   kind empty = for path/copy (any recording, then newest linked worktree).
 resolve_worktree() {
-  local kind="${1:-}" ref ptr hit
+  local kind="${1:-}" ref hit
 
   # cwd first: when invoked from inside an agent session (/mr, /issue), cwd IS
   # that session's worktree — never answer with a sibling agent's recording.
@@ -167,16 +167,10 @@ resolve_worktree() {
 
   ref=$(pane_path)
 
-  ptr=$(pane_pointer)
-  if [[ -n "$ptr" && -d "$ptr" ]]; then
-    # Trust the pointer only if it doesn't contradict the ask.
-    if [[ -z "$kind" ]] ||
-      git -C "$ptr" config --worktree --get "agent.$kind" >/dev/null 2>&1; then
-      echo "$ptr"
-      return 0
-    fi
-  fi
-
+  # NOTE: the @agent_worktree pane pointer is deliberately NOT consulted here.
+  # Panes outlive agent sessions, so a stale pointer shadows fresher work
+  # (observed: yesterday's worktree hijacking today's hotkeys). Newest
+  # recording wins; the pointer survives only as debug info in `status`.
   hit=$(recorded_worktrees "$kind" "$ref" | head -1)
   if [[ -n "$hit" ]]; then
     echo "$hit"
