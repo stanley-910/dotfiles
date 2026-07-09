@@ -34,7 +34,10 @@ glab-board frontier | list | view <iid> | grab <iid> | note <iid> <text>
 (`agent::working` or `agent::researching`), and **records it** via
 `agent-link`, which is what makes the human's `/issue`, `/mr`, and tmux
 hotkeys point at your work. Run it from your worktree, before any work. If you
-started working an issue without grabbing it, grab it now.
+started working an issue without grabbing it, grab it now. Reading an issue
+for linked context is `view`, not a claim — grab only the issue you are
+actually resolving, and `grab N research` means the ticket's deliverable is
+research, not that you are just looking.
 
 Status lifecycle after that: `glab-board park <iid> [comment]` when you stop
 — blocked, waiting on a human, or ending the session unfinished
