@@ -22,8 +22,9 @@ calls**: missing `GITLAB_HOST` and unencoded namespaces are where 404s come
 from.
 
 ```
-glab-board frontier | list | view <iid> | grab <iid> | note <iid> <text>
-           | close <iid> [text] | block <A> <B> | triage
+glab-board frontier | list | view <iid> | grab <iid> [work|research]
+           | park <iid> [text] | note <iid> <text> | close <iid> [text]
+           | block <A> <B> | mr <create-args> | triage
 ```
 
 ## Grabbing an issue — the contract
