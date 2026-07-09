@@ -171,7 +171,16 @@ resolve_worktree() {
   # Panes outlive agent sessions, so a stale pointer shadows fresher work
   # (observed: yesterday's worktree hijacking today's hotkeys). Newest
   # recording wins; the pointer survives only as debug info in `status`.
-  hit=$(recorded_worktrees "$kind" "$ref" | head -1)
+  if [[ -z "$kind" ]]; then
+    # path/copy answer "where is the agent working" — the main checkout is
+    # never that answer (it's where the user already is). Links recorded
+    # there still count for open.
+    local main_wt
+    main_wt=$(worktrees_of "$ref" | head -1)
+    hit=$(recorded_worktrees "$kind" "$ref" | grep -vxF "$main_wt" | head -1)
+  else
+    hit=$(recorded_worktrees "$kind" "$ref" | head -1)
+  fi
   if [[ -n "$hit" ]]; then
     echo "$hit"
     return 0
