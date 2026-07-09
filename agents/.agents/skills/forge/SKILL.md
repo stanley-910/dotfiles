@@ -47,9 +47,10 @@ session creation and `cd` does not persist across bash calls), re-record after
 creating the worktree so the links live with the work:
 `cd <worktree> && agent-link issue <url>`.
 
-When you open an MR, record it too: `agent-link mr <url>` (Claude Code's hook
-does this automatically for `glab mr create` / `gh pr create`; other harnesses
-run it themselves).
+Create MRs the same way: `glab-board mr <glab-mr-create-args>` (run from your
+worktree) — it creates AND records in one verb. If you created an MR some
+other way, record it: `agent-link mr <url>`. (Claude/pi also sniff raw
+`glab mr create` output as a backstop, but the verb is the reliable path.)
 
 ## Label discipline (board-watcher repos)
 

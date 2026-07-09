@@ -16,6 +16,7 @@
 #   glab-board note <iid> <text>   comment on an issue
 #   glab-board close <iid> [text]  optional resolution comment, clear agent::* labels, close
 #   glab-board block <A> <B>       mark issue A blocked-by issue B (native link)
+#   glab-board mr [glab-mr-create-args]  create the MR AND record it via agent-link
 #   glab-board triage              open issues labeled needs-triage
 set -euo pipefail
 
@@ -109,6 +110,14 @@ if [[ "$FORGE" == "github" ]]; then
     echo "parked #$2"
     ;;
   note) gh issue comment "$2" -R "$PROJECT" -b "$3" ;;
+  mr)
+    shift
+    out=$(gh pr create "$@" 2>&1) || { printf '%s\n' "$out" >&2; exit 1; }
+    printf '%s\n' "$out"
+    url=$(printf '%s\n' "$out" | /usr/bin/grep -oE 'https?://[^[:space:]]+/pull/[0-9]+' | head -1)
+    al="$HOME/dotfiles/scripts/bin/agent-link"
+    [[ -n "$url" && -x "$al" ]] && "$al" add mr "$url" || true
+    ;;
   close)
     if [ $# -ge 3 ]; then gh issue comment "$2" -R "$PROJECT" -b "$3"; fi
     gh issue close "$2" -R "$PROJECT"
@@ -150,6 +159,14 @@ close)
   glab api -X PUT "projects/$ENC/issues/$2" -f state_event=close \
     -f remove_labels="agent::working,agent::parked,agent::researching" >/dev/null
   echo "closed #$2"
+  ;;
+mr)
+  shift
+  out=$(glab mr create "$@" 2>&1) || { printf '%s\n' "$out" >&2; exit 1; }
+  printf '%s\n' "$out"
+  url=$(printf '%s\n' "$out" | /usr/bin/grep -oE 'https?://[^[:space:]]+/-/merge_requests/[0-9]+' | head -1)
+  al="$HOME/dotfiles/scripts/bin/agent-link"
+  [[ -n "$url" && -x "$al" ]] && "$al" add mr "$url" || true
   ;;
 block)
   glab api -X POST "projects/$ENC/issues/$2/links" \
