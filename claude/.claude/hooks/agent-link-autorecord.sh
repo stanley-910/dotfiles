@@ -23,6 +23,15 @@ url=$(jq -r '.tool_response | tostring' <<<"$input" 2>/dev/null |
 [[ -n "$url" ]] || exit 0
 
 cwd=$(jq -r '.cwd // empty' <<<"$input" 2>/dev/null)
+
+# Commands often carry their own target ("cd <worktree> && glab mr create…");
+# that beats the session cwd — record where the MR was actually made.
+if [[ "$cmd" =~ ^[[:space:]]*cd[[:space:]]+(\"([^\"]+)\"|\'([^\']+)\'|([^[:space:]\;\&]+))[[:space:]]*(\&\&|\;) ]]; then
+  t="${BASH_REMATCH[2]}${BASH_REMATCH[3]}${BASH_REMATCH[4]}"
+  t="${t/#\~/$HOME}"
+  [[ -d "$t" ]] && cwd="$t"
+fi
+
 [[ -d "$cwd" ]] || exit 0
 
 (cd "$cwd" && "$AGENT_LINK" add mr "$url") >/dev/null 2>&1 || true
