@@ -28,17 +28,6 @@
           }
         ]
       }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/agent-link-autorecord.sh"
-          }
-        ]
-      }
     ]
   },
   "worktree": {
