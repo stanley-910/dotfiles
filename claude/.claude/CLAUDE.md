@@ -6,6 +6,14 @@
 
 @RTK.md
 
+## Record forge links (agent-link)
+
+When you grab an issue or open a merge/pull request during a session, record it
+so tmux hotkeys can open it from the pane: `agent-link issue <url>` /
+`agent-link mr <url>` (`agent-link add mr <url>` for more). Run from inside
+your worktree — it stores per-worktree metadata and tags the tmux pane. If the
+command is missing, skip silently.
+
 ## Fable-5-first delegation
 
 Driver is Fable 5. It orchestrates — plans, decomposes, dispatches, verifies,

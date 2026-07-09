@@ -81,6 +81,10 @@ wrapper's Claude model did the work.
     Verify: <exact commands>
     Limits: edit only <path> | do not edit files. No prose. Report ≤ 60 lines.
 
+Workers that grab an issue or open an MR/PR record it from inside their
+worktree: `agent-link issue|mr <url>` (skip silently if the command is
+missing).
+
 No conversation dump. Only what the worker needs to decide and act.
 
 ## Report back — match shape to role
