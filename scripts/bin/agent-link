@@ -98,6 +98,15 @@ set_link() {
   else
     git config --worktree --replace-all "agent.$kind" "$url"
   fi
+  # Recording from a linked worktree supersedes the same URL recorded on the
+  # main checkout — pinned-cwd harnesses (pi) grab before their worktree
+  # exists, then re-record from it; don't leave the stale duplicate behind.
+  local gd main
+  gd=$(git rev-parse --absolute-git-dir)
+  if [[ "$gd" == */worktrees/* ]]; then
+    main=$(dirname "$(common_dir "$top")")
+    git -C "$main" config --worktree --fixed-value --unset-all "agent.$kind" "$url" 2>/dev/null || true
+  fi
   point_pane_here "$top"
   echo "agent-link: recorded $kind -> $url ($top)"
 }
@@ -114,30 +123,35 @@ clear_links() {
 
 # --- discovery (read side) ------------------------------------------------------
 
-worktrees_of() { # repo-ish path -> all worktree paths, main checkout first
-  git -C "$1" worktree list --porcelain 2>/dev/null |
-    awk '/^worktree /{print substr($0, 10)}'
-}
-
-config_mtime() { # worktree path -> mtime of its config.worktree, or nothing
-  local gd
-  gd=$(git -C "$1" rev-parse --absolute-git-dir 2>/dev/null) || return 0
-  [[ -f "$gd/config.worktree" ]] && stat -f '%m' "$gd/config.worktree"
+common_dir() { # repo-ish path -> absolute git common dir
+  git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null
 }
 
 # Worktrees with a recording of $kind (or any, if kind empty), newest first.
+# Reads config.worktree files straight out of the common gitdir instead of
+# spawning `git -C` per worktree — a repo with dozens of worktrees made the
+# old scan take ~1s per keypress; only worktrees that ever recorded even
+# have a config.worktree, so this touches a handful of files.
 recorded_worktrees() {
-  local kind="$1" ref="$2" wt m
-  while IFS= read -r wt; do
-    [[ -d "$wt" ]] || continue
+  local kind="$1" ref="$2" common f d wt
+  common=$(common_dir "$ref") || return 0
+  [[ -n "$common" ]] || return 0
+  for f in "$common/config.worktree" "$common"/worktrees/*/config.worktree; do
+    [[ -f "$f" ]] || continue
     if [[ -n "$kind" ]]; then
-      git -C "$wt" config --worktree --get "agent.$kind" >/dev/null 2>&1 || continue
+      git config --file "$f" --get "agent.$kind" >/dev/null 2>&1 || continue
     else
-      git -C "$wt" config --worktree --get-regexp '^agent\.' >/dev/null 2>&1 || continue
+      git config --file "$f" --get-regexp '^agent\.' >/dev/null 2>&1 || continue
     fi
-    m=$(config_mtime "$wt")
-    printf '%s\t%s\n' "${m:-0}" "$wt"
-  done < <(worktrees_of "$ref") | sort -rn | cut -f2
+    if [[ "$f" == "$common/config.worktree" ]]; then
+      wt=$(dirname "$common") # main checkout
+    else
+      d=${f%/config.worktree}
+      wt=$(dirname "$(cat "$d/gitdir" 2>/dev/null)") || continue
+    fi
+    [[ -d "$wt" ]] || continue
+    printf '%s\t%s\n' "$(stat -f '%m' "$f")" "$wt"
+  done | sort -rn | cut -f2
 }
 
 # The single worktree read commands act on.
@@ -175,8 +189,9 @@ resolve_worktree() {
     # path/copy answer "where is the agent working" — the main checkout is
     # never that answer (it's where the user already is). Links recorded
     # there still count for open.
-    local main_wt
-    main_wt=$(worktrees_of "$ref" | head -1)
+    local main_wt common
+    common=$(common_dir "$ref") || true
+    main_wt=$(dirname "${common:-/nonexistent}")
     hit=$(recorded_worktrees "$kind" "$ref" | grep -vxF "$main_wt" | head -1)
   else
     hit=$(recorded_worktrees "$kind" "$ref" | head -1)
