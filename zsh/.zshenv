@@ -75,5 +75,10 @@ export PYTHON_HISTORY="$XDG_STATE_HOME/python/history"
 export PI_CODING_AGENT_DIR="$XDG_CONFIG_HOME/pi/agent"
 export PI_CODING_AGENT_SESSION_DIR="$XDG_STATE_HOME/pi/sessions"
 
+
+
+# iCloud Drive Vault path
+export VAULT=$HOME/Library/Mobile\ Documents/iCloud~md~obsidian/Documents/花园
+
 # Source local secrets (API keys, tokens) — not tracked by git
 [[ -f ~/.secrets/env ]] && source ~/.secrets/env

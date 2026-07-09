@@ -379,15 +379,6 @@ pi() {
 	PI_INTERNAL_SCROLLBACK=1 command pi "$@"
 }
 
-# Headroom: never re-register the Serena MCP server when wrapping Claude.
-headroom() {
-  if [[ "$1" == "wrap" && "$2" == "claude" ]]; then
-    command headroom "$@" --no-serena
-  else
-    command headroom "$@"
-  fi
-}
-
 # Global aliases
 # Redirect stderr to /dev/null
 alias -g NE='2>/dev/null'
