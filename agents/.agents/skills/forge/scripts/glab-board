@@ -11,9 +11,10 @@
 #   glab-board frontier            open + unblocked + unassigned issues
 #   glab-board list                all open issues (iid | blocked | assignee | labels | title)
 #   glab-board view <iid>          issue body + comments
-#   glab-board grab <iid>          CLAIM: assign to me + record via agent-link
+#   glab-board grab <iid> [work|research]  CLAIM: assign me + agent::working|researching label + record via agent-link
+#   glab-board park <iid> [text]   set agent::parked (waiting/blocked), optional comment
 #   glab-board note <iid> <text>   comment on an issue
-#   glab-board close <iid> [text]  optional resolution comment, then close
+#   glab-board close <iid> [text]  optional resolution comment, clear agent::* labels, close
 #   glab-board block <A> <B>       mark issue A blocked-by issue B (native link)
 #   glab-board triage              open issues labeled needs-triage
 set -euo pipefail
@@ -69,11 +70,19 @@ record_issue() { # $1 = iid — best-effort agent-link recording; never fails th
   local al="$HOME/dotfiles/scripts/bin/agent-link" url
   [[ -x "$al" ]] || return 0
   if [[ "$FORGE" == "gitlab" ]]; then
-    url=$(glab api "projects/$ENC/issues/$1" | python3 -c 'import sys,json;print(json.load(sys.stdin)["web_url"])')
+    url=$(glab api "projects/$ENC/issues/$1" 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["web_url"])' 2>/dev/null || true)
   else
-    url=$(gh issue view "$1" -R "$PROJECT" --json url -q .url)
+    url=$(gh issue view "$1" -R "$PROJECT" --json url -q .url 2>/dev/null || true)
   fi
   [[ -n "$url" ]] && "$al" issue "$url" || true
+}
+
+grab_label() { # work|implement|research -> label + the other two to remove
+  case "${1:-work}" in
+  work | implement) echo "agent::working agent::parked,agent::researching" ;;
+  research) echo "agent::researching agent::working,agent::parked" ;;
+  *) die "grab mode must be work or research" ;;
+  esac
 }
 
 cmd=${1:-help}
@@ -84,16 +93,27 @@ if [[ "$FORGE" == "github" ]]; then
   frontier) gh issue list -R "$PROJECT" --state open --search "no:assignee" --limit 100 ;;
   view) gh issue view "$2" -R "$PROJECT" --comments ;;
   grab)
-    gh issue edit "$2" -R "$PROJECT" --add-assignee @me
+    read -r lbl remove <<<"$(grab_label "${3:-work}")"
+    [[ -n "$lbl" ]] || exit 1
+    gh label create "$lbl" -R "$PROJECT" 2>/dev/null || true
+    gh issue edit "$2" -R "$PROJECT" --add-assignee @me --add-label "$lbl" \
+      --remove-label "${remove%%,*}" --remove-label "${remove##*,}" 2>/dev/null ||
+      gh issue edit "$2" -R "$PROJECT" --add-assignee @me --add-label "$lbl"
     record_issue "$2"
-    echo "grabbed #$2"
+    echo "grabbed #$2 ($lbl)"
+    ;;
+  park)
+    if [ $# -ge 3 ]; then gh issue comment "$2" -R "$PROJECT" -b "$3"; fi
+    gh label create "agent::parked" -R "$PROJECT" 2>/dev/null || true
+    gh issue edit "$2" -R "$PROJECT" --add-label "agent::parked" 2>/dev/null || true
+    echo "parked #$2"
     ;;
   note) gh issue comment "$2" -R "$PROJECT" -b "$3" ;;
   close)
     if [ $# -ge 3 ]; then gh issue comment "$2" -R "$PROJECT" -b "$3"; fi
     gh issue close "$2" -R "$PROJECT"
     ;;
-  *) sed -n '10,19p' "$0" ;;
+  *) /usr/bin/grep '^#   glab-board' "$0" | sed 's/^#   //' ;;
   esac
   exit 0
 fi
@@ -109,16 +129,27 @@ view)
   glab issue view "$2" -R "$PROJECT" --comments
   ;;
 grab)
-  glab api -X PUT "projects/$ENC/issues/$2" -f assignee_ids="$(me_id)" >/dev/null
+  read -r lbl remove <<<"$(grab_label "${3:-work}")"
+  [[ -n "$lbl" ]] || exit 1
+  glab api -X PUT "projects/$ENC/issues/$2" -f assignee_ids="$(me_id)" \
+    -f add_labels="$lbl" -f remove_labels="$remove" >/dev/null
   record_issue "$2"
-  echo "grabbed #$2 (assigned + recorded)"
+  echo "grabbed #$2 (assigned, $lbl, recorded)"
+  ;;
+park)
+  if [ $# -ge 3 ]; then glab issue note "$2" -R "$PROJECT" -m "$3"; fi
+  glab api -X PUT "projects/$ENC/issues/$2" \
+    -f add_labels="agent::parked" -f remove_labels="agent::working,agent::researching" >/dev/null
+  echo "parked #$2"
   ;;
 note)
   glab issue note "$2" -R "$PROJECT" -m "$3"
   ;;
 close)
   if [ $# -ge 3 ]; then glab issue note "$2" -R "$PROJECT" -m "$3"; fi
-  glab issue close "$2" -R "$PROJECT"
+  glab api -X PUT "projects/$ENC/issues/$2" -f state_event=close \
+    -f remove_labels="agent::working,agent::parked,agent::researching" >/dev/null
+  echo "closed #$2"
   ;;
 block)
   glab api -X POST "projects/$ENC/issues/$2/links" \
@@ -133,6 +164,6 @@ for i in json.load(sys.stdin):
     print("#%s | %s" % (i["iid"], i["title"]))'
   ;;
 *)
-  sed -n '10,19p' "$0"
+  /usr/bin/grep '^#   glab-board' "$0" | sed 's/^#   //'
   ;;
 esac

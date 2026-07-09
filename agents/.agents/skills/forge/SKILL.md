@@ -28,11 +28,19 @@ glab-board frontier | list | view <iid> | grab <iid> | note <iid> <text>
 
 ## Grabbing an issue — the contract
 
-"Grab" is one verb, not a mental note: `glab-board grab <iid>`. It **assigns
-the issue to you** (assignee IS the claim — open + unassigned = unclaimed) and
-**records it** via `agent-link`, which is what makes the human's `/issue`,
-`/mr`, and tmux hotkeys point at your work. Run it from your worktree, before
-any work. If you started working an issue without grabbing it, grab it now.
+"Grab" is one verb, not a mental note: `glab-board grab <iid> [work|research]`
+— say which you're doing (default `work`). It **assigns the issue to you**
+(assignee IS the claim — open + unassigned = unclaimed), sets the status label
+(`agent::working` or `agent::researching`), and **records it** via
+`agent-link`, which is what makes the human's `/issue`, `/mr`, and tmux
+hotkeys point at your work. Run it from your worktree, before any work. If you
+started working an issue without grabbing it, grab it now.
+
+Status lifecycle after that: `glab-board park <iid> [comment]` when you stop
+— blocked, waiting on a human, or ending the session unfinished
+(`agent::parked`); `glab-board close <iid> [comment]` clears the `agent::*`
+labels. Never leave an issue labelled `agent::working` when you are no longer
+working it.
 
 If your harness's cwd does not follow you into a worktree (pi: cwd is fixed at
 session creation and `cd` does not persist across bash calls), re-record after
@@ -51,8 +59,9 @@ these as live wires, not descriptions:
 - `ready-for-agent` / `ready-for-research` — TRIGGER labels: applying one
   dispatches a session. Apply only when the ticket is genuinely
   agent-runnable and fully specified; re-adding one means "run it again".
-- `agent::working` / `agent::parked` — the watcher's claim markers. Never
-  set or clear them yourself.
+- `agent::working` / `agent::researching` / `agent::parked` — status labels.
+  Set them ONLY through `glab-board grab|park|close`, never by hand-editing
+  labels; the watcher also reads and reconciles them.
 - Terminal states retire the trigger label and add `ready-for-human` (the
   human review queue); any dispatch removes `ready-for-human`.
 

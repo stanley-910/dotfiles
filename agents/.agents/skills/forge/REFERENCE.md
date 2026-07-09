@@ -22,6 +22,11 @@ Triage labels — every triaged issue gets exactly one category + one state:
 Wayfinder labels: `wayfinder:map` `#6699cc`, `:research` `#33aa33`,
 `:prototype` `#ff9900`, `:grilling` `#cc3399`, `:task` `#8e8e8e`.
 
+Agent status labels (scoped — GitLab swaps same-scope labels automatically;
+set via `glab-board grab|park|close`, which also removes the siblings
+explicitly): `agent::working` `#1f883d`, `agent::researching` `#33aaff`,
+`agent::parked` `#f0ad4e`.
+
 `hitl` (`#cc0033`) — orthogonal to type: the ticket cannot proceed without the
 human. One query is then the human's whole queue (`-l hitl`); agent-takeable
 work is `--not -l hitl`. Mixed tickets carry it and mark steps `HITL:`/`AFK:`.
