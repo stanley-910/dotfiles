@@ -10,6 +10,9 @@ P  :  Search Pull Requests By Current Ticket
 j  :  Open Jira Ticket URL
 J  :  Open Jira Board URL
 b  :  Open Pipeline Build
+m  :  Open Agent MR / PR
+i  :  Open Agent Issue
+y  :  Copy Agent Worktree Path
 
 Press key to execute
 EOF
@@ -39,6 +42,17 @@ J)
   ;;
 b)
   ~/.config/scripts/open_remote.sh b
+  ;;
+# agent-link lives in scripts/bin (on PATH via .zshenv, but tmux popups may not
+# have it), so reference it directly.
+m)
+  "$HOME/dotfiles/scripts/bin/agent-link" open mr
+  ;;
+i)
+  "$HOME/dotfiles/scripts/bin/agent-link" open issue
+  ;;
+y)
+  "$HOME/dotfiles/scripts/bin/agent-link" copy
   ;;
 
 *)
