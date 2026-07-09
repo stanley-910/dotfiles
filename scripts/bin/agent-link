@@ -6,10 +6,14 @@
 # tmux keybinds (git-menu: m / i / y) run the read commands from the pane.
 #
 # Metadata lives in per-worktree git config (.git/worktrees/<name>/config.worktree),
-# so it is scoped to the agent's worktree and garbage-collected with it. Because
-# the pane's cwd usually stays in the MAIN checkout while the agent works in a
-# worktree elsewhere, setters also tag the tmux pane ($TMUX_PANE) with
-# @agent_worktree — a discovery pointer the read commands resolve first.
+# so it is scoped to the agent's worktree and garbage-collected with it. Discovery
+# from the pane (whose cwd usually stays in the MAIN checkout) is layered:
+#   1. @agent_worktree pane option — fast path, set by the setter via $TMUX_PANE.
+#      Fragile on purpose: pane options die with the pane, and some agent
+#      harnesses strip TMUX_PANE from subprocess env.
+#   2. Scan the pane repo's linked worktrees for agent.* recordings (newest
+#      config.worktree mtime wins). Needs no pane state at all.
+#   3. For `open mr` with nothing recorded: glab/gh branch lookup.
 
 set -euo pipefail
 
@@ -20,45 +24,35 @@ Usage:
   agent-link mr <url>         Record the MR/PR opened (replaces)
   agent-link add issue|mr <url>   Append another link (multiple MRs)
   agent-link clear [issue|mr]     Clear recorded links (default: both)
-  agent-link status           Show recorded links for the resolved worktree
+  agent-link status           Show recordings across the repo's worktrees
 
   agent-link open issue|mr    Open recorded link(s) in browser
                               (mr falls back to glab/gh branch lookup)
-  agent-link path             Print resolved worktree path
-  agent-link copy             Copy resolved worktree path to clipboard
+  agent-link path             Print the agent worktree path
+  agent-link copy             Copy the agent worktree path to clipboard
 
-Setters resolve the worktree from cwd; read commands prefer the pane's
-@agent_worktree pointer (set by the agent), falling back to the pane path.
+Setters resolve the worktree from cwd. Read commands resolve: pane pointer ->
+newest agent.* recording among the repo's worktrees -> newest linked worktree.
 EOF
   exit 1
 }
 
-# --- resolution ---------------------------------------------------------------
+# --- context ------------------------------------------------------------------
 
-# Worktree for setters: wherever we're running from.
-cwd_worktree() {
-  git rev-parse --show-toplevel 2>/dev/null || {
-    echo "agent-link: not inside a git worktree" >&2
-    exit 1
-  }
-}
-
-# Worktree for read commands: pane pointer first (the agent's worktree), else
-# the pane's cwd (covers running agent-link by hand inside the worktree), else
-# plain cwd when outside tmux.
-resolve_worktree() {
-  local wt=""
+# Where the pane "is": pane cwd inside tmux, else our own cwd.
+pane_path() {
   if [[ -n "${TMUX:-}" ]]; then
     # In a display-popup, display-message resolves against the underlying
     # active pane (same mechanism open_remote.sh relies on).
-    wt=$(tmux display-message -p '#{@agent_worktree}' 2>/dev/null || true)
-    if [[ -z "$wt" || ! -d "$wt" ]]; then
-      wt=$(tmux display-message -p '#{pane_current_path}')
-    fi
+    tmux display-message -p '#{pane_current_path}'
   else
-    wt=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+    pwd
   fi
-  echo "$wt"
+}
+
+pane_pointer() {
+  [[ -n "${TMUX:-}" ]] || return 0
+  tmux display-message -p '#{@agent_worktree}' 2>/dev/null || true
 }
 
 # User feedback that survives the popup closing: tmux status line if available.
@@ -71,6 +65,13 @@ notify() {
 }
 
 # --- setters (run by agents, from inside their worktree) -----------------------
+
+cwd_worktree() {
+  git rev-parse --show-toplevel 2>/dev/null || {
+    echo "agent-link: not inside a git worktree" >&2
+    exit 1
+  }
+}
 
 ensure_worktree_config() {
   # Without this extension, `git config --worktree` silently degrades to
@@ -111,21 +112,87 @@ clear_links() {
   echo "agent-link: cleared ${*} ($top)"
 }
 
-# --- read commands (run from tmux keybinds or by hand) --------------------------
+# --- discovery (read side) ------------------------------------------------------
 
-get_links() { # kind, from resolved worktree; prints one url per line
-  local kind="$1" wt="$2"
-  git -C "$wt" config --worktree --get-all "agent.$kind" 2>/dev/null || true
+worktrees_of() { # repo-ish path -> all worktree paths, main checkout first
+  git -C "$1" worktree list --porcelain 2>/dev/null |
+    awk '/^worktree /{print substr($0, 10)}'
 }
+
+config_mtime() { # worktree path -> mtime of its config.worktree, or nothing
+  local gd
+  gd=$(git -C "$1" rev-parse --absolute-git-dir 2>/dev/null) || return 0
+  [[ -f "$gd/config.worktree" ]] && stat -f '%m' "$gd/config.worktree"
+}
+
+# Worktrees with a recording of $kind (or any, if kind empty), newest first.
+recorded_worktrees() {
+  local kind="$1" ref="$2" wt m
+  while IFS= read -r wt; do
+    [[ -d "$wt" ]] || continue
+    if [[ -n "$kind" ]]; then
+      git -C "$wt" config --worktree --get "agent.$kind" >/dev/null 2>&1 || continue
+    else
+      git -C "$wt" config --worktree --get-regexp '^agent\.' >/dev/null 2>&1 || continue
+    fi
+    m=$(config_mtime "$wt")
+    printf '%s\t%s\n' "${m:-0}" "$wt"
+  done < <(worktrees_of "$ref") | sort -rn | cut -f2
+}
+
+# The single worktree read commands act on.
+#   kind empty = for path/copy (any recording, then newest linked worktree).
+resolve_worktree() {
+  local kind="${1:-}" ref ptr hit
+  ref=$(pane_path)
+
+  ptr=$(pane_pointer)
+  if [[ -n "$ptr" && -d "$ptr" ]]; then
+    # Trust the pointer only if it doesn't contradict the ask.
+    if [[ -z "$kind" ]] ||
+      git -C "$ptr" config --worktree --get "agent.$kind" >/dev/null 2>&1; then
+      echo "$ptr"
+      return 0
+    fi
+  fi
+
+  hit=$(recorded_worktrees "$kind" "$ref" | head -1)
+  if [[ -n "$hit" ]]; then
+    echo "$hit"
+    return 0
+  fi
+
+  if [[ -z "$kind" ]]; then
+    # path/copy with no recordings: newest-touched linked worktree is the best
+    # guess for "the agent's worktree" (gitdir mtime tracks HEAD activity).
+    local common
+    common=$(git -C "$ref" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || true
+    if [[ -n "${common:-}" && -d "$common/worktrees" ]]; then
+      hit=$(for d in "$common"/worktrees/*/; do
+        [[ -f "${d}gitdir" ]] || continue
+        wt=$(dirname "$(cat "${d}gitdir")")
+        [[ -d "$wt" ]] && printf '%s\t%s\n' "$(stat -f '%m' "$d")" "$wt"
+      done | sort -rn | head -1 | cut -f2)
+      if [[ -n "$hit" ]]; then
+        echo "$hit"
+        return 0
+      fi
+    fi
+  fi
+
+  echo "$ref"
+}
+
+# --- read commands (run from tmux keybinds or by hand) --------------------------
 
 open_links() {
   local kind="$1" wt urls
-  wt=$(resolve_worktree)
-  urls=$(get_links "$kind" "$wt")
+  wt=$(resolve_worktree "$kind")
+  urls=$(git -C "$wt" config --worktree --get-all "agent.$kind" 2>/dev/null || true)
 
   if [[ -z "$urls" && "$kind" == "mr" ]]; then
-    # Fallback: derive from the branch via forge CLI. Never stale, covers
-    # agents that forgot to record.
+    # Derive from the branch via forge CLI. Never stale, covers agents that
+    # forgot to record.
     local remote=""
     remote=$(git -C "$wt" remote get-url origin 2>/dev/null || true)
     if [[ "$remote" == *gitlab* ]] && command -v glab >/dev/null 2>&1; then
@@ -138,7 +205,7 @@ open_links() {
   fi
 
   if [[ -z "$urls" ]]; then
-    notify "agent-link: no $kind recorded for $wt"
+    notify "agent-link: no $kind recorded in any worktree of $(basename "$wt")"
     exit 1
   fi
 
@@ -148,22 +215,25 @@ open_links() {
     open "$url"
     n=$((n + 1))
   done <<<"$urls"
-  notify "agent-link: opened $n $kind link(s)"
+  notify "agent-link: opened $n $kind link(s) from $wt"
 }
 
 show_status() {
-  local wt
-  wt=$(resolve_worktree)
-  echo "worktree: $wt"
-  echo "issue:"
-  get_links issue "$wt" | sed 's/^/  /'
-  echo "mr:"
-  get_links mr "$wt" | sed 's/^/  /'
+  local ref wt
+  ref=$(pane_path)
+  echo "pane: $ref"
+  echo "pointer: $(pane_pointer)"
+  echo "recordings (newest first):"
+  while IFS= read -r wt; do
+    echo "  $wt"
+    git -C "$wt" config --worktree --get-regexp '^agent\.' 2>/dev/null |
+      sed 's/^agent\./    /'
+  done < <(recorded_worktrees "" "$ref")
 }
 
 copy_path() {
   local wt
-  wt=$(resolve_worktree)
+  wt=$(resolve_worktree "")
   printf '%s' "$wt" | pbcopy
   notify "agent-link: copied $wt"
 }
@@ -193,7 +263,7 @@ open)
   open_links "$2"
   ;;
 path)
-  resolve_worktree
+  resolve_worktree ""
   ;;
 copy)
   copy_path
