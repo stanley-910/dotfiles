@@ -144,6 +144,27 @@ recorded_worktrees() {
 #   kind empty = for path/copy (any recording, then newest linked worktree).
 resolve_worktree() {
   local kind="${1:-}" ref ptr hit
+
+  # cwd first: when invoked from inside an agent session (/mr, /issue), cwd IS
+  # that session's worktree — never answer with a sibling agent's recording.
+  # From a tmux popup cwd is the pane path (main checkout), which won't match.
+  local cwdtop cwdgd
+  cwdtop=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  if [[ -n "$cwdtop" ]]; then
+    if [[ -n "$kind" ]]; then
+      if git -C "$cwdtop" config --worktree --get "agent.$kind" >/dev/null 2>&1; then
+        echo "$cwdtop"
+        return 0
+      fi
+    else
+      cwdgd=$(git rev-parse --absolute-git-dir 2>/dev/null || true)
+      if [[ "$cwdgd" == */worktrees/* ]]; then
+        echo "$cwdtop" # a linked worktree: cwd is the agent worktree
+        return 0
+      fi
+    fi
+  fi
+
   ref=$(pane_path)
 
   ptr=$(pane_pointer)
