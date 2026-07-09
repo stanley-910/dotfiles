@@ -1,6 +1,6 @@
 {
   "env": {
-    "PATH": "/Users/stanley/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Applications/Obsidian.app/Contents/MacOS:/Users/stanley/.lmstudio/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "PATH": "/Users/stanwang/dotfiles/scripts/bin:/Users/stanley/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Applications/Obsidian.app/Contents/MacOS:/Users/stanley/.lmstudio/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "DISABLE_TELEMETRY": "1"
   },
@@ -17,7 +17,19 @@
     "defaultMode": "bypassPermissions",
     "skipDangerousModePermissionPrompt": true
   },
-  "hooks": {},
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/agent-link-autorecord.sh"
+          }
+        ]
+      }
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"
