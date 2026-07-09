@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+# glab-board — project-agnostic issue-board helper. Derives the forge host and
+# project from the cwd repo's origin remote, so it works in any checkout or
+# worktree with zero configuration. GitLab-first (glab); a thin gh branch
+# covers GitHub for the everyday verbs.
+#
+# Never hand-construct `glab api projects/<path>` calls — unencoded namespaces
+# and a missing GITLAB_HOST are where agent 404s come from. Use this instead.
+#
+# Usage:
+#   glab-board frontier            open + unblocked + unassigned issues
+#   glab-board list                all open issues (iid | blocked | assignee | labels | title)
+#   glab-board view <iid>          issue body + comments
+#   glab-board grab <iid>          CLAIM: assign to me + record via agent-link
+#   glab-board note <iid> <text>   comment on an issue
+#   glab-board close <iid> [text]  optional resolution comment, then close
+#   glab-board block <A> <B>       mark issue A blocked-by issue B (native link)
+#   glab-board triage              open issues labeled needs-triage
+set -euo pipefail
+
+die() {
+  echo "glab-board: $*" >&2
+  exit 1
+}
+
+remote=$(git remote get-url origin 2>/dev/null) || die "not in a git repo with an origin remote"
+
+# git@host:group/proj.git | https://host/group/proj.git -> host + group/proj
+case "$remote" in
+git@*) host=${remote#git@} host=${host%%:*} path=${remote#*:} ;;
+http*) host=${remote#*://} path=${host#*/} host=${host%%/*} ;;
+*) die "unrecognized remote: $remote" ;;
+esac
+path=${path%.git}
+
+FORGE=gitlab
+[[ "$host" == "github.com" ]] && FORGE=github
+
+if [[ "$FORGE" == "gitlab" ]]; then
+  command -v glab >/dev/null || die "glab not installed"
+  # glab reads GITLAB_HOST (GLAB_HOST is a no-op). Required or glab silently
+  # targets gitlab.com -> "Unauthenticated"/404.
+  export GITLAB_HOST=$host
+  ENC=$(printf '%s' "$path" | sed 's|/|%2F|g')
+  PROJECT=$path
+else
+  command -v gh >/dev/null || die "gh not installed"
+  PROJECT=$path
+fi
+
+me_id() { # gitlab numeric user id, cached per invocation
+  glab api user | python3 -c 'import sys,json;print(json.load(sys.stdin)["id"])'
+}
+
+project_id() { # gitlab numeric project id, fetched lazily (only block needs it)
+  glab api "projects/$ENC" | python3 -c 'import sys,json;print(json.load(sys.stdin)["id"])'
+}
+
+list_issues() { # $1 = extra query params
+  glab api "projects/$ENC/issues?state=opened&per_page=100${1:-}" | python3 -c '
+import json, sys
+for i in sorted(json.load(sys.stdin), key=lambda x: x["iid"]):
+    assignee = i["assignees"][0]["username"] if i["assignees"] else "-"
+    labels = ",".join(i["labels"])
+    print("#%s | blocked=%s | asg=%s | [%s] | %s" % (i["iid"], i.get("blocked", False), assignee, labels, i["title"]))'
+}
+
+record_issue() { # $1 = iid — best-effort agent-link recording; never fails the claim
+  local al="$HOME/dotfiles/scripts/bin/agent-link" url
+  [[ -x "$al" ]] || return 0
+  if [[ "$FORGE" == "gitlab" ]]; then
+    url=$(glab api "projects/$ENC/issues/$1" | python3 -c 'import sys,json;print(json.load(sys.stdin)["web_url"])')
+  else
+    url=$(gh issue view "$1" -R "$PROJECT" --json url -q .url)
+  fi
+  [[ -n "$url" ]] && "$al" issue "$url" || true
+}
+
+cmd=${1:-help}
+
+if [[ "$FORGE" == "github" ]]; then
+  case "$cmd" in
+  list) gh issue list -R "$PROJECT" --state open --limit 100 ;;
+  frontier) gh issue list -R "$PROJECT" --state open --search "no:assignee" --limit 100 ;;
+  view) gh issue view "$2" -R "$PROJECT" --comments ;;
+  grab)
+    gh issue edit "$2" -R "$PROJECT" --add-assignee @me
+    record_issue "$2"
+    echo "grabbed #$2"
+    ;;
+  note) gh issue comment "$2" -R "$PROJECT" -b "$3" ;;
+  close)
+    if [ $# -ge 3 ]; then gh issue comment "$2" -R "$PROJECT" -b "$3"; fi
+    gh issue close "$2" -R "$PROJECT"
+    ;;
+  *) sed -n '10,19p' "$0" ;;
+  esac
+  exit 0
+fi
+
+case "$cmd" in
+frontier)
+  list_issues | awk -F' \\| ' '$2 == "blocked=False" && $3 == "asg=-"'
+  ;;
+list)
+  list_issues
+  ;;
+view)
+  glab issue view "$2" -R "$PROJECT" --comments
+  ;;
+grab)
+  glab api -X PUT "projects/$ENC/issues/$2" -f assignee_ids="$(me_id)" >/dev/null
+  record_issue "$2"
+  echo "grabbed #$2 (assigned + recorded)"
+  ;;
+note)
+  glab issue note "$2" -R "$PROJECT" -m "$3"
+  ;;
+close)
+  if [ $# -ge 3 ]; then glab issue note "$2" -R "$PROJECT" -m "$3"; fi
+  glab issue close "$2" -R "$PROJECT"
+  ;;
+block)
+  glab api -X POST "projects/$ENC/issues/$2/links" \
+    -f target_project_id="$(project_id)" -f target_issue_iid="$3" \
+    -f link_type=is_blocked_by >/dev/null
+  echo "#$2 is now blocked by #$3"
+  ;;
+triage)
+  glab api "projects/$ENC/issues?state=opened&labels=needs-triage&per_page=100" | python3 -c '
+import json, sys
+for i in json.load(sys.stdin):
+    print("#%s | %s" % (i["iid"], i["title"]))'
+  ;;
+*)
+  sed -n '10,19p' "$0"
+  ;;
+esac
