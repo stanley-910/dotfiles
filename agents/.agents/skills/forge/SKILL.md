@@ -34,6 +34,11 @@ the issue to you** (assignee IS the claim — open + unassigned = unclaimed) and
 `/mr`, and tmux hotkeys point at your work. Run it from your worktree, before
 any work. If you started working an issue without grabbing it, grab it now.
 
+If your harness's cwd does not follow you into a worktree (pi: cwd is fixed at
+session creation and `cd` does not persist across bash calls), re-record after
+creating the worktree so the links live with the work:
+`cd <worktree> && agent-link issue <url>`.
+
 When you open an MR, record it too: `agent-link mr <url>` (Claude Code's hook
 does this automatically for `glab mr create` / `gh pr create`; other harnesses
 run it themselves).
