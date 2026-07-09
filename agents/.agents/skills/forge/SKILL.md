@@ -53,8 +53,7 @@ creating the worktree so the links live with the work:
 
 Create MRs the same way: `glab-board mr <glab-mr-create-args>` (run from your
 worktree) — it creates AND records in one verb. If you created an MR some
-other way, record it: `agent-link mr <url>`. (Claude/pi also sniff raw
-`glab mr create` output as a backstop, but the verb is the reliable path.)
+other way, record it yourself: `agent-link mr <url>` — nothing else will.
 
 ## Label discipline (board-watcher repos)
 
