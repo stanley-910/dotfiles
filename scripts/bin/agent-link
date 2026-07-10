@@ -8,12 +8,18 @@
 # Metadata lives in per-worktree git config (.git/worktrees/<name>/config.worktree),
 # so it is scoped to the agent's worktree and garbage-collected with it. Discovery
 # from the pane (whose cwd usually stays in the MAIN checkout) is layered:
-#   1. @agent_worktree pane option — fast path, set by the setter via $TMUX_PANE.
-#      Fragile on purpose: pane options die with the pane, and some agent
-#      harnesses strip TMUX_PANE from subprocess env.
-#   2. Scan the pane repo's linked worktrees for agent.* recordings (newest
-#      config.worktree mtime wins). Needs no pane state at all.
-#   3. For `open mr` with nothing recorded: glab/gh branch lookup.
+#   1. Own cwd — /mr, /issue inside an agent session: cwd IS the worktree.
+#   2. Pane process tree — which linked worktree are the pane's live processes
+#      in? Per-pane and can't go stale (Claude repoints its session cwd into
+#      the worktree). Concurrent agents each get their own pane's answer.
+#   3. @agent_worktree pane option, validated — set by the setter via
+#      $TMUX_PANE. Covers pinned-cwd harnesses (pi) whose processes never
+#      enter the worktree; used only if it still is a linked worktree of the
+#      pane's repo with a matching recording.
+#   4. Scan the repo's worktrees for agent.* recordings (newest
+#      config.worktree mtime wins). Needs no pane state, but under
+#      concurrent sessions it's a guess — last resort, not first.
+#   5. For `open mr` with nothing recorded: glab/gh branch lookup.
 
 set -euo pipefail
 
@@ -31,8 +37,9 @@ Usage:
   agent-link path             Print the agent worktree path
   agent-link copy             Copy the agent worktree path to clipboard
 
-Setters resolve the worktree from cwd. Read commands resolve: pane pointer ->
-newest agent.* recording among the repo's worktrees -> newest linked worktree.
+Setters resolve the worktree from cwd. Read commands resolve: own cwd ->
+pane process tree -> validated pane pointer -> newest agent.* recording
+among the repo's worktrees -> newest linked worktree.
 EOF
   exit 1
 }
@@ -53,6 +60,45 @@ pane_path() {
 pane_pointer() {
   [[ -n "${TMUX:-}" ]] || return 0
   tmux display-message -p '#{@agent_worktree}' 2>/dev/null || true
+}
+
+# Linked worktrees of the pane repo that the pane's live process tree is
+# inside (a Claude session repoints its cwd into its worktree; a shell cd'd
+# there counts too). This is the only per-pane signal that cannot go stale:
+# it reflects what is running right now, not what once ran here.
+pane_proc_worktrees() {
+  local ref="$1" common pane_pid frontier pids cwds
+  [[ -n "${TMUX:-}" ]] || return 0
+  common=$(common_dir "$ref") || return 0
+  [[ -d "${common:-/nonexistent}/worktrees" ]] || return 0
+  pane_pid=$(tmux display-message -p '#{pane_pid}' 2>/dev/null) || return 0
+  [[ "$pane_pid" =~ ^[0-9]+$ ]] || return 0
+
+  # pgrep -a: macOS pgrep silently excludes its own ancestors, and this very
+  # shell chain hangs off the pane — without -a the BFS dies at level one.
+  frontier="$pane_pid" pids="$pane_pid"
+  while [[ -n "$frontier" ]]; do
+    frontier=$(pgrep -a -P "${frontier// /,}" 2>/dev/null | tr '\n' ' ' | sed 's/ *$//') || true
+    [[ -n "$frontier" ]] || break
+    pids="$pids $frontier"
+  done
+  # One lsof call for the whole tree: per-pid spawns are what made scans slow.
+  cwds=$(lsof -a -d cwd -p "${pids// /,}" -Fn 2>/dev/null | sed -n 's/^n//p' | sort -u) || true
+  [[ -n "$cwds" ]] || return 0
+
+  local d g wt c
+  for d in "$common"/worktrees/*/; do
+    [[ -f "${d}gitdir" ]] || continue
+    read -r g <"${d}gitdir" || continue # "<wt>/.git" — builtins, forks add up
+    wt=${g%/*}
+    [[ -d "$wt" ]] || continue
+    while IFS= read -r c; do
+      if [[ "$c" == "$wt" || "$c" == "$wt"/* ]]; then
+        printf '%s\n' "$wt"
+        break
+      fi
+    done <<<"$cwds"
+  done | sort -u
 }
 
 # User feedback that survives the popup closing: tmux status line if available.
@@ -133,7 +179,7 @@ common_dir() { # repo-ish path -> absolute git common dir
 # old scan take ~1s per keypress; only worktrees that ever recorded even
 # have a config.worktree, so this touches a handful of files.
 recorded_worktrees() {
-  local kind="$1" ref="$2" common f d wt
+  local kind="$1" ref="$2" common f d g wt
   common=$(common_dir "$ref") || return 0
   [[ -n "$common" ]] || return 0
   for f in "$common/config.worktree" "$common"/worktrees/*/config.worktree; do
@@ -144,10 +190,11 @@ recorded_worktrees() {
       git config --file "$f" --get-regexp '^agent\.' >/dev/null 2>&1 || continue
     fi
     if [[ "$f" == "$common/config.worktree" ]]; then
-      wt=$(dirname "$common") # main checkout
+      wt=${common%/*} # main checkout
     else
       d=${f%/config.worktree}
-      wt=$(dirname "$(cat "$d/gitdir" 2>/dev/null)") || continue
+      read -r g <"$d/gitdir" || continue # "<wt>/.git"
+      wt=${g%/*}
     fi
     [[ -d "$wt" ]] || continue
     printf '%s\t%s\n' "$(stat -f '%m' "$f")" "$wt"
@@ -181,10 +228,47 @@ resolve_worktree() {
 
   ref=$(pane_path)
 
-  # NOTE: the @agent_worktree pane pointer is deliberately NOT consulted here.
-  # Panes outlive agent sessions, so a stale pointer shadows fresher work
-  # (observed: yesterday's worktree hijacking today's hotkeys). Newest
-  # recording wins; the pointer survives only as debug info in `status`.
+  # Pane process tree: per-pane and never stale. Under concurrent agent
+  # sessions this is the only layer that answers "THIS pane's work" instead
+  # of "whoever recorded last" (observed: a fleet of board-watcher sessions
+  # made newest-wins open a sibling agent's links from every pane).
+  local pw
+  while IFS= read -r pw; do
+    [[ -n "$pw" ]] || continue
+    if [[ -n "$kind" ]]; then
+      if git -C "$pw" config --worktree --get "agent.$kind" >/dev/null 2>&1; then
+        echo "$pw"
+        return 0
+      fi
+    else
+      echo "$pw"
+      return 0
+    fi
+  done < <(pane_proc_worktrees "$ref")
+
+  # Pane pointer, validated: needed for pinned-cwd harnesses (pi), whose
+  # processes never enter the worktree. Panes outlive sessions and a stale
+  # pointer once hijacked fresher work, so it only counts if it still is a
+  # linked worktree of the pane's repo with a matching recording — and it
+  # ranks below the process tree, which reflects the current session.
+  local ptr ptrgd
+  ptr=$(pane_pointer)
+  if [[ -n "$ptr" && -d "$ptr" ]]; then
+    ptrgd=$(git -C "$ptr" rev-parse --absolute-git-dir 2>/dev/null || true)
+    if [[ "$ptrgd" == */worktrees/* &&
+      "$(common_dir "$ptr")" == "$(common_dir "$ref")" ]]; then
+      if [[ -n "$kind" ]]; then
+        if git -C "$ptr" config --worktree --get "agent.$kind" >/dev/null 2>&1; then
+          echo "$ptr"
+          return 0
+        fi
+      else
+        echo "$ptr"
+        return 0
+      fi
+    fi
+  fi
+
   if [[ -z "$kind" ]]; then
     # path/copy answer "where is the agent working" — the main checkout is
     # never that answer (it's where the user already is). Links recorded
@@ -209,7 +293,8 @@ resolve_worktree() {
     if [[ -n "${common:-}" && -d "$common/worktrees" ]]; then
       hit=$(for d in "$common"/worktrees/*/; do
         [[ -f "${d}gitdir" ]] || continue
-        wt=$(dirname "$(cat "${d}gitdir")")
+        read -r g <"${d}gitdir" || continue
+        wt=${g%/*}
         [[ -d "$wt" ]] && printf '%s\t%s\n' "$(stat -f '%m' "$d")" "$wt"
       done | sort -rn | head -1 | cut -f2)
       if [[ -n "$hit" ]]; then
@@ -261,6 +346,8 @@ show_status() {
   local ref wt
   ref=$(pane_path)
   echo "pane: $ref"
+  echo "pane proc worktrees:"
+  pane_proc_worktrees "$ref" | sed 's/^/  /'
   echo "pointer: $(pane_pointer)"
   echo "recordings (newest first):"
   while IFS= read -r wt; do
