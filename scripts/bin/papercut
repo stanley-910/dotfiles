@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+# papercut — log small frictions hit while working, so a repo can be sanded down.
+#
+# Agent-agnostic: any harness (claude / pi / codex / a human) runs the same
+# command. It appends a one-line entry to PAPERCUTS.md at the git repo root
+# (or the cwd when not in a repo). Distinct from tracked bugs and from a work
+# log — this is the "that was annoying" pile you batch-fix later.
+#
+#   papercut "flag --foo is documented but ignored; had to patch the config"
+#   papercut -m gpt-5.4 "broken link in README → 404 on the setup guide"
+#   some-command 2>&1 | papercut -    # read the message from stdin
+#
+# File resolution (first match wins):
+#   -f <path>            explicit file
+#   -g / --global        $PAPERCUTS_GLOBAL  (default ~/.papercuts.md)
+#   $PAPERCUTS_FILE      env override for the per-repo default
+#   git repo root        <toplevel>/PAPERCUTS.md
+#   cwd                  ./PAPERCUTS.md
+set -euo pipefail
+
+prog=${0##*/}
+
+usage() {
+	cat <<EOF
+$prog — log a papercut (small friction) to PAPERCUTS.md
+
+Usage:
+  $prog [-m <tag>] [-g] [-f <file>] <message...>
+  $prog [-m <tag>] [-g] [-f <file>] -       # read message from stdin
+  $prog list [-g] [-f <file>]               # show open papercuts
+  $prog path [-g] [-f <file>]               # print the resolved file path
+  $prog edit [-g] [-f <file>]               # open the file in \$EDITOR
+
+Options:
+  -m, --model, --tag <tag>   attribution tag (model / agent / author)
+  -g, --global               use the global file (\$PAPERCUTS_GLOBAL, ~/.papercuts.md)
+  -f, --file <path>          write to an explicit file
+  -h, --help                 this help
+
+Write one or two sentences: what you were doing -> what got in the way.
+A guess at the cause or fix is a bonus. Do it in the moment; none of these
+block you, but logged together they show where the repo needs sanding down.
+EOF
+}
+
+die() { printf '%s: %s\n' "$prog" "$*" >&2; exit 1; }
+
+tag=""
+global=0
+file=""
+cmd=""
+args=()
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-h|--help) usage; exit 0 ;;
+		-g|--global) global=1; shift ;;
+		-m|--model|--tag)
+			[ $# -ge 2 ] || die "$1 needs a value"
+			tag="$2"; shift 2 ;;
+		-f|--file)
+			[ $# -ge 2 ] || die "$1 needs a value"
+			file="$2"; shift 2 ;;
+		list|ls|path|edit)
+			# first bare word is the subcommand
+			[ -z "$cmd" ] && { cmd="$1"; shift; continue; }
+			args+=("$1"); shift ;;
+		--) shift; while [ $# -gt 0 ]; do args+=("$1"); shift; done ;;
+		-)  args+=("$1"); shift ;;
+		-*) die "unknown option: $1 (use --help)" ;;
+		*)  args+=("$1"); shift ;;
+	esac
+done
+
+# Resolve the target file.
+resolve_file() {
+	if [ -n "$file" ]; then
+		printf '%s\n' "$file"; return
+	fi
+	if [ "$global" -eq 1 ]; then
+		printf '%s\n' "${PAPERCUTS_GLOBAL:-$HOME/.papercuts.md}"; return
+	fi
+	if [ -n "${PAPERCUTS_FILE:-}" ]; then
+		printf '%s\n' "$PAPERCUTS_FILE"; return
+	fi
+	local root
+	if root=$(git rev-parse --show-toplevel 2>/dev/null) && [ -n "$root" ]; then
+		printf '%s/PAPERCUTS.md\n' "$root"; return
+	fi
+	printf '%s/PAPERCUTS.md\n' "$PWD"
+}
+
+target=$(resolve_file)
+
+ensure_file() {
+	[ -f "$target" ] && return
+	mkdir -p "$(dirname "$target")"
+	cat >"$target" <<'EOF'
+# Papercuts
+
+Small frictions hit while working here — dead-end tool calls, broken links,
+confusing setup steps, flaky commands, misleading errors, non-obvious gotchas.
+Not blocking; logged so this repo can be sanded down. Distinct from tracked
+bugs and from a work log.
+
+Append with `papercut "<what got in the way>"`. Check off (`- [x]`) or delete
+entries as they're fixed.
+
+## Open
+
+EOF
+}
+
+case "$cmd" in
+	path)
+		printf '%s\n' "$target"; exit 0 ;;
+	edit)
+		ensure_file
+		exec "${EDITOR:-vi}" "$target" ;;
+	list|ls)
+		[ -f "$target" ] || die "no papercuts file at $target"
+		# Show only unchecked entries; strip the checkbox for readability.
+		if ! grep -n '^- \[ \]' "$target"; then
+			printf 'no open papercuts in %s\n' "$target"
+		fi
+		exit 0 ;;
+esac
+
+# Logging mode — assemble the message.
+if [ "${#args[@]}" -eq 1 ] && [ "${args[0]}" = "-" ]; then
+	message=$(cat)
+elif [ "${#args[@]}" -gt 0 ]; then
+	message="${args[*]}"
+elif [ ! -t 0 ]; then
+	message=$(cat)
+else
+	usage >&2
+	exit 1
+fi
+
+# Collapse whitespace/newlines into a single tidy line.
+message=$(printf '%s' "$message" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g; s/^ +//; s/ +$//')
+[ -n "$message" ] || die "empty papercut message"
+
+date=$(date +%Y-%m-%d)
+entry="- [ ] $date — $message"
+[ -n "$tag" ] && entry="$entry · _${tag}_"
+
+ensure_file
+# Guarantee a trailing newline before appending so entries never glue together.
+[ -n "$(tail -c1 "$target" 2>/dev/null)" ] && printf '\n' >>"$target"
+printf '%s\n' "$entry" >>"$target"
+
+printf 'logged papercut → %s\n' "$target" >&2
