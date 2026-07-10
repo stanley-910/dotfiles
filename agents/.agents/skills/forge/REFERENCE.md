@@ -101,6 +101,6 @@ when fully specified) → create → report a table (observation → iid/URL or
 
 Where the metadata lives and how it is discovered: per-worktree git config
 (`agent.issue` / `agent.mr`), written by `agent-link issue|mr <url>` from the
-worktree; `glab-board grab` and the Claude MR-create hook do it for you. Read
-side (human hotkeys, `/mr`, `/issue`) resolves cwd → newest recording among
-the repo's worktrees.
+worktree; `glab-board grab` and `glab-board mr` do it for you. Read side
+(human hotkeys, `/mr`, `/issue`) resolves cwd → pane process tree → pane
+pointer → newest recording among the repo's worktrees.
