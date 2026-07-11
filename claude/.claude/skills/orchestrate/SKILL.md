@@ -160,6 +160,8 @@ high-stakes (schema/storage, auth, money/       -> opus
 
 If a custom agent type carries its own default model, either omit `model` and record `resolved_model=<agent default>` in the ledger, or override with an explicit `model` and record that. Do not claim a model was used unless it is visible from the launch args or the agent's frontmatter.
 
+Omitting `model` means the subagent inherits the parent thread's own model and reasoning effort (not "unspecified"). Record that explicitly as `inherited` in the ledger and label — never leave the model field blank because it wasn't overridden.
+
 ## UI-visible agent labels
 
 The active Agents view shows the Agent tool `description`. Put the model tag there.
@@ -178,6 +180,7 @@ Claim PRD opus4.8
 Impl A2 sonnet4.6
 Verify A2 opus4.8
 Merge W2 opus4.8
+Scout PRD inherited
 ```
 
 Model tags:
@@ -187,13 +190,16 @@ opus    -> opus4.8
 sonnet  -> sonnet4.6
 haiku   -> haiku4.5
 fable   -> fable5
+model omitted      -> inherited
 default or unknown -> default
 ```
+
+Every label carries a model tag, including `inherited` — never a bare `<Role> <slice>` with nothing after it.
 
 Also make the first line of every subagent prompt a full audit header:
 
 ```text
-RUN_LEDGER role=<role> slice=<id|none> model=<opus|sonnet|haiku|fable|default> worktree=<path|none>
+RUN_LEDGER role=<role> slice=<id|none> model=<opus|sonnet|haiku|fable|inherited|default> worktree=<path|none>
 ```
 
 This makes model assignment visible in both the Agents list row and the opened agent detail view.
@@ -206,7 +212,7 @@ Before launching agents in a wave, state the launch plan:
 
 ```text
 Launch plan
-- id-temp: role=<scout|claim|implement|verify|merge> slice=<id|none> subagent_type=<type> model=<opus|sonnet|haiku|fable|default> worktree=<path|none>
+- id-temp: role=<scout|claim|implement|verify|merge> slice=<id|none> subagent_type=<type> model=<opus|sonnet|haiku|fable|inherited|default> worktree=<path|none>
 ```
 
 Then call `Agent` with matching fields. Example:
@@ -225,7 +231,7 @@ After agents complete, report:
 
 ```text
 Subagent runs
-- role=<role> slice=<id|none> subagent_type=<type> model=<value|default> status=<clean|fixed|blocked>
+- role=<role> slice=<id|none> subagent_type=<type> model=<value|inherited|default> status=<clean|fixed|blocked>
 ```
 
 Rules:
@@ -234,6 +240,7 @@ Rules:
 - If using a custom agent type with its own default model, report that as the model when known.
 - If the resolved model is not visible from the launch args or agent frontmatter, report `model=unknown` and keep the requested value accurate.
 - Do not claim a model was used unless it is visible from the launch args, custom-agent frontmatter, or returned run metadata.
+- If `model` was omitted, report `model=inherited` — this is a stated value, not a gap.
 
 ## Scouting
 

@@ -48,6 +48,21 @@ The earlier local workflow prototype is parked at
 with RPIV commands/tools. Move it back under `extensions/` only if you want the
 local prototype instead of RPIV.
 
+## Agent worktree convention
+
+Global Pi agent instructions live at
+`pi/.config/pi/agent/AGENTS.md` and stow to `~/.config/pi/agent/AGENTS.md`.
+They mirror the Claude-agent worktree taxonomy:
+
+```text
+~/worktrees/<project-name>/<YYYY-MM-DD_slug>/integration
+~/worktrees/<project-name>/<YYYY-MM-DD_slug>/<slice-id>
+```
+
+Use branch names like `orchestrate/<YYYY-MM-DD_slug>/<slice-id>` for multi-slice
+runs, and repo-conventional prefixes such as `fix/`, `feat/`, or `chore/` for
+single-ticket work. Keep worktrees persistent until Stanley asks for cleanup.
+
 ## Local runtime experiments
 
 See [`PI_RUNTIME_SCROLLBACK_FILE_MAP.md`](./PI_RUNTIME_SCROLLBACK_FILE_MAP.md)

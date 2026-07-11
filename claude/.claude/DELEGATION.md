@@ -63,14 +63,27 @@ several pattern-C wrappers in one turn.
 Size slices ≤200K so any worker can take them. Split before exceeding; only an
 unsplittable >200K slice routes to gpt-5.5 (≤400K) or sonnet-4.6 (≤1M).
 
-## Header — first line of every delegated prompt
+## Header — first line of every detached subagent's prompt
 
-    RUN_LEDGER role=<scout|impl|verify|merge|launcher> slice=<id|none> requested_model=<id>:<thinking> worktree=<abs|none>
+Applies broadly, not just Pi-wrapped delegation: any Agent-tool background
+launch, Workflow `agent()` call, or Pi shell-out gets this header.
+
+    RUN_LEDGER role=<scout|impl|verify|merge|launcher> slice=<id|none> model=<id>:<thinking|effort|inherited> worktree=<abs|none>
+
+`model=` is the actual model+thinking/effort the subagent runs at, not just
+what was requested. Default behavior for native Claude subagents is to
+inherit the parent thread's model and reasoning effort — write
+`model=inherited(<resolved value>)` rather than omitting it. For Pi/Copilot
+workers, `<thinking>` is the model's thinking-level suffix (e.g. `opus4.8:high`).
+For Workflow `agent()` calls, `<effort>` is the `opts.effort` value if set,
+else `inherited`.
 
 UI/Agent label tags the real executor: `Impl A2 →pi opus4.8`, `Scout PRD →pi
-gpt5.5`, `Verify A2 opus4.8`. Tags: opus4.8, gpt5.5, gpt5.4m, sonnet4.6,
-haiku4.5. A Copilot-wrapped run must be marked (`→pi`) — never labeled as if the
-wrapper's Claude model did the work.
+gpt5.5`, `Verify A2 opus4.8`, `Impl A2 sonnet4.6:inherited`. Tags: opus4.8,
+gpt5.5, gpt5.4m, sonnet4.6, haiku4.5. A Copilot-wrapped run must be marked
+(`→pi`) — never labeled as if the wrapper's Claude model did the work. Every
+label states model + thinking/effort, even when both are inherited — a bare
+role name (`Impl A2`) with no model tag is not acceptable.
 
 ## Handoff — simple, clear, self-contained
 
@@ -80,6 +93,10 @@ wrapper's Claude model did the work.
     Do: <acceptance criteria + invariants>
     Verify: <exact commands>
     Limits: edit only <path> | do not edit files. No prose. Report ≤ 60 lines.
+
+Workers that grab an issue or open an MR/PR record it from inside their
+worktree: `agent-link issue|mr <url>` (skip silently if the command is
+missing).
 
 No conversation dump. Only what the worker needs to decide and act.
 
