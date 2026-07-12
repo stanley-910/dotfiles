@@ -12,7 +12,13 @@ return {
     -- prompts directly. This avoids racing which-key's popup against mini.ai's
     -- getchar prompt after keys like `ci` / `ca`.
     triggers = {
-      { "<auto>", mode = "nxsct" },
+      -- Keep auto triggers out of Visual mode. which-key's ModeChanged/defer
+      -- handling for linewise Visual (`V`) swallows the first following key,
+      -- so native v_CTRL-C would otherwise need two presses.
+      { "<auto>", mode = "nsct" },
+
+      -- Still show visual leader bindings without triggering on every Visual entry.
+      { "<leader>", mode = "x" },
     },
 
     win = {
