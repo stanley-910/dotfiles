@@ -10,46 +10,6 @@
       "installedAt": "2026-04-13T03:10:30.775Z",
       "updatedAt": "2026-05-23T21:15:55.640Z"
     },
-    "grill-me": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/mattpocock/skills.git",
-      "skillPath": "skills/productivity/grill-me/SKILL.md",
-      "skillFolderHash": "2a1ad17028306ebe45f0e49703fa28b9b2e7f499",
-      "pluginName": "mattpocock-skills",
-      "installedAt": "2026-05-23T21:52:12.956Z",
-      "updatedAt": "2026-05-23T21:52:12.956Z"
-    },
-    "grill-with-docs": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/mattpocock/skills.git",
-      "skillPath": "skills/engineering/grill-with-docs/SKILL.md",
-      "skillFolderHash": "2c6aa7079cc705a6e0c319fcf23a0fa39968de29",
-      "pluginName": "mattpocock-skills",
-      "installedAt": "2026-05-23T21:52:12.957Z",
-      "updatedAt": "2026-05-23T21:52:12.957Z"
-    },
-    "diagnose": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/mattpocock/skills.git",
-      "skillPath": "skills/engineering/diagnose/SKILL.md",
-      "skillFolderHash": "43d464d0e9d1049b9d525975c0f7367ab7e01a5f",
-      "pluginName": "mattpocock-skills",
-      "installedAt": "2026-05-23T21:52:12.957Z",
-      "updatedAt": "2026-05-23T21:52:12.957Z"
-    },
-    "handoff": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/mattpocock/skills.git",
-      "skillPath": "skills/productivity/handoff/SKILL.md",
-      "skillFolderHash": "7bbb60d64c911617cee7f71b2ba9e24364faa14e",
-      "pluginName": "mattpocock-skills",
-      "installedAt": "2026-05-23T21:52:12.957Z",
-      "updatedAt": "2026-05-23T21:52:12.957Z"
-    },
     "improve-codebase-architecture": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -59,36 +19,6 @@
       "pluginName": "mattpocock-skills",
       "installedAt": "2026-05-23T21:52:12.958Z",
       "updatedAt": "2026-05-23T21:52:12.958Z"
-    },
-    "prototype": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/mattpocock/skills.git",
-      "skillPath": "skills/engineering/prototype/SKILL.md",
-      "skillFolderHash": "c91bdc5d02d42ed88a3082a8fa83338895b55bd4",
-      "pluginName": "mattpocock-skills",
-      "installedAt": "2026-05-23T21:52:12.958Z",
-      "updatedAt": "2026-05-23T21:52:12.958Z"
-    },
-    "tdd": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/mattpocock/skills.git",
-      "skillPath": "skills/engineering/tdd/SKILL.md",
-      "skillFolderHash": "75beb3030b4c979205dd771ff85ac600baeb68f4",
-      "pluginName": "mattpocock-skills",
-      "installedAt": "2026-05-23T21:52:12.958Z",
-      "updatedAt": "2026-05-23T21:52:12.958Z"
-    },
-    "write-a-skill": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/mattpocock/skills.git",
-      "skillPath": "skills/productivity/write-a-skill/SKILL.md",
-      "skillFolderHash": "2f252b35aa238879afc5a230ac30343708dee0b3",
-      "pluginName": "mattpocock-skills",
-      "installedAt": "2026-05-23T21:52:12.959Z",
-      "updatedAt": "2026-05-23T21:52:12.959Z"
     },
     "zoom-out": {
       "source": "mattpocock/skills",
@@ -129,16 +59,6 @@
       "pluginName": "mattpocock-skills",
       "installedAt": "2026-05-23T21:52:12.960Z",
       "updatedAt": "2026-05-23T21:52:12.960Z"
-    },
-    "teach": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/mattpocock/skills.git",
-      "skillPath": "skills/productivity/teach/SKILL.md",
-      "skillFolderHash": "9b926a37c686fcaa3ec923ee719393d33a075e45a273ccca0c040ea03eb73bf9",
-      "pluginName": "mattpocock-skills",
-      "installedAt": "2026-06-09T18:25:06.180Z",
-      "updatedAt": "2026-06-09T18:25:06.180Z"
     }
   },
   "dismissed": {
