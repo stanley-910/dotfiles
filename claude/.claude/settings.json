@@ -16,7 +16,6 @@
     "defaultMode": "bypassPermissions",
     "skipDangerousModePermissionPrompt": true
   },
-  "model": "opus[1m]",
   "hooks": {
     "PreToolUse": [
       {
@@ -49,7 +48,7 @@
     "command": "bash ~/.claude/statusline-command.sh"
   },
   "enabledPlugins": {
-    "obsidian@obsidian-skills": true,
+    "obsidian@obsidian-skills": false,
     "frontend-design@claude-plugins-official": true,
     "clangd-lsp@claude-plugins-official": true
   },
@@ -67,6 +66,27 @@
       }
     }
   },
+  "skillOverrides": {
+    "interview-prep-coach": "user-invocable-only",
+    "nvim-coach": "user-invocable-only",
+    "shell-coach": "user-invocable-only",
+    "domain-modeling": "user-invocable-only",
+    "dotfiles-drift": "off",
+    "caveman": "name-only",
+    "write-a-skill": "name-only",
+    "claude-api": "off",
+    "update-config": "user-invocable-only",
+    "deep-research": "user-invocable-only",
+    "schedule": "user-invocable-only",
+    "run": "user-invocable-only",
+    "loop": "user-invocable-only",
+    "fewer-permission-prompts": "user-invocable-only",
+    "security-review": "user-invocable-only",
+    "init": "user-invocable-only",
+    "keybindings-help": "off",
+    "review": "off",
+    "frontend-design": "user-invocable-only"
+  },
   "viewMode": "verbose",
   "syntaxHighlightingDisabled": false,
   "effortLevel": "high",
@@ -80,5 +100,7 @@
   "verbose": false,
   "preferredNotifChannel": "ghostty",
   "showTurnDuration": true,
+  "inputNeededNotifEnabled": true,
+  "agentPushNotifEnabled": true,
   "voiceEnabled": true
 }
