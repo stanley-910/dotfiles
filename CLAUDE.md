@@ -32,11 +32,12 @@ Use `--no-folding` when the app writes runtime data (plugins, extensions, backup
 
 ## Skills management
 
-Custom skills live in `dotfiles/agents/.agents/skills/` (tracked via `agents` stow package with `--no-folding`).
-Model-specific directories symlink back: `~/.claude/skills/<name>` → `../../.agents/skills/<name>`.
+Every skill is an owned, version-controlled file — no `/install` and no `.skill-lock.json`. There is nothing to reconcile.
 
-Installed skills (from `/install`) are managed by `.skill-lock.json`, which is also stowed and tracked.
-On a fresh machine: `stow --no-folding agents`, then `/install` to reconcile from the lock file.
+- **Shared hub** (`dotfiles/agents/.agents/skills/`, `agents` stow package, `--no-folding`) holds every agent-agnostic skill. It's the cross-agent source of truth: `~/.agents/skills/<name>/*` are stow symlinks into the repo, and consumers point back at the hub — `~/.claude/skills/<name>` → `../../.agents/skills/<name>`, and pi's `~/.config/pi/agent/skills/<name>` → `../../../../.agents/skills/<name>`.
+- **Claude-only skills** (`dotfiles/claude/.claude/skills/`, `claude` stow package) are the few that lean on Claude-specific tooling (parallel Agent-tool sub-agents, etc.) — e.g. `code-review`, `codebase-design`, `orchestrate`. `~/.claude/skills/<name>/*` are per-file symlinks into that package.
+
+A skill belongs in the hub unless it has genuine Claude quirks; grep a candidate for `Agent tool`/`subagent`/`Explore` before deciding. On a fresh machine: `stow --no-folding agents claude` — that's the whole setup.
 
 ## Stow and symlinks
 
