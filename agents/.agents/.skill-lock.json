@@ -10,16 +10,6 @@
       "installedAt": "2026-04-13T03:10:30.775Z",
       "updatedAt": "2026-05-23T21:15:55.640Z"
     },
-    "improve-codebase-architecture": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/mattpocock/skills.git",
-      "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
-      "skillFolderHash": "688c17ec27fe9309d84987716aca37b5ce7f3a88",
-      "pluginName": "mattpocock-skills",
-      "installedAt": "2026-05-23T21:52:12.958Z",
-      "updatedAt": "2026-05-23T21:52:12.958Z"
-    },
     "zoom-out": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -39,16 +29,6 @@
       "pluginName": "mattpocock-skills",
       "installedAt": "2026-05-23T21:52:12.959Z",
       "updatedAt": "2026-05-23T21:52:12.959Z"
-    },
-    "triage": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/mattpocock/skills.git",
-      "skillPath": "skills/engineering/triage/SKILL.md",
-      "skillFolderHash": "de4f182c30876a2460ca307e2f601b9b892527e5",
-      "pluginName": "mattpocock-skills",
-      "installedAt": "2026-05-23T21:52:12.960Z",
-      "updatedAt": "2026-05-23T21:52:12.960Z"
     },
     "to-prd": {
       "source": "mattpocock/skills",
