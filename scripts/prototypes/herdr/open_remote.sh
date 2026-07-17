@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+
+# Herdr prototype. The production tmux helper remains untouched.
+herdr_pane_path() {
+  if [[ -n "${HERDR_ACTIVE_PANE_CWD:-}" ]]; then
+    printf '%s\n' "$HERDR_ACTIVE_PANE_CWD"
+    return 0
+  fi
+
+  local pane json path
+  pane=${HERDR_ACTIVE_PANE_ID:-${HERDR_PANE_ID:-}}
+  if [[ -n "$pane" ]]; then
+    if [[ -n "${HERDR_BIN_PATH:-}" ]]; then
+      json=$("$HERDR_BIN_PATH" pane get "$pane" 2>/dev/null || true)
+    elif command -v herdr >/dev/null 2>&1; then
+      json=$(herdr pane get "$pane" 2>/dev/null || true)
+    fi
+    if [[ -n "${json:-}" ]]; then
+      path=$(printf '%s' "$json" | python3 -c '
+import json, sys
+pane = json.load(sys.stdin)["result"]["pane"]
+print(pane.get("foreground_cwd") or pane.get("cwd") or "")
+' 2>/dev/null || true)
+      if [[ -n "$path" ]]; then
+        printf '%s\n' "$path"
+        return 0
+      fi
+    fi
+  fi
+  pwd
+}
+
+dir=$(herdr_pane_path)
+cd "$dir" || exit 1
+url=$(git remote get-url origin)
+url_branch=$(git branch --show-current)
+username='stanwang'
+
+
+JENKINS_BASE_URL="https://master-4.jenkins.autodesk.com/job/shotgun"
+
+function main () {
+  # Check if the repository is on GitHub or Autodesk
+  if [[ $url == *"github.com"* ]] || [[ $url == *"git.autodesk.com"* ]] || [[ $url == *"gitlab.ea.com"* ]] || [[ $url == *"gitlab.cs.mcgill.ca"* ]]; then
+    # Convert SSH URL to HTTPS if necessary
+    if [[ $url == git@* ]]; then
+      url=$(echo "$url" | sed 's/git@\(.*\):/https:\/\/\1\//')
+    fi
+    url=${url%.git}
+
+    if [[ $1 == "#" || $1 == "!" ]]; then
+      number=${2:-}
+      if [[ ! $number =~ ^[0-9]+$ ]]; then
+        echo "Invalid issue or MR / PR number: ${number:-<empty>}" >&2
+        exit 1
+      fi
+
+      if [[ $url == *"github.com"* ]]; then
+        if [[ $1 == "#" ]]; then
+          url="$url/issues/$number"
+        else
+          url="$url/pull/$number"
+        fi
+      elif [[ $1 == "#" ]]; then
+        url="$url/-/issues/$number"
+      else
+        url="$url/-/merge_requests/$number"
+      fi
+    elif [[ -n $url_branch ]]; then
+      if [[ $url_branch != "master" && $url_branch != "main" ]]; then
+        if [[ $1 == "h" ]]; then
+          url="$url/tree/$url_branch"
+        elif [[ $1 == "H" ]]; then
+          : # Keep the repository root URL.
+        elif [[ $1 == "p" ]]; then
+          # url="$url/pulls/$username"
+          url="$url/-/merge_requests/?sort=created_date&state=opened&author_username=$username"
+        elif [[ $1 == "P" ]]; then
+          # Extract JIRA ticket number if present in branch name
+          if [[ $url_branch =~ (SG-[0-9]+) ]]; then
+            ticket="${BASH_REMATCH[1]}"
+            url="$url/pulls?q=is%3Aopen+is%3Apr+author%3A$username+$ticket"
+          else
+            echo "No JIRA ticket number (SG-XXXX) found in branch name: $url_branch"
+            exit 1
+          fi
+        elif [[ $1 == "b" ]]; then
+          # Extract repo name from git URL
+          repo_name=$(basename "$url" .git)
+          # Format branch name for Jenkins URL (replace / with %2F)
+          jenkins_branch=$(echo "$url_branch" | sed 's/\//%252F/g')
+          url="$JENKINS_BASE_URL/job/$repo_name/job/$jenkins_branch/"
+        else
+          echo "Invalid argument: $1"
+          exit 1
+        fi
+      fi
+    fi
+
+    open "$url"
+  else
+    echo "This repository is not hosted on GitHub or Autodesk Git"
+    exit 1
+  fi
+
+}
+
+
+main "$@"

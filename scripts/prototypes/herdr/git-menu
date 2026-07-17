@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+
+# Herdr prototype. All actions resolve to sibling copies in this directory;
+# the production tmux menu and helpers remain untouched.
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+
+function read_number () {
+  local prompt=$1
+  local char
+  number=
+
+  printf '%s' "$prompt"
+  while IFS= read -r -s -n 1 char; do
+    case "$char" in
+    $'\e')
+      return 1
+      ;;
+    '')
+      printf '\n'
+      return 0
+      ;;
+    [0-9])
+      number+=$char
+      printf '%s' "$char"
+      ;;
+    $'\b'|$'\177')
+      if [[ -n $number ]]; then
+        number=${number%?}
+        printf '\b \b'
+      fi
+      ;;
+    esac
+  done
+
+  return 1
+}
+
+cat <<'EOF'
+Git Menu        
+
+h  :  Open Remote Repository (current branch)
+H  :  Open Remote Repository (main branch)
+p  :  Open Pull Requests By Current User 
+P  :  Search Pull Requests By Current Ticket
+#  :  Open Issue By Number
+!  :  Open MR / PR By Number
+j  :  Open Jira Ticket URL
+J  :  Open Jira Board URL
+b  :  Open Pipeline Build
+m  :  Open Agent MR / PR
+i  :  Open Agent Issue
+y  :  Copy Agent Worktree Path
+
+Press key to execute
+EOF
+
+# Keep the popup open until a key is pressed
+read -r -n 1 -s key
+
+# Execute the corresponding action based on key pressed
+case "$key" in
+h)
+  "$script_dir/open_remote.sh" h
+  ;;
+H)
+  "$script_dir/open_remote.sh" H
+  ;;
+p)
+  "$script_dir/open_remote.sh" p
+  ;;
+P)
+  "$script_dir/open_remote.sh" P
+  ;;
+'#')
+  read_number "Issue number: " || exit 0
+  "$script_dir/open_remote.sh" '#' "$number"
+  ;;
+'!')
+  read_number "MR / PR number: " || exit 0
+  "$script_dir/open_remote.sh" '!' "$number"
+  ;;
+$'\e')
+  exit 0
+  ;;
+j)
+  "$script_dir/open_ticket.sh" j
+  ;;
+J)
+  "$script_dir/open_ticket.sh" J
+  ;;
+b)
+  "$script_dir/open_remote.sh" b
+  ;;
+m)
+  "$script_dir/agent-link" open mr
+  ;;
+i)
+  "$script_dir/agent-link" open issue
+  ;;
+y)
+  "$script_dir/agent-link" copy
+  ;;
+
+*)
+  echo "Invalid option: $key"
+  ;;
+esac

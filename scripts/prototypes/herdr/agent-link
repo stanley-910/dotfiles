@@ -1,0 +1,497 @@
+#!/usr/bin/env bash
+
+# agent-link — Herdr prototype for recording and opening per-worktree links.
+#
+# This is an isolated copy. The production tmux script remains untouched.
+# Agents (claude / pi / any harness) run setters from inside their worktree;
+# the sibling git-menu runs read commands against its underlying Herdr pane.
+#
+# Metadata lives in per-worktree git config (.git/worktrees/<name>/config.worktree),
+# so it is scoped to the agent's worktree and garbage-collected with it. Discovery
+# from the pane (whose cwd usually stays in the MAIN checkout) is layered:
+#   1. Own cwd — /mr, /issue inside an agent session: cwd IS the worktree.
+#   2. Herdr pane process tree — which linked worktree are the pane's live
+#      processes in? Concurrent agents each get their own pane's answer.
+#   3. agent_worktree pane metadata token, validated — set by the setter via
+#      $HERDR_PANE_ID. Covers pinned-cwd harnesses (pi) whose processes never
+#      enter the worktree; used only if it still is a linked worktree of the
+#      pane's repo with a matching recording.
+#   4. Scan the repo's worktrees for agent.* recordings (newest
+#      config.worktree mtime wins). Needs no pane state, but under
+#      concurrent sessions it's a guess — last resort, not first.
+#   5. For `open mr` with nothing recorded: glab/gh branch lookup.
+
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage:
+  agent-link issue <url>      Record the issue being worked on (replaces)
+  agent-link mr <url>         Record the MR/PR opened (replaces)
+  agent-link add issue|mr <url>   Append another link (multiple MRs)
+  agent-link clear [issue|mr]     Clear recorded links (default: both)
+  agent-link status           Show recordings across the repo's worktrees
+
+  agent-link open issue|mr    Open recorded link(s) in browser
+                              (mr falls back to glab/gh branch lookup)
+  agent-link path             Print the agent worktree path
+  agent-link copy             Copy the agent worktree path to clipboard
+
+Setters resolve the worktree from cwd. Read commands resolve: own cwd ->
+pane process tree -> validated pane pointer -> newest agent.* recording
+among the repo's worktrees -> newest linked worktree.
+EOF
+  exit 1
+}
+
+# --- context ------------------------------------------------------------------
+
+herdr_cli() {
+  if [[ -n "${HERDR_BIN_PATH:-}" ]]; then
+    "$HERDR_BIN_PATH" "$@"
+  else
+    command herdr "$@"
+  fi
+}
+
+herdr_available() {
+  [[ -n "${HERDR_BIN_PATH:-}" && -x "$HERDR_BIN_PATH" ]] ||
+    command -v herdr >/dev/null 2>&1
+}
+
+# Custom popups expose the underlying tiled pane as HERDR_ACTIVE_PANE_ID;
+# ordinary managed pane processes use HERDR_PANE_ID.
+herdr_pane_id() {
+  printf '%s\n' "${HERDR_ACTIVE_PANE_ID:-${HERDR_PANE_ID:-}}"
+}
+
+pane_json() {
+  local pane
+  pane=$(herdr_pane_id)
+  [[ -n "$pane" ]] || return 1
+  herdr_available || return 1
+  herdr_cli pane get "$pane" 2>/dev/null
+}
+
+# Where the underlying Herdr pane is. Custom commands provide the live cwd
+# directly; other managed processes resolve it from the pane API.
+pane_path() {
+  if [[ -n "${HERDR_ACTIVE_PANE_CWD:-}" ]]; then
+    printf '%s\n' "$HERDR_ACTIVE_PANE_CWD"
+    return 0
+  fi
+
+  local json path
+  json=$(pane_json 2>/dev/null || true)
+  if [[ -n "$json" ]]; then
+    path=$(printf '%s' "$json" | python3 -c '
+import json, sys
+pane = json.load(sys.stdin)["result"]["pane"]
+print(pane.get("foreground_cwd") or pane.get("cwd") or "")
+' 2>/dev/null || true)
+    if [[ -n "$path" ]]; then
+      printf '%s\n' "$path"
+      return 0
+    fi
+  fi
+  pwd
+}
+
+pane_pointer() {
+  local json
+  json=$(pane_json 2>/dev/null || true)
+  [[ -n "$json" ]] || return 0
+  printf '%s' "$json" | python3 -c '
+import json, sys
+pane = json.load(sys.stdin)["result"]["pane"]
+print(pane.get("tokens", {}).get("agent_worktree", ""))
+' 2>/dev/null || true
+}
+
+# Linked worktrees of the pane repo that the pane's live process tree is
+# inside. Herdr supplies the pane shell pid; the remaining scan mirrors the
+# production script's per-pane process-tree discovery.
+pane_proc_worktrees() {
+  local ref="$1" common pane pane_info pane_pid frontier pids cwds
+  pane=$(herdr_pane_id)
+  [[ -n "$pane" ]] || return 0
+  herdr_available || return 0
+  common=$(common_dir "$ref") || return 0
+  [[ -d "${common:-/nonexistent}/worktrees" ]] || return 0
+  pane_info=$(herdr_cli pane process-info --pane "$pane" 2>/dev/null) || return 0
+  pane_pid=$(printf '%s' "$pane_info" | python3 -c '
+import json, sys
+print(json.load(sys.stdin)["result"]["process_info"].get("shell_pid", ""))
+' 2>/dev/null) || return 0
+  [[ "$pane_pid" =~ ^[0-9]+$ ]] || return 0
+
+  # pgrep -a: macOS pgrep silently excludes its own ancestors, and this very
+  # shell chain hangs off the pane — without -a the BFS dies at level one.
+  frontier="$pane_pid" pids="$pane_pid"
+  while [[ -n "$frontier" ]]; do
+    frontier=$(pgrep -a -P "${frontier// /,}" 2>/dev/null | tr '\n' ' ' | sed 's/ *$//') || true
+    [[ -n "$frontier" ]] || break
+    pids="$pids $frontier"
+  done
+  # One lsof call for the whole tree: per-pid spawns are what made scans slow.
+  cwds=$(lsof -a -d cwd -p "${pids// /,}" -Fn 2>/dev/null | sed -n 's/^n//p' | sort -u) || true
+  [[ -n "$cwds" ]] || return 0
+
+  local d g wt c
+  for d in "$common"/worktrees/*/; do
+    [[ -f "${d}gitdir" ]] || continue
+    read -r g <"${d}gitdir" || continue # "<wt>/.git" — builtins, forks add up
+    wt=${g%/*}
+    [[ -d "$wt" ]] || continue
+    while IFS= read -r c; do
+      if [[ "$c" == "$wt" || "$c" == "$wt"/* ]]; then
+        printf '%s\n' "$wt"
+        break
+      fi
+    done <<<"$cwds"
+  done | sort -u
+}
+
+# User feedback that survives a popup closing.
+notify() {
+  if [[ -n "${HERDR_ENV:-}${HERDR_ACTIVE_PANE_ID:-}" ]] && herdr_available; then
+    herdr_cli notification show "agent-link" --body "$1" \
+      --position bottom-right --sound none >/dev/null 2>&1 || echo "$1"
+  else
+    echo "$1"
+  fi
+}
+
+# --- setters (run by agents, from inside their worktree) -----------------------
+
+cwd_worktree() {
+  git rev-parse --show-toplevel 2>/dev/null || {
+    echo "agent-link: not inside a git worktree" >&2
+    exit 1
+  }
+}
+
+ensure_worktree_config() {
+  # Without this extension, `git config --worktree` silently degrades to
+  # --local (shared across all worktrees). Idempotent; sparse-checkout
+  # enables it the same way.
+  git config extensions.worktreeConfig true
+}
+
+# Which pane is this process running in? Herdr normally injects a pane id.
+# If a harness scrubs it, match our ancestor chain against every Herdr pane's
+# shell pid, preserving the deterministic fallback from the production script.
+own_pane() {
+  local pane
+  pane=$(herdr_pane_id)
+  if [[ -n "$pane" ]]; then
+    printf '%s\n' "$pane"
+    return 0
+  fi
+  herdr_available || return 0
+
+  local pane_ids panes="" pane_info shell_pid pid line
+  pane_ids=$(herdr_cli pane list 2>/dev/null | python3 -c '
+import json, sys
+for pane in json.load(sys.stdin)["result"]["panes"]:
+    print(pane["pane_id"])
+' 2>/dev/null) || return 0
+  while IFS= read -r pane; do
+    [[ -n "$pane" ]] || continue
+    pane_info=$(herdr_cli pane process-info --pane "$pane" 2>/dev/null || true)
+    [[ -n "$pane_info" ]] || continue
+    shell_pid=$(printf '%s' "$pane_info" | python3 -c '
+import json, sys
+print(json.load(sys.stdin)["result"]["process_info"].get("shell_pid", ""))
+' 2>/dev/null || true)
+    [[ "$shell_pid" =~ ^[0-9]+$ ]] && panes+="$shell_pid $pane"$'\n'
+  done <<<"$pane_ids"
+
+  pid=$$
+  while [[ "$pid" =~ ^[0-9]+$ && "$pid" -gt 1 ]]; do
+    line=$(awk -v p="$pid" '$1==p{print $2; exit}' <<<"$panes")
+    if [[ -n "$line" ]]; then
+      printf '%s\n' "$line"
+      return 0
+    fi
+    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') || return 0
+  done
+}
+
+point_pane_here() {
+  local top="$1" pane
+  pane=$(own_pane)
+  if [[ -n "$pane" ]]; then
+    herdr_cli pane report-metadata "$pane" --source user:agent-link \
+      --token "agent_worktree=$top" >/dev/null 2>&1 || true
+  fi
+}
+
+set_link() {
+  local kind="$1" url="$2" mode="${3:-replace}"
+  local top
+  top=$(cwd_worktree)
+  cd "$top"
+  ensure_worktree_config
+  if [[ "$mode" == "add" ]]; then
+    git config --worktree --add "agent.$kind" "$url"
+  else
+    git config --worktree --replace-all "agent.$kind" "$url"
+  fi
+  # Recording from a linked worktree supersedes the same URL recorded on the
+  # main checkout — pinned-cwd harnesses (pi) grab before their worktree
+  # exists, then re-record from it; don't leave the stale duplicate behind.
+  local gd main
+  gd=$(git rev-parse --absolute-git-dir)
+  if [[ "$gd" == */worktrees/* ]]; then
+    main=$(dirname "$(common_dir "$top")")
+    git -C "$main" config --worktree --fixed-value --unset-all "agent.$kind" "$url" 2>/dev/null || true
+  fi
+  point_pane_here "$top"
+  echo "agent-link: recorded $kind -> $url ($top)"
+}
+
+clear_links() {
+  local top
+  top=$(cwd_worktree)
+  cd "$top"
+  for kind in "$@"; do
+    git config --worktree --unset-all "agent.$kind" 2>/dev/null || true
+  done
+  echo "agent-link: cleared ${*} ($top)"
+}
+
+# --- discovery (read side) ------------------------------------------------------
+
+common_dir() { # repo-ish path -> absolute git common dir
+  git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null
+}
+
+# Worktrees with a recording of $kind (or any, if kind empty), newest first.
+# Reads config.worktree files straight out of the common gitdir instead of
+# spawning `git -C` per worktree — a repo with dozens of worktrees made the
+# old scan take ~1s per keypress; only worktrees that ever recorded even
+# have a config.worktree, so this touches a handful of files.
+recorded_worktrees() {
+  local kind="$1" ref="$2" common f d g wt
+  common=$(common_dir "$ref") || return 0
+  [[ -n "$common" ]] || return 0
+  for f in "$common/config.worktree" "$common"/worktrees/*/config.worktree; do
+    [[ -f "$f" ]] || continue
+    if [[ -n "$kind" ]]; then
+      git config --file "$f" --get "agent.$kind" >/dev/null 2>&1 || continue
+    else
+      git config --file "$f" --get-regexp '^agent\.' >/dev/null 2>&1 || continue
+    fi
+    if [[ "$f" == "$common/config.worktree" ]]; then
+      wt=${common%/*} # main checkout
+    else
+      d=${f%/config.worktree}
+      read -r g <"$d/gitdir" || continue # "<wt>/.git"
+      wt=${g%/*}
+    fi
+    [[ -d "$wt" ]] || continue
+    printf '%s\t%s\n' "$(stat -f '%m' "$f")" "$wt"
+  done | sort -rn | cut -f2
+}
+
+# The single worktree read commands act on.
+#   kind empty = for path/copy (any recording, then newest linked worktree).
+resolve_worktree() {
+  local kind="${1:-}" ref hit
+
+  # cwd first: when invoked from inside an agent session (/mr, /issue), cwd IS
+  # that session's worktree — never answer with a sibling agent's recording.
+  # From a Herdr popup cwd is the pane path (main checkout), which won't match.
+  local cwdtop cwdgd
+  cwdtop=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  if [[ -n "$cwdtop" ]]; then
+    if [[ -n "$kind" ]]; then
+      if git -C "$cwdtop" config --worktree --get "agent.$kind" >/dev/null 2>&1; then
+        echo "$cwdtop"
+        return 0
+      fi
+    else
+      cwdgd=$(git rev-parse --absolute-git-dir 2>/dev/null || true)
+      if [[ "$cwdgd" == */worktrees/* ]]; then
+        echo "$cwdtop" # a linked worktree: cwd is the agent worktree
+        return 0
+      fi
+    fi
+  fi
+
+  ref=$(pane_path)
+
+  # Pane process tree: per-pane and never stale. Under concurrent agent
+  # sessions this is the only layer that answers "THIS pane's work" instead
+  # of "whoever recorded last" (observed: a fleet of board-watcher sessions
+  # made newest-wins open a sibling agent's links from every pane).
+  local pw
+  while IFS= read -r pw; do
+    [[ -n "$pw" ]] || continue
+    if [[ -n "$kind" ]]; then
+      if git -C "$pw" config --worktree --get "agent.$kind" >/dev/null 2>&1; then
+        echo "$pw"
+        return 0
+      fi
+    else
+      echo "$pw"
+      return 0
+    fi
+  done < <(pane_proc_worktrees "$ref")
+
+  # Pane pointer, validated: needed for pinned-cwd harnesses (pi), whose
+  # processes never enter the worktree. Panes outlive sessions and a stale
+  # pointer once hijacked fresher work, so it only counts if it still is a
+  # linked worktree of the pane's repo with a matching recording — and it
+  # ranks below the process tree, which reflects the current session.
+  local ptr ptrgd
+  ptr=$(pane_pointer)
+  if [[ -n "$ptr" && -d "$ptr" ]]; then
+    ptrgd=$(git -C "$ptr" rev-parse --absolute-git-dir 2>/dev/null || true)
+    if [[ "$ptrgd" == */worktrees/* &&
+      "$(common_dir "$ptr")" == "$(common_dir "$ref")" ]]; then
+      if [[ -n "$kind" ]]; then
+        if git -C "$ptr" config --worktree --get "agent.$kind" >/dev/null 2>&1; then
+          echo "$ptr"
+          return 0
+        fi
+      else
+        echo "$ptr"
+        return 0
+      fi
+    fi
+  fi
+
+  if [[ -z "$kind" ]]; then
+    # path/copy answer "where is the agent working" — the main checkout is
+    # never that answer (it's where the user already is). Links recorded
+    # there still count for open.
+    local main_wt common
+    common=$(common_dir "$ref") || true
+    main_wt=$(dirname "${common:-/nonexistent}")
+    hit=$(recorded_worktrees "$kind" "$ref" | grep -vxF "$main_wt" | head -1)
+  else
+    hit=$(recorded_worktrees "$kind" "$ref" | head -1)
+  fi
+  if [[ -n "$hit" ]]; then
+    echo "$hit"
+    return 0
+  fi
+
+  if [[ -z "$kind" ]]; then
+    # path/copy with no recordings: newest-touched linked worktree is the best
+    # guess for "the agent's worktree" (gitdir mtime tracks HEAD activity).
+    local common
+    common=$(git -C "$ref" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || true
+    if [[ -n "${common:-}" && -d "$common/worktrees" ]]; then
+      hit=$(for d in "$common"/worktrees/*/; do
+        [[ -f "${d}gitdir" ]] || continue
+        read -r g <"${d}gitdir" || continue
+        wt=${g%/*}
+        [[ -d "$wt" ]] && printf '%s\t%s\n' "$(stat -f '%m' "$d")" "$wt"
+      done | sort -rn | head -1 | cut -f2)
+      if [[ -n "$hit" ]]; then
+        echo "$hit"
+        return 0
+      fi
+    fi
+  fi
+
+  echo "$ref"
+}
+
+# --- read commands (run from the Herdr prototype menu or by hand) ---------------
+
+open_links() {
+  local kind="$1" wt urls
+  wt=$(resolve_worktree "$kind")
+  urls=$(git -C "$wt" config --worktree --get-all "agent.$kind" 2>/dev/null || true)
+
+  if [[ -z "$urls" && "$kind" == "mr" ]]; then
+    # Derive from the branch via forge CLI. Never stale, covers agents that
+    # forgot to record.
+    local remote=""
+    remote=$(git -C "$wt" remote get-url origin 2>/dev/null || true)
+    if [[ "$remote" == *gitlab* ]] && command -v glab >/dev/null 2>&1; then
+      notify "agent-link: no recorded MR — trying glab branch lookup"
+      (cd "$wt" && glab mr view --web) && return 0
+    elif [[ "$remote" == *github.com* ]] && command -v gh >/dev/null 2>&1; then
+      notify "agent-link: no recorded PR — trying gh branch lookup"
+      (cd "$wt" && gh pr view --web) && return 0
+    fi
+  fi
+
+  if [[ -z "$urls" ]]; then
+    notify "agent-link: no $kind recorded in any worktree of $(basename "$wt")"
+    exit 1
+  fi
+
+  local n=0
+  while IFS= read -r url; do
+    [[ -z "$url" ]] && continue
+    open "$url"
+    n=$((n + 1))
+  done <<<"$urls"
+  notify "agent-link: opened $n $kind link(s) from $wt"
+}
+
+show_status() {
+  local ref wt
+  ref=$(pane_path)
+  echo "pane: $ref"
+  echo "pane proc worktrees:"
+  pane_proc_worktrees "$ref" | sed 's/^/  /'
+  echo "pointer: $(pane_pointer)"
+  echo "recordings (newest first):"
+  while IFS= read -r wt; do
+    echo "  $wt"
+    git -C "$wt" config --worktree --get-regexp '^agent\.' 2>/dev/null |
+      sed 's/^agent\./    /'
+  done < <(recorded_worktrees "" "$ref")
+}
+
+copy_path() {
+  local wt
+  wt=$(resolve_worktree "")
+  printf '%s' "$wt" | pbcopy
+  notify "agent-link: copied $wt"
+}
+
+# --- dispatch -------------------------------------------------------------------
+
+cmd="${1:-}"
+case "$cmd" in
+issue | mr)
+  [[ -n "${2:-}" ]] || usage
+  set_link "$cmd" "$2"
+  ;;
+add)
+  [[ "${2:-}" == "issue" || "${2:-}" == "mr" ]] || usage
+  [[ -n "${3:-}" ]] || usage
+  set_link "$2" "$3" add
+  ;;
+clear)
+  case "${2:-}" in
+  issue | mr) clear_links "$2" ;;
+  "") clear_links issue mr ;;
+  *) usage ;;
+  esac
+  ;;
+open)
+  [[ "${2:-}" == "issue" || "${2:-}" == "mr" ]] || usage
+  open_links "$2"
+  ;;
+path)
+  resolve_worktree ""
+  ;;
+copy)
+  copy_path
+  ;;
+status)
+  show_status
+  ;;
+*)
+  usage
+  ;;
+esac
