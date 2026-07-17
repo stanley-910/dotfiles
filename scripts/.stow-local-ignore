@@ -9,6 +9,10 @@
 # the VCS/README/LICENSE patterns below are re-declared to keep them ignored.
 ^/bin$
 
+# launchd rejects this plist when Stow installs it as a symlink. Keep the
+# versioned source here, but deploy it as a real file in ~/Library/LaunchAgents.
+^/Library/LaunchAgents/com\.stanwang\.headroom-proxy\.plist$
+
 # stow defaults (kept):
 \.git
 \.gitignore

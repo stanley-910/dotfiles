@@ -32,3 +32,32 @@ After adding a file here, re-establish the symlink:
 ```sh
 stow --restow scripts   # run from ~/dotfiles
 ```
+
+## `Library/LaunchAgents/` — launchd services
+
+See [Headroom with Pi GitHub Copilot](HEADROOM_PI_COPILOT.md) for the full
+setup, model-routing, authentication, operations, and troubleshooting guide.
+
+LaunchAgent plists are versioned here but ignored by Stow because `launchctl`
+rejects them when installed as symlinks. Deploy the Headroom proxy plist as a
+real file, then bootstrap it:
+
+```sh
+label=com.stanwang.headroom-proxy
+plist="$HOME/Library/LaunchAgents/$label.plist"
+
+launchctl bootout "gui/$UID/$label" 2>/dev/null || true
+install -m 644 \
+  "$HOME/dotfiles/scripts/Library/LaunchAgents/$label.plist" \
+  "$plist"
+launchctl bootstrap "gui/$UID" "$plist"
+launchctl enable "gui/$UID/$label"
+```
+
+The Headroom job runs `headroom-pi-copilot` in refresh-token mode on port 8787
+with Headroom's local request limiter disabled. Restart it after replacing Pi's
+stored GitHub Copilot login:
+
+```sh
+launchctl kickstart -k "gui/$UID/com.stanwang.headroom-proxy"
+```

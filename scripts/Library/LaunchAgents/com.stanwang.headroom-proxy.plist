@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.stanwang.headroom-proxy</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/stanwang/dotfiles/scripts/bin/headroom-pi-copilot</string>
+    <string>--refresh</string>
+    <string>--port</string>
+    <string>8787</string>
+    <string>--</string>
+    <string>--no-rate-limit</string>
+    <string>--lossless</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/stanwang/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>HOME</key>
+    <string>/Users/stanwang</string>
+    <key>GITHUB_COPILOT_KEYCHAIN_SERVICE</key>
+    <string>__headroom_explicit_token_only__</string>
+  </dict>
+  <key>WorkingDirectory</key>
+  <string>/Users/stanwang</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>ProcessType</key>
+  <string>Interactive</string>
+  <key>StandardOutPath</key>
+  <string>/Users/stanwang/.headroom/logs/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/stanwang/.headroom/logs/launchd.err.log</string>
+</dict>
+</plist>
