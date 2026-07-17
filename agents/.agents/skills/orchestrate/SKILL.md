@@ -136,10 +136,13 @@ Examples:
 
 ```text
 model="github-copilot/gpt-5.4-mini"
-model="github-copilot/gpt-5.5"
+model="github-copilot/gpt-5.6-sol"
 model="github-copilot/claude-sonnet-4.6"
 model="github-copilot/claude-opus-4.8"
 ```
+
+Default general worker: `github-copilot/gpt-5.6-sol` with thinking `high`.
+Use a different model or thinking level only for an explicit role-specific reason.
 
 If using a custom agent with frontmatter `model:`, either:
 
@@ -151,7 +154,7 @@ Do not use fuzzy model names for audit-critical agents. If fuzzy/default is used
 Route by context ceiling. A slice's working set (repo reads + prompt + output) must fit the worker:
 
 - `github-copilot/claude-opus-4.8` — 200K ctx. Deepest reasoning. Only slices ≤~150K (leave headroom for 64K output).
-- `github-copilot/gpt-5.5` — 400K ctx. Larger token loads, breadth, second opinion.
+- `github-copilot/gpt-5.6-sol` — 400K ctx. Default general worker, breadth, and second opinion.
 - `github-copilot/claude-sonnet-4.6` — 1M ctx. Huge-context scouting/reads.
 - `github-copilot/gpt-5.4-mini` / `github-copilot/gpt-5-mini` — cheap mechanical fan-out.
 - `github-copilot/gpt-5.3-codex` — code-only implementation slices with no cross-contract risk.
@@ -171,7 +174,7 @@ Examples:
 ```text
 Scout A1 gpt5.4m
 Claim PRD opus4.8
-Impl A2 gpt5.5
+Impl A2 gpt5.6s
 Verify A2 opus4.8
 Merge W2 sonnet4.6
 ```
@@ -180,7 +183,7 @@ Model tags:
 
 ```text
 github-copilot/gpt-5.4-mini       -> gpt5.4m
-github-copilot/gpt-5.5            -> gpt5.5
+github-copilot/gpt-5.6-sol        -> gpt5.6s
 github-copilot/claude-sonnet-4.6  -> sonnet4.6
 github-copilot/claude-opus-4.8    -> opus4.8
 default or unknown                -> default
@@ -210,8 +213,8 @@ Then call `Agent` with matching fields. Example:
 ```text
 Agent(
   subagent_type="general-purpose",
-  model="github-copilot/gpt-5.5",
-  thinking="medium",
+  model="github-copilot/gpt-5.6-sol",
+  thinking="high",
   run_in_background=true,
   prompt="..."
 )
@@ -316,7 +319,7 @@ Rules:
 Slice sizing:
 
 - Target every slice so its working set fits ≤200K tokens, so any worker (including `opus-4.8`) can take it.
-- Split before exceeding 200K. Only route an unsplittable >200K slice to a larger-context worker (`gpt-5.5` ≤400K, `claude-sonnet-4.6` ≤1M).
+- Split before exceeding 200K. Only route an unsplittable >200K slice to a larger-context worker (`gpt-5.6-sol` ≤400K, `claude-sonnet-4.6` ≤1M).
 
 ## Implementation agents
 
@@ -326,7 +329,7 @@ Agent:
 
 - `general-purpose`
 - thinking `low` for mechanical/docs/tests/prompts slices
-- thinking `medium` default for well-scoped implementation when orchestrator provides exact files/contracts/tests
+- model `github-copilot/gpt-5.6-sol` with thinking `high` by default for well-scoped implementation
 - thinking `high` only for schema/storage, auth, money/checkout, concurrency/idempotency, privacy/logging, or broad cross-layer slices
 - for code-only slices with no cross-contract risk, prefer `model="github-copilot/gpt-5.3-codex"`
 - use `run_in_background: true`
