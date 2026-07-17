@@ -1,9 +1,8 @@
 # Forge reference — default conventions
 
-Defaults for repos **without** their own tracker doc. A repo's
-`docs/agents/issue-tracker.md` overrides everything here. When bootstrapping a
-new project's board, establish these (label creation is idempotent — 409 on
-re-create is fine).
+These are the central GitLab board conventions. Repo-local tracker documents do
+not override them. When bootstrapping a new project's board, establish these
+(label creation is idempotent — 409 on re-create is fine).
 
 ## Label vocabulary
 
@@ -37,6 +36,8 @@ glab api -X POST "projects/$ENC/labels" -f name='wayfinder:map' -f color='#6699c
 
 ## Ticket body template
 
+Use the compact question template for investigation tickets:
+
 ```markdown
 ### Question
 
@@ -49,6 +50,39 @@ run-on paragraph. <mark steps `HITL:` / `AFK:` when mixed>
 **Gates:** <what this ticket unblocks>
 **Detail:** <file/handoff pointer>
 ```
+
+Before applying `ready-for-agent`, turn implementation tickets into a closed
+execution contract:
+
+```markdown
+### Scope
+<repository/surface being changed and explicit non-goals>
+
+### Locked decisions
+<resolved behavior; no Open questions remain>
+
+### Contract
+<exact arguments, outputs, schemas, or state transitions>
+
+### Edit sites
+<small ordered file/symbol list plus the closest precedent>
+
+### Tests and done when
+<required focused cases, then repository verification command>
+```
+
+Repository boundaries belong both in durable repo guidance and in any ticket
+whose wording crosses surfaces. Keep generic worktree/claim/MR instructions
+out of issue bodies: `glab-board start` and `finish` own that workflow.
+
+## Merge request bodies
+
+Prefer a concise body with `Summary` and `Verification` sections. Agents that
+have useful implementation context pass it to
+`glab-board finish <iid> --description-file <path>`; the file omits issue-closing
+syntax and the board-watcher marker because `finish` owns both. Bare `finish`
+derives summary bullets from commit subjects and records the verifier it ran.
+An explicit file updates an existing MR; a bare retry preserves human edits.
 
 ## Blocking (GitLab native)
 
@@ -101,6 +135,7 @@ when fully specified) → create → report a table (observation → iid/URL or
 
 Where the metadata lives and how it is discovered: per-worktree git config
 (`agent.issue` / `agent.mr`), written by `agent-link issue|mr <url>` from the
-worktree; `glab-board grab` and `glab-board mr` do it for you. Read side
+worktree. `glab-board start` records the issue; `finish` records the MR. The
+lower-level `grab` and `mr` verbs do the same for custom workflows. Read side
 (human hotkeys, `/mr`, `/issue`) resolves cwd → pane process tree → pane
 pointer → newest recording among the repo's worktrees.

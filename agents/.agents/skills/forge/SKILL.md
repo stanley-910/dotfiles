@@ -5,13 +5,12 @@ description: Onboard to any repo's GitLab/GitHub issue tracker and work its boar
 
 # Forge: issue-board work in any repo
 
-## Onboarding order
+## Source of truth
 
-1. **Read the repo's own tracker doc first** — `docs/agents/issue-tracker.md`
-   (or whatever `AGENTS.md`/`CLAUDE.md` points at). It overrides everything
-   here: label vocabulary, board ids, project-specific protocol.
-2. No tracker doc? Use the bundled script and the defaults in
-   [REFERENCE.md](REFERENCE.md).
+The GitLab board is the central issue tracker. Go straight to the bundled
+`glab-board` script for tracker state and operations. Do not search for or read
+repo-local tracker docs such as `docs/agents/issue-tracker.md`; they are not
+authoritative. Use [REFERENCE.md](REFERENCE.md) for board conventions.
 
 ## The board script
 
@@ -22,23 +21,55 @@ calls**: missing `GITLAB_HOST` and unencoded namespaces are where 404s come
 from.
 
 ```
-glab-board frontier | list | view <iid> | grab <iid> [work|research]
-           | park <iid> [text] | note <iid> <text> | close <iid> [text]
+glab-board start <iid> [work|research] | finish <iid> [finish-options]
+           | frontier | list | view <iid> | edit <iid> --description-file <path>
+           | grab <iid> [work|research] | park <iid> [text]
+           | note <iid> <text> | close <iid> [text]
            | block <A> <B> | mr <create-args> | triage
 ```
 
-## Grabbing an issue — the contract
+## Issue-work lifecycle — the contract
 
-"Grab" is one verb, not a mental note: `glab-board grab <iid> [work|research]`
-— say which you're doing (default `work`). It **assigns the issue to you**
-(assignee IS the claim — open + unassigned = unclaimed), sets the status label
-(`agent::working` or `agent::researching`), and **records it** via
-`agent-link`, which is what makes the human's `/issue`, `/mr`, and tmux
-hotkeys point at your work. Run it from your worktree, before any work. If you
-started working an issue without grabbing it, grab it now. Reading an issue
-for linked context is `view`, not a claim — grab only the issue you are
-actually resolving, and `grab N research` means the ticket's deliverable is
-research, not that you are just looking.
+For implementation or ticket research, start with one command from the shared
+checkout:
+
+```bash
+glab-board start <iid> [work|research] --json
+```
+
+`start` fetches the remote default branch, creates or resumes a deterministic
+issue branch in `~/worktrees/<project>/...`, assigns and labels the issue, and
+records it through `agent-link` inside that worktree. It checks the shared
+checkout and warns when dirty; those local changes are deliberately excluded
+because the issue worktree starts from the remote default branch. The JSON
+result is the source of truth for the worktree path. Pi's session cwd is fixed: if the
+watcher did not launch you in the returned worktree, use that absolute path as
+`cwd` for every subsequent tool call; a shell `cd` does not move the harness.
+
+After implementation, tests, and a normal commit, finish with one command from
+the issue worktree:
+
+```bash
+glab-board finish <iid> [--description-file <path>]
+```
+
+`finish` requires a clean issue branch with commits over the remote target,
+runs `.agent/verify` or `scripts/verify-agent-change` when present, pushes the
+current branch, creates or reuses a ready MR, verifies
+source/target/draft/change state, and records it. When the agent has a useful
+summary, pass a non-empty `--description-file` containing concise change and
+verification notes. Otherwise `finish` derives a `Summary` from the branch's
+commit subjects and records the verification command. In both cases it ensures
+a closing reference and the board-watcher marker are present without duplicating
+ones already supplied; normally omit both from the file. Supplying a file also
+updates an already-open MR, while a bare
+retry preserves its existing description. `finish` never stages or commits
+files and never pushes main. Use `--draft` only when a draft is intentional;
+use `--skip-verify` only when the reason is explicit in the final reply.
+
+`glab-board grab <iid> [work|research]` remains the lower-level claim verb for
+an already-created worktree. It assigns the issue, sets `agent::working` or
+`agent::researching`, and records the issue. Reading is `view`, not a claim.
 
 Status lifecycle after that: `glab-board park <iid> [comment]` when you stop
 — blocked, waiting on a human, or ending the session unfinished
@@ -46,14 +77,10 @@ Status lifecycle after that: `glab-board park <iid> [comment]` when you stop
 labels. Never leave an issue labelled `agent::working` when you are no longer
 working it.
 
-If your harness's cwd does not follow you into a worktree (pi: cwd is fixed at
-session creation and `cd` does not persist across bash calls), re-record after
-creating the worktree so the links live with the work:
-`cd <worktree> && agent-link issue <url>`.
-
-Create MRs the same way: `glab-board mr <glab-mr-create-args>` (run from your
-worktree) — it creates AND records in one verb. If you created an MR some
-other way, record it yourself: `agent-link mr <url>` — nothing else will.
+`glab-board mr <create-args>` remains available for non-issue MRs. It pins the
+current branch as source, refuses main/detached/empty/dirty sources, defaults
+to the remote default target, pushes, verifies the resulting ready/draft state,
+and records it. An explicit source branch must match the checked-out branch.
 
 ## Label discipline (board-watcher repos)
 
@@ -76,15 +103,18 @@ A `wayfinder:map` issue is a shared planning map; its child tickets
 If your issue is a wayfinder ticket: claim = assign (use `grab`), resolve
 **at most one ticket per session**, post the answer as a resolution comment,
 close it, and append a one-line pointer to the map's "Decisions so far".
-Frontier = open + unblocked + unassigned children. Full ops (child-ticket
-creation, GraphQL frontier query) live in the repo's tracker doc; defaults in
+Frontier = open + unblocked + unassigned children. Full operations, including
+child-ticket creation and GraphQL frontier queries, are in
 [REFERENCE.md](REFERENCE.md).
 
 ## Writing issues and comments
 
 - Ticket bodies are structured, not prose: see the template in
-  [REFERENCE.md](REFERENCE.md) (`Question / Today / numbered steps / Gates /
-  Detail`, with `HITL:`/`AFK:` markers on mixed work).
+  [REFERENCE.md](REFERENCE.md). A `ready-for-agent` ticket must lock scope,
+  repository boundaries, decisions, edit sites, wire contracts, and success
+  checks; it must not retain unresolved "Open questions". When a Details
+  section supplies exact sites or precedents, read those before broad
+  reconnaissance.
 - Every triaged issue carries exactly one category label and one state label.
 - AI-authored triage comments/bodies start with
   `> *This was generated by AI during triage.*`
