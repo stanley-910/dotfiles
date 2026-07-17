@@ -1,0 +1,67 @@
+# PROTOTYPE — evaluate Herdr before adopting it as the primary multiplexer.
+# Delete or absorb this package after the trial.
+#
+# Scope: core tmux muscle memory only. Existing tmux-dependent scripts and
+# Neovim integration remain untouched and are intentionally not bound here.
+
+[terminal]
+new_cwd = "follow"
+
+[keys]
+prefix = "alt+space"
+detach = "prefix+d"
+settings = "prefix+ctrl+s"
+
+workspace_picker = "prefix+s"
+rename_workspace = "prefix+shift+s"
+open_worktree = "prefix+w"
+
+next_agent = "ctrl+alt+j"
+previous_agent = "ctrl+alt+k"
+
+next_tab = ["prefix+n", "alt+n"]
+previous_tab = ["prefix+shift+n", "alt+shift+n"]
+# prefix+r shadows Herdr's Resize mode; use the mouse to resize panes.
+rename_tab = ["prefix+r", "prefix+shift+t"]
+rename_pane = ["prefix+p", "prefix+shift+p"]
+last_pane = ["prefix+q", "alt+q", "alt+shift+d"]
+
+split_vertical = "prefix+backslash"
+split_horizontal = "prefix+minus"
+focus_pane_left = "prefix+h"
+focus_pane_down = "prefix+j"
+focus_pane_up = "prefix+k"
+focus_pane_right = "prefix+l"
+
+# Inside the Spaces navigator: j/k select workspaces; arrows move vertically
+# between panes. Normal prefix+h/j/k/l pane navigation remains unchanged.
+navigate_workspace_up = "k"
+navigate_workspace_down = "j"
+navigate_pane_left = "h"
+navigate_pane_down = "down"
+navigate_pane_up = "up"
+navigate_pane_right = "l"
+
+copy_mode = ["prefix+v", "prefix+["]
+zoom = "prefix+z"
+
+[ui]
+mouse_scroll_lines = 1
+copy_on_select = true
+confirm_close = true
+agent_panel_sort = "priority"
+
+show_agent_labels_on_pane_borders = true
+
+[advanced]
+scrollback_limit_bytes = 10000000
+
+[theme]
+name = "gruvbox"
+auto_switch = false
+
+[ui.toast]
+delivery = "herdr"
+
+[experimental]
+pane_history = false

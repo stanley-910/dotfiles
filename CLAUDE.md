@@ -9,7 +9,7 @@ Stagger commits by stow package (the "tool") — one package per commit, never m
 ## Stow conventions
 
 **Full directory stow** (`stow --restow -v <pkg>`):
-cursor, fastfetch, ghostty, git, jetbrains, nvim, scripts, starship, sioyek, zsh
+cursor, fastfetch, ghostty, git, herdr, jetbrains, nvim, scripts, starship, sioyek, zsh
 
 **Selective file stow** (`stow --restow --no-folding -v <pkg>`):
 agents, claude, karabiner, lazygit, pi, tmux, yazi, zed
