@@ -10,6 +10,7 @@
 import { spawnSync } from "node:child_process";
 import { CustomEditor, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { shouldOpenInlineSlashPicker } from "../inline-slash-completion/completion.ts";
 
 const KEY = {
 	left: "\x1b[D",
@@ -83,8 +84,16 @@ class VimEditor extends CustomEditor {
 
 		if (this.mode === "insert") {
 			const before = this.getText();
+			const cursor = this.getCursor();
+			const openInlineSlashPicker = shouldOpenInlineSlashPicker(
+				this.getLines(),
+				cursor.line,
+				cursor.col,
+				data,
+			);
 			super.handleInput(data);
 			if (this.getText() !== before) this.clearRedo();
+			if (openInlineSlashPicker) super.handleInput("\t");
 			return;
 		}
 
