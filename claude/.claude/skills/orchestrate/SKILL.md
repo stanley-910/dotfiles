@@ -130,6 +130,19 @@ Rules:
 
 ## Model selection
 
+Default execution worker: Pi/Copilot `github-copilot/gpt-5.6-sol` with thinking
+`high`. Claude Code's Agent tool cannot select Copilot models directly, so use
+the thin-launcher pattern in `~/.claude/DELEGATION.md`: write the worker handoff
+to a file, launch a cheap `sonnet` wrapper, and have it execute:
+
+```text
+/opt/homebrew/bin/pi -p --provider github-copilot --model gpt-5.6-sol:high --approve "$(cat <handoff-file>)"
+```
+
+Label and ledger the real executor as `gpt5.6s:high`, not the wrapper's model.
+Use native Claude agents only for an explicit role-specific reason or when Pi is
+unavailable.
+
 Pass the model through the Agent tool `model` parameter, not only in prompt text. Claude Code accepts short names:
 
 ```text
@@ -221,9 +234,9 @@ Then call `Agent` with matching fields. Example:
 Agent(
   subagent_type="general-purpose",
   model="sonnet",
-  description="Impl A2 sonnet4.6",
+  description="Impl A2 →pi gpt5.6s:high",
   run_in_background=true,
-  prompt="RUN_LEDGER role=implement slice=a2 model=sonnet worktree=~/worktrees/... \n..."
+  prompt="RUN_LEDGER role=launcher slice=a2 model=gpt-5.6-sol:high worktree=~/worktrees/... \nFollow ~/.claude/DELEGATION.md and run the handoff file with Pi."
 )
 ```
 
@@ -332,7 +345,7 @@ Agent:
 
 - `general-purpose`
 - model `haiku` for mechanical/docs/tests/prompts slices
-- model `sonnet` default for well-scoped implementation when orchestrator provides exact files/contracts/tests
+- Pi/Copilot `gpt-5.6-sol:high` via a thin `sonnet` launcher by default for well-scoped implementation
 - model `opus` only for schema/storage, auth, money/checkout, concurrency/idempotency, privacy/logging, or broad cross-layer slices
 - use `run_in_background: true`
 - run parallel wave agents in one message (multiple Agent tool calls in a single assistant turn)
@@ -360,7 +373,7 @@ After each implementation report, immediately launch a separate verifier.
 Agent:
 
 - `general-purpose`
-- model `opus`
+- Pi/Copilot `gpt-5.6-sol:high` via a thin `sonnet` launcher by default; use native `opus` only for an explicit high-stakes reason
 - read-only
 
 Verifier prompt includes PRD path, issue path, changed files, implementation report, acceptance criteria, and `Do not edit files.`
@@ -400,7 +413,7 @@ Merge agent:
 
 - `general-purpose`
 - model `sonnet` only for direct-ish/disjoint merges with no shared contract changes
-- model `opus` default for parallel slice integration, and required for overlapping files or shared contracts involving schema/storage, auth, money/checkout, concurrency/idempotency, privacy/logging, tool/API payloads, fixtures, or eval harnesses
+- Pi/Copilot `gpt-5.6-sol:high` via a thin `sonnet` launcher by default for parallel slice integration; use native `opus` only when Pi is unavailable or an explicit high-stakes reason requires it
 - works in integration worktree
 - merges/cherry-picks clean slice commits
 - resolves textual conflicts

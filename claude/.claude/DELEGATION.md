@@ -23,6 +23,19 @@ flat-rate fleet: launch a cheap `sonnet` launcher subagent that does no work
 itself — it `exec`s pi, waits, and relays only the compact report. Heavy tokens
 burn on Copilot; the driver sees four lines.
 
+**HARD RULE — handoffs travel as files, never as nested quoted strings.** The
+driver writes the inner handoff to a file BEFORE launching the wrapper (a spec
+file in the worktree, or `$CLAUDE_JOB_DIR/tmp/handoff-<slice>.md`). A
+multi-line handoff inlined through two shells gets its quoting mangled and
+leaves pi silently reading stdin forever: ~0 CPU, zero network, no output, no
+error — it looks exactly like an auth failure and burned 2×20 min before
+diagnosis (validated fix 2026-07-12: same content via `"$(cat file)"`
+round-tripped in ~7 s). Corollaries: launchers call `/opt/homebrew/bin/pi`
+(bare `pi` is a shell function); macOS has no `timeout` — use
+`perl -e 'alarm N; exec @ARGV' -- <cmd>`; keep a liveness watchdog (CPU +
+network at 30-60 s) since pi emits no error when starved on stdin; after two
+dead launches fall back to a native Claude subagent.
+
     Agent(
       subagent_type="general-purpose",
       model="sonnet",                    # launcher tier; does NOT reason about the task
@@ -31,13 +44,16 @@ burn on Copilot; the driver sees four lines.
       prompt="<wrapper prompt, below>"
     )
 
-Wrapper prompt:
+Wrapper prompt (handoff file already written by the driver, in the handoff
+template below):
 
     RUN_LEDGER role=launcher wraps=impl slice=a2 requested_model=github-copilot/claude-opus-4.8:high worktree=<abs>
     You are a thin launcher. Do NOT do the task yourself. Do NOT reason about it.
     Run exactly this, wait for it to finish, return its output:
-      cd <worktree> && pi -p --provider github-copilot --model claude-opus-4.8:high \
-        --approve "<inner handoff — the real task, in the handoff template below>"
+      cd <worktree> && /opt/homebrew/bin/pi -p --provider github-copilot \
+        --model claude-opus-4.8:high --approve "$(cat <abs path to handoff file>)"
+    If it has produced no output after ~90s with ~0 CPU, kill it and report
+    STATUS: BLOCKED — pi stalled (0 CPU / no output).
     Return the worker report verbatim; if >60 lines, return only its
     STATUS/CHANGED/VERIFY/BLOCKERS block. If pi errors or is unavailable, return:
     STATUS: BLOCKED — <error line>. Do not edit files yourself.
@@ -50,18 +66,18 @@ several pattern-C wrappers in one turn.
 - Read-only scout: `--tools read,grep,find,ls`
 - Implementer in a worktree: pass abs path, add `--approve` to trust project files
 - One-shot, no saved session: `--no-session`
-- Second opinion / bigger slice: swap model to `gpt-5.5:xhigh`
+- Default flat-rate worker: `gpt-5.6-sol:high`
 
 ## Route by context ceiling (working set must fit the worker)
 
     claude-opus-4.8     200K — deepest reasoning; slices ≤~150K (64K output headroom)
-    gpt-5.5             400K — larger loads, breadth, second opinion
+    gpt-5.6-sol         400K — default flat-rate worker, breadth, second opinion
     claude-sonnet-4.6     1M — huge-context scouting/reads
     gpt-5.4-mini/5-mini      — cheap mechanical fan-out
     gpt-5.3-codex            — code-only slices, no cross-contract risk
 
 Size slices ≤200K so any worker can take them. Split before exceeding; only an
-unsplittable >200K slice routes to gpt-5.5 (≤400K) or sonnet-4.6 (≤1M).
+unsplittable >200K slice routes to gpt-5.6-sol (≤400K) or sonnet-4.6 (≤1M).
 
 ## Header — first line of every detached subagent's prompt
 
@@ -79,8 +95,8 @@ For Workflow `agent()` calls, `<effort>` is the `opts.effort` value if set,
 else `inherited`.
 
 UI/Agent label tags the real executor: `Impl A2 →pi opus4.8`, `Scout PRD →pi
-gpt5.5`, `Verify A2 opus4.8`, `Impl A2 sonnet4.6:inherited`. Tags: opus4.8,
-gpt5.5, gpt5.4m, sonnet4.6, haiku4.5. A Copilot-wrapped run must be marked
+gpt5.6s`, `Verify A2 opus4.8`, `Impl A2 sonnet4.6:inherited`. Tags: opus4.8,
+gpt5.6s, gpt5.4m, sonnet4.6, haiku4.5. A Copilot-wrapped run must be marked
 (`→pi`) — never labeled as if the wrapper's Claude model did the work. Every
 label states model + thinking/effort, even when both are inherited — a bare
 role name (`Impl A2`) with no model tag is not acceptable.
