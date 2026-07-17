@@ -335,9 +335,6 @@ return {
 
     ---@type { mode: string, lhs: string, rhs: function, desc: string }[]
     local debug_keymaps = {
-      { mode = "n", lhs = "<C-S-l>",      rhs = dap.step_over,      desc = "Debug step over" },
-      { mode = "n", lhs = "<C-S-j>",      rhs = dap.step_into,      desc = "Debug step into" },
-      { mode = "n", lhs = "<C-S-k>",      rhs = dap.step_out,       desc = "Debug step out" },
       { mode = "n", lhs = "<leader>do", rhs = dap.step_over,      desc = "Debug step over" },
       { mode = "n", lhs = "<leader>di", rhs = dap.step_into,      desc = "Debug step into" },
       { mode = "n", lhs = "<leader>du", rhs = dap.step_out,       desc = "Debug step out" },

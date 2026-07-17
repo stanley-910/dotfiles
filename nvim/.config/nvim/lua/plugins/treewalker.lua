@@ -3,12 +3,12 @@
 -- no dependencies). https://github.com/aaronik/treewalker.nvim
 --
 -- Keymap scheme (the plugin's own <C-h/j/k/l> defaults collide with this config:
--- <C-j>/<C-k> are 8j/8k, and insert-mode <C-h>/<C-l> are Left/Right). All eight
--- arrow combos below are unmapped elsewhere, so they are conflict-free:
+-- <C-j>/<C-k> are 8j/8k, and insert-mode <C-h>/<C-l> are Left/Right). Shifted
+-- Ctrl-h/j/k/l is reserved for seamless Neovim-window/tmux-pane navigation.
 --
---   Movement  = Ctrl + Arrows   -> walk the syntax tree (repeatable; Ctrl-o to undo)
---   Swapping  = Alt  + Arrows   -> move a node; mirrors Zed/VS Code "move line"
---                                  and JetBrains "move statement" muscle memory
+--   Movement  = Alt + Shift + h/j/k/l -> walk the syntax tree (repeatable; Ctrl-o to undo)
+--   Swapping  = Alt + Arrows          -> move a node; mirrors Zed/VS Code "move line"
+--                                       and JetBrains "move statement" muscle memory
 --
 -- Lazy-loads on first keypress via the `keys` table.
 return {
@@ -27,10 +27,10 @@ return {
 
   keys = {
     -- Movement (normal + visual): navigate the tree.
-    { "<c-s-k>", "<cmd>Treewalker Up<cr>",    mode = { "n", "x" }, desc = "Treewalker: prev sibling" },
-    { "<c-s-j>", "<cmd>Treewalker Down<cr>",  mode = { "n", "x" }, desc = "Treewalker: next sibling" },
-    { "<c-s-h>", "<cmd>Treewalker Left<cr>",  mode = { "n", "x" }, desc = "Treewalker: out to parent" },
-    { "<c-s-l>", "<cmd>Treewalker Right<cr>", mode = { "n", "x" }, desc = "Treewalker: in to child" },
+    { "<M-K>", "<cmd>Treewalker Up<cr>",    mode = { "n", "x" }, desc = "Treewalker: prev sibling" },
+    { "<M-J>", "<cmd>Treewalker Down<cr>",  mode = { "n", "x" }, desc = "Treewalker: next sibling" },
+    { "<M-H>", "<cmd>Treewalker Left<cr>",  mode = { "n", "x" }, desc = "Treewalker: out to parent" },
+    { "<M-L>", "<cmd>Treewalker Right<cr>", mode = { "n", "x" }, desc = "Treewalker: in to child" },
 
     -- Swapping (normal): move the node under the cursor.
     -- Up/Down are linewise and carry comments/decorators; Left/Right are nodewise

@@ -189,6 +189,21 @@ map("n", "<S-Tab>", cmd("bprevious"), opts("Previous buffer"))
 map({ "n", "i", "t" }, "<M-h>", "<C-\\><C-n><C-w>h", opts("Window left"))
 map({ "n", "i", "t" }, "<M-l>", "<C-\\><C-n><C-w>l", opts("Window right"))
 
+for _, nav in ipairs({
+  { key = "<C-S-h>", direction = "h", desc = "Window/tmux pane left" },
+  { key = "<C-S-j>", direction = "j", desc = "Window/tmux pane down" },
+  { key = "<C-S-k>", direction = "k", desc = "Window/tmux pane up" },
+  { key = "<C-S-l>", direction = "l", desc = "Window/tmux pane right" },
+}) do
+  local rhs = ("<Cmd>lua require('config.window_nav').move('%s')<CR>"):format(nav.direction)
+  map("n", nav.key, function()
+    require("config.window_nav").move(nav.direction)
+  end, opts(nav.desc))
+  map("x", nav.key, "<Esc>" .. rhs, opts(nav.desc))
+  map("i", nav.key, "<Esc>" .. rhs, opts(nav.desc))
+  map("t", nav.key, "<C-\\><C-n>" .. rhs, opts(nav.desc))
+end
+
 -- Move the current line (normal) or selection (visual) up/down. `:m` moves a
 -- line to after {address}; `.+1` is the line below, `.-2` is the line above the
 -- one before. `==` reindents the moved line. In visual mode `'<`/`'>` are the
