@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+"""fastrun-token: stash / rotate the Fastrun bearer JWT in the macOS keychain.
+
+The Fastrun web app mints a bearer JWT per browser login (~30-day life) and
+rotates it on logout/login. Agents that fire regressions need that token but must
+never see it in their transcript or the tmux pane, so we keep it in the login
+keychain and let `fastrun-fire` read it at call time. When the token goes stale
+mid-demo, grab a fresh one from DevTools -- the `Authorization` header on the POST
+to /api/rest/build/general -- and run this again. Every agent picks up the new
+token on its next call; no code changes, no restarts.
+
+    fastrun-token <jwt>     store / replace the token
+    fastrun-token           prompt for it silently (keeps it out of shell history)
+    fastrun-token --status  show expiry + days left, WITHOUT printing the token
+
+The token is passed to `security` via argv, so it is briefly visible to `ps` on
+this machine only. That is an accepted tradeoff for a personal login keychain;
+the point of the wrapper is to keep the secret out of *agent* transcripts.
+"""
+from __future__ import annotations
+
+import base64
+import getpass
+import json
+import subprocess
+import sys
+import time
+
+SERVICE = "fastrun-jwt"
+ACCOUNT = getpass.getuser()
+
+
+def decode_claims(token: str) -> dict | None:
+    """Best-effort decode of a JWT's payload segment (no signature check)."""
+    try:
+        seg = token.split(".")[1]
+        seg += "=" * (-len(seg) % 4)
+        return json.loads(base64.urlsafe_b64decode(seg))
+    except Exception:
+        return None
+
+
+def store(token: str) -> None:
+    subprocess.run(
+        ["security", "add-generic-password", "-U",
+         "-a", ACCOUNT, "-s", SERVICE, "-w", token],
+        check=True,
+    )
+
+
+def load() -> str | None:
+    r = subprocess.run(
+        ["security", "find-generic-password", "-a", ACCOUNT, "-s", SERVICE, "-w"],
+        capture_output=True, text=True,
+    )
+    if r.returncode != 0:
+        return None
+    return r.stdout.strip() or None
+
+
+def describe(token: str) -> str:
+    claims = decode_claims(token)
+    if not claims:
+        return "stored, but this does not decode as a JWT -- double-check you copied the whole token"
+    exp = claims.get("exp")
+    who = claims.get("username", "?")
+    if not exp:
+        return f"stored for {who} (no exp claim found)"
+    days = (exp - time.time()) / 86400
+    when = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime(exp))
+    state = "EXPIRED" if days < 0 else ("expiring soon" if days < 2 else "ok")
+    return f"{who} -- valid until {when} ({days:.1f} days, {state})"
+
+
+def main(argv: list[str]) -> int:
+    if argv and argv[0] in ("--status", "-s", "status"):
+        token = load()
+        if not token:
+            print("no fastrun token in keychain -- run: fastrun-token <jwt>", file=sys.stderr)
+            return 1
+        print(describe(token))
+        return 0
+
+    if argv:
+        token = argv[0].strip()
+    else:
+        token = getpass.getpass("Paste Fastrun JWT (input hidden): ").strip()
+    if not token:
+        print("no token given", file=sys.stderr)
+        return 1
+
+    store(token)
+    # Read it back so the confirmation reflects what actually landed in the keychain.
+    print("stored:", describe(load() or token))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

@@ -1,0 +1,179 @@
+#!/usr/bin/env python3
+"""fastrun-fire: kick off a Fastrun regression and print a link to drop in an MR.
+
+One POST to /api/rest/build/general creates a REGRESSION_LOCAL flow and returns
+its id immediately; build/deploy/test then run async on a onebox. This wrapper
+exists so an agent can trigger a regression without the bearer token ever
+touching its transcript: the token is read from the login keychain (see
+`fastrun-token`), and the email/creator come from the token's own `username`
+claim, so a rotated token can never fire under the wrong identity.
+
+    fastrun-fire <branch> [component ...]   fire (default component: webstore-integration)
+    fastrun-fire <branch> --dry-run         print the exact payload, POST nothing
+    fastrun-fire <branch> --group BVT --env local --oneboxes 1
+    fastrun-fire <branch> --json            machine-readable result (for agents)
+
+The final line on success is `MR_COMMENT: ...` -- a ready-to-paste one-liner for
+the merge request, so the calling agent can grab it without parsing anything else.
+"""
+from __future__ import annotations
+
+import argparse
+import base64
+import getpass
+import json
+import sys
+import time
+import urllib.error
+import urllib.request
+
+BASE_URL = "https://fastrun.china.online.ea.com"
+SERVICE = "fastrun-jwt"
+ACCOUNT = getpass.getuser()
+
+
+def decode_claims(token: str) -> dict | None:
+    try:
+        seg = token.split(".")[1]
+        seg += "=" * (-len(seg) % 4)
+        return json.loads(base64.urlsafe_b64decode(seg))
+    except Exception:
+        return None
+
+
+def load_token() -> str | None:
+    import subprocess
+    r = subprocess.run(
+        ["security", "find-generic-password", "-a", ACCOUNT, "-s", SERVICE, "-w"],
+        capture_output=True, text=True,
+    )
+    return (r.stdout.strip() or None) if r.returncode == 0 else None
+
+
+def build_payload(branch: str, components: list[str], group: str, env: str,
+                  oneboxes: int, email: str) -> dict:
+    # Field set mirrors the browser's own POST body exactly; only the first block
+    # varies per call, the rest are the constant defaults Fastrun expects.
+    return {
+        "testBranch": branch,
+        "testComponents": components,
+        "testGroups": group,
+        "testEnvironment": env,
+        "numOfOneboxes": oneboxes,
+        "email": email,
+        "creator": email,
+        # --- constant defaults (do not vary per call) ---
+        "syncCL": "",
+        "pendingCLs": "main",
+        "regressionTag": "",
+        "incrementalBuildAndDeploy": False,
+        "timeToKeepOneBox": 0,
+        "stagingMixMode": False,
+        "gitBranch": {},
+        "nucleusSource": "",
+        "nucleusFinalVersion": "",
+        "liquibaseFinalVersion": "",
+        "noBuild": False,
+        "noDeploy": False,
+        "noTest": False,
+        "detainOneboxFlag": False,
+        "testEnvironmentGroups": "",
+        "deployShadowbroker": False,
+        "specialType": "",
+        "recoverFlowEntity": None,
+        "selectOneboxAddress": ["randomOnebox"],
+        "exactlyCodeClient": "",
+        "keepClientFlag": False,
+        "otherpara": {},
+    }
+
+
+def deep_link(flow_id) -> str:
+    # Per-flow permalink, e.g. https://fastrun.china.online.ea.com/regression/99799
+    # (confirmed from a real MR's "BVT Test Report Link").
+    return f"{BASE_URL}/regression/{flow_id}"
+
+
+def post_regression(payload: dict, token: str) -> dict:
+    req = urllib.request.Request(
+        f"{BASE_URL}/api/rest/build/general",
+        data=json.dumps(payload).encode(),
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "*/*",
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.load(resp)
+
+
+def main(argv: list[str]) -> int:
+    ap = argparse.ArgumentParser(prog="fastrun-fire", add_help=True)
+    ap.add_argument("branch", help="branch under test (lands in testBranch)")
+    ap.add_argument("components", nargs="*", default=["webstore-integration"],
+                    help="component ids (default: webstore-integration)")
+    ap.add_argument("--group", default="BVT")
+    ap.add_argument("--env", default="local")
+    ap.add_argument("--oneboxes", type=int, default=1)
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--json", action="store_true", help="emit result as JSON")
+    args = ap.parse_args(argv)
+    components = args.components or ["webstore-integration"]
+
+    token = load_token()
+    claims = decode_claims(token) if token else None
+    email = (claims or {}).get("username") or f"{ACCOUNT}@ea.com"
+    payload = build_payload(args.branch, components, args.group, args.env,
+                            args.oneboxes, email)
+
+    if args.dry_run:
+        print(json.dumps(payload, indent=2))
+        print(f"\n[dry-run] POST {BASE_URL}/api/rest/build/general "
+              f"(Authorization: Bearer <keychain> for {email}) -- not sent")
+        return 0
+
+    if not token:
+        print("no fastrun token in keychain -- run: fastrun-token <jwt>", file=sys.stderr)
+        return 1
+    if claims and claims.get("exp") and claims["exp"] < time.time():
+        print("fastrun token is EXPIRED -- refresh with: fastrun-token <jwt>", file=sys.stderr)
+        return 1
+
+    try:
+        result = post_regression(payload, token)
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")[:400]
+        print(f"fastrun POST failed: HTTP {e.code} {e.reason}\n{body}", file=sys.stderr)
+        return 1
+    except urllib.error.URLError as e:
+        print(f"fastrun POST failed: {e.reason} "
+              f"(on VPN / can you reach {BASE_URL}?)", file=sys.stderr)
+        return 1
+
+    if result.get("errorMsg"):
+        print(f"fastrun rejected the request: {result['errorMsg']}", file=sys.stderr)
+        return 1
+
+    flow_id = result.get("id")
+    link = deep_link(flow_id)
+    comps = ", ".join(components)
+    comment = (f"🏃 [Fastrun regression #{flow_id}]({link}) kicked off "
+               f"· {comps} · {args.branch} · {args.group}")
+
+    if args.json:
+        print(json.dumps({"id": flow_id, "link": link, "branch": args.branch,
+                          "components": components, "mr_comment": comment}))
+        return 0
+
+    print(f"Fastrun regression #{flow_id} kicked off")
+    print(f"  component(s): {comps}")
+    print(f"  branch:       {args.branch}   group: {args.group}   env: {args.env}")
+    print(f"  link:         {link}")
+    print(f"MR_COMMENT: {comment}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
