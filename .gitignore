@@ -1,6 +1,7 @@
 # Homebrew Bundle lock file - tracks exact versions installed
 Brewfile.lock.json
-/.claude/
+/.claude/*
+!/.claude/settings.json
 .emdash.json
 
 # Karabiner runtime files (full dir is stowed; only karabiner.json is tracked)
@@ -10,6 +11,8 @@ karabiner/.config/karabiner/*
 # Tooling artifacts (not config): rpiv skill output + context-mode index
 .rpiv/
 index.txt
+/.pi/subagent-schedules/
+/pi-session-*.html
 
 /.crew/
 /.crew
