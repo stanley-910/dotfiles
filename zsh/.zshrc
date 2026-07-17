@@ -375,8 +375,43 @@ copilot() {
   command copilot --allow-all "$@"
 }
 
-pi() {
-	PI_INTERNAL_SCROLLBACK=1 command pi "$@"
+# Pi through the persistent Headroom Copilot proxy. Use an ephemeral config
+# copy so model switches in hpi do not replace regular Pi's saved default.
+hpi() {
+  local source_dir="${PI_CODING_AGENT_DIR:-$HOME/.config/pi/agent}"
+  local runtime_dir
+  local entry name exit_status
+
+  runtime_dir=$(mktemp -d "${TMPDIR:-/tmp}/hpi-agent.XXXXXX") || return 1
+  chmod 700 "$runtime_dir"
+
+  for entry in "$source_dir"/*(N) "$source_dir"/.*(N); do
+    name=${entry:t}
+    [[ "$name" == settings.json || "$name" == auth.json || "$name" == sessions ]] && continue
+    ln -s "$entry" "$runtime_dir/$name" || {
+      rm -rf -- "$runtime_dir"
+      return 1
+    }
+  done
+
+  cp -p "$source_dir/settings.json" "$runtime_dir/settings.json" || {
+    rm -rf -- "$runtime_dir"
+    return 1
+  }
+  cp -p "$source_dir/auth.json" "$runtime_dir/auth.json" || {
+    rm -rf -- "$runtime_dir"
+    return 1
+  }
+  chmod 600 "$runtime_dir/settings.json" "$runtime_dir/auth.json"
+
+  PI_CODING_AGENT_DIR="$runtime_dir" command pi \
+    --model headroom-copilot/gpt-5.6-sol \
+    --models "headroom-copilot/*,github-copilot/claude-*" \
+    "$@"
+  exit_status=$?
+
+  rm -rf -- "$runtime_dir"
+  return "$exit_status"
 }
 
 # Global aliases
