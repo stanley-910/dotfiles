@@ -1,5 +1,36 @@
 #!/usr/bin/env bash
 
+function read_number () {
+  local prompt=$1
+  local char
+  number=
+
+  printf '%s' "$prompt"
+  while IFS= read -r -s -n 1 char; do
+    case "$char" in
+    $'\e')
+      return 1
+      ;;
+    '')
+      printf '\n'
+      return 0
+      ;;
+    [0-9])
+      number+=$char
+      printf '%s' "$char"
+      ;;
+    $'\b'|$'\177')
+      if [[ -n $number ]]; then
+        number=${number%?}
+        printf '\b \b'
+      fi
+      ;;
+    esac
+  done
+
+  return 1
+}
+
 cat <<'EOF'
 Git Menu        
 
@@ -7,6 +38,8 @@ h  :  Open Remote Repository (current branch)
 H  :  Open Remote Repository (main branch)
 p  :  Open Pull Requests By Current User 
 P  :  Search Pull Requests By Current Ticket
+#  :  Open Issue By Number
+!  :  Open MR / PR By Number
 j  :  Open Jira Ticket URL
 J  :  Open Jira Board URL
 b  :  Open Pipeline Build
@@ -18,7 +51,7 @@ Press key to execute
 EOF
 
 # Keep the popup open until a key is pressed
-read -n 1 -s key
+read -r -n 1 -s key
 
 # Execute the corresponding action based on key pressed
 case "$key" in
@@ -33,6 +66,17 @@ p)
   ;;
 P)
   ~/.config/scripts/open_remote.sh P
+  ;;
+'#')
+  read_number "Issue number: " || exit 0
+  ~/.config/scripts/open_remote.sh '#' "$number"
+  ;;
+'!')
+  read_number "MR / PR number: " || exit 0
+  ~/.config/scripts/open_remote.sh '!' "$number"
+  ;;
+$'\e')
+  exit 0
   ;;
 j)
   ~/.config/scripts/open_ticket.sh j

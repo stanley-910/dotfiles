@@ -2,10 +2,11 @@
 
 # Open the current repository in the browser
 dir=$(tmux display-message -p "#{pane_current_path}")
-cd "$dir"
+cd "$dir" || exit 1
 url=$(git remote get-url origin)
 url_branch=$(git branch --show-current)
-username='wangs3'
+username='stanwang'
+
 
 JENKINS_BASE_URL="https://master-4.jenkins.autodesk.com/job/shotgun"
 
@@ -16,16 +17,35 @@ function main () {
     if [[ $url == git@* ]]; then
       url=$(echo "$url" | sed 's/git@\(.*\):/https:\/\/\1\//')
     fi
+    url=${url%.git}
 
-    if [[ ! -z $url_branch ]]; then
+    if [[ $1 == "#" || $1 == "!" ]]; then
+      number=${2:-}
+      if [[ ! $number =~ ^[0-9]+$ ]]; then
+        echo "Invalid issue or MR / PR number: ${number:-<empty>}" >&2
+        exit 1
+      fi
+
+      if [[ $url == *"github.com"* ]]; then
+        if [[ $1 == "#" ]]; then
+          url="$url/issues/$number"
+        else
+          url="$url/pull/$number"
+        fi
+      elif [[ $1 == "#" ]]; then
+        url="$url/-/issues/$number"
+      else
+        url="$url/-/merge_requests/$number"
+      fi
+    elif [[ -n $url_branch ]]; then
       if [[ $url_branch != "master" && $url_branch != "main" ]]; then
-        url=${url%.git} # rm git suffix if present
         if [[ $1 == "h" ]]; then
           url="$url/tree/$url_branch"
         elif [[ $1 == "H" ]]; then
-          url="$url"
+          : # Keep the repository root URL.
         elif [[ $1 == "p" ]]; then
-          url="$url/pulls/$username"
+          # url="$url/pulls/$username"
+          url="$url/-/merge_requests/?sort=created_date&state=opened&author_username=$username"
         elif [[ $1 == "P" ]]; then
           # Extract JIRA ticket number if present in branch name
           if [[ $url_branch =~ (SG-[0-9]+) ]]; then
