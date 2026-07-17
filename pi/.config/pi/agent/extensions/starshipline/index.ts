@@ -933,11 +933,12 @@ export default function starshipline(pi: ExtensionAPI) {
 	function restartRefreshTimer(ctx: ExtensionContext): void {
 		if (refreshTimer) clearInterval(refreshTimer);
 		refreshTimer = undefined;
-		if (!config.enabled || config.refreshIntervalMs === 0) return;
+		if (!ctx.hasUI || !config.enabled || config.refreshIntervalMs === 0) return;
 
 		refreshTimer = setInterval(() => {
 			void refreshLeft(ctx);
 		}, config.refreshIntervalMs);
+		refreshTimer.unref();
 	}
 
 	function persistAndApply(ctx: ExtensionContext): void {
