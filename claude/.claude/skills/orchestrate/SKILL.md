@@ -130,13 +130,13 @@ Rules:
 
 ## Model selection
 
-Default execution worker: Pi/Copilot `github-copilot/gpt-5.6-sol` with thinking
+Default execution worker: Pi/Copilot `headroom-copilot/gpt-5.6-sol` with thinking
 `high`. Claude Code's Agent tool cannot select Copilot models directly, so use
 the thin-launcher pattern in `~/.claude/DELEGATION.md`: write the worker handoff
 to a file, launch a cheap `sonnet` wrapper, and have it execute:
 
 ```text
-/opt/homebrew/bin/pi -p --provider github-copilot --model gpt-5.6-sol:high --approve "$(cat <handoff-file>)"
+/opt/homebrew/bin/pi -p --provider headroom-copilot --model gpt-5.6-sol:high --approve "$(cat <handoff-file>)"
 ```
 
 Label and ledger the real executor as `gpt5.6s:high`, not the wrapper's model.

@@ -10,7 +10,7 @@ the trigger/policy lives in `CLAUDE.md`.
 the driver's context — cheap for one short worker, costly for many or verbose
 ones.
 
-    pi -p --provider github-copilot --model claude-opus-4.8:high \
+    pi -p --provider headroom-copilot --model claude-opus-4.8:high \
        --tools read,grep,find,ls --no-session "<handoff>"
 
 **B. Native Claude subagent.** Ordinary Agent-tool workflow on a Claude model,
@@ -47,10 +47,10 @@ dead launches fall back to a native Claude subagent.
 Wrapper prompt (handoff file already written by the driver, in the handoff
 template below):
 
-    RUN_LEDGER role=launcher wraps=impl slice=a2 requested_model=github-copilot/claude-opus-4.8:high worktree=<abs>
+    RUN_LEDGER role=launcher wraps=impl slice=a2 requested_model=headroom-copilot/claude-opus-4.8:high worktree=<abs>
     You are a thin launcher. Do NOT do the task yourself. Do NOT reason about it.
     Run exactly this, wait for it to finish, return its output:
-      cd <worktree> && /opt/homebrew/bin/pi -p --provider github-copilot \
+      cd <worktree> && /opt/homebrew/bin/pi -p --provider headroom-copilot \
         --model claude-opus-4.8:high --approve "$(cat <abs path to handoff file>)"
     If it has produced no output after ~90s with ~0 CPU, kill it and report
     STATUS: BLOCKED — pi stalled (0 CPU / no output).
