@@ -43,10 +43,8 @@ Currently installed through settings:
 - `npm:@tintinweb/pi-subagents` — Claude-Code-style subagent tooling package
 - `npm:@juicesharp/rpiv-advisor` — RPIV advisor package
 
-The earlier local workflow prototype is parked at
-`~/.config/pi/agent/extensions-disabled/workflow/index.ts` so it does not collide
-with RPIV commands/tools. Move it back under `extensions/` only if you want the
-local prototype instead of RPIV.
+The earlier local workflow prototype has been removed; `@juicesharp/rpiv-workflow`
+provides the active workflow commands.
 
 ## Agent worktree convention
 
@@ -62,13 +60,6 @@ They mirror the Claude-agent worktree taxonomy:
 Use branch names like `orchestrate/<YYYY-MM-DD_slug>/<slice-id>` for multi-slice
 runs, and repo-conventional prefixes such as `fix/`, `feat/`, or `chore/` for
 single-ticket work. Keep worktrees persistent until Stanley asks for cleanup.
-
-## Local runtime experiments
-
-See [`PI_RUNTIME_SCROLLBACK_FILE_MAP.md`](./PI_RUNTIME_SCROLLBACK_FILE_MAP.md)
-for the current map of direct Pi runtime edits under `/opt/homebrew` and
-`~/.config/pi/agent/npm`, including the internal scrollback patch, `/btw` overlay
-scroll fix, backups, and reproduction commands for another agent.
 
 ## Starshipline
 
