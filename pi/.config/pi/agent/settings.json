@@ -1,5 +1,5 @@
 {
- "lastChangelogVersion": "0.79.6",
+ "lastChangelogVersion": "0.80.7",
  "defaultProvider": "github-copilot",
  "defaultModel": "gpt-5.6-sol",
  "defaultThinkingLevel": "medium",
@@ -19,7 +19,13 @@
   "showTerminalProgress": true
  },
  "packages": [
-  "npm:@juicesharp/rpiv-pi",
+  {
+   "source": "npm:@juicesharp/rpiv-pi",
+   "skills": [
+    "-skills/implement/SKILL.md",
+    "-skills/research/SKILL.md"
+   ]
+  },
   "npm:@juicesharp/rpiv-todo",
   "npm:@juicesharp/rpiv-btw",
   "npm:@juicesharp/rpiv-workflow",
@@ -32,7 +38,8 @@
   "npm:pi-rewind",
   "npm:@tintinweb/pi-subagents",
   "npm:@juicesharp/rpiv-advisor",
-  "npm:context-mode"
+  "npm:context-mode",
+  "git:github.com/stanley-910/pi-talk"
  ],
  "autocompleteMaxVisible": 20,
  "enabledModels": [
