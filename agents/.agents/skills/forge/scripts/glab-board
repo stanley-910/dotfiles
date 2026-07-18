@@ -105,16 +105,21 @@ grab_label() {
 }
 
 grab_issue() {
-  local iid=$1 mode=${2:-work} lbl remove
+  local iid=$1 mode=${2:-work} lbl remove color
   read -r lbl remove <<<"$(grab_label "$mode")"
   if [[ "$FORGE" == "gitlab" ]]; then
     glab api -X PUT "projects/$ENC/issues/$iid" -f assignee_ids="$(me_id)" \
       -f add_labels="$lbl" -f remove_labels="$remove" >/dev/null
   else
-    gh label create "$lbl" -R "$PROJECT" 2>/dev/null || true
-    gh issue edit "$iid" -R "$PROJECT" --add-assignee @me --add-label "$lbl" \
-      --remove-label "${remove%%,*}" --remove-label "${remove##*,}" 2>/dev/null ||
-      gh issue edit "$iid" -R "$PROJECT" --add-assignee @me --add-label "$lbl"
+    case "$lbl" in
+    agent::working) color=1f883d ;;
+    agent::researching) color=33aaff ;;
+    agent::parked) color=f0ad4e ;;
+    esac
+    gh label create "$lbl" --color "$color" -R "$PROJECT" 2>/dev/null || true
+    gh issue edit "$iid" -R "$PROJECT" --add-assignee @me --add-label "$lbl"
+    gh issue edit "$iid" -R "$PROJECT" --remove-label "${remove%%,*}" 2>/dev/null || true
+    gh issue edit "$iid" -R "$PROJECT" --remove-label "${remove##*,}" 2>/dev/null || true
   fi
   record_issue "$iid"
   echo "grabbed #$iid (assigned, $lbl, recorded)"
@@ -467,7 +472,13 @@ frontier)
   if [[ "$FORGE" == "gitlab" ]]; then
     list_issues | awk -F' \\| ' '$2 == "blocked=False" && $3 == "asg=-"'
   else
-    gh issue list -R "$PROJECT" --state open --search "no:assignee" --limit 100
+    gh issue list -R "$PROJECT" --state open --limit 100 --json number,title,labels,assignees,blockedBy | python3 -c '
+import json, sys
+for i in json.load(sys.stdin):
+    blocked = any(b["state"] == "OPEN" for b in i["blockedBy"]["nodes"])
+    if not i["assignees"] and not blocked:
+        labels = ",".join(label["name"] for label in i["labels"])
+        print("#%s | blocked=False | asg=- | [%s] | %s" % (i["number"], labels, i["title"]))'
   fi
   ;;
 list)
@@ -495,8 +506,10 @@ park)
     glab api -X PUT "projects/$ENC/issues/$2" -f add_labels="agent::parked" -f remove_labels="agent::working,agent::researching" >/dev/null
   else
     if [[ $# -ge 3 ]]; then gh issue comment "$2" -R "$PROJECT" -b "$3"; fi
-    gh label create "agent::parked" -R "$PROJECT" 2>/dev/null || true
+    gh label create "agent::parked" --color f0ad4e -R "$PROJECT" 2>/dev/null || true
     gh issue edit "$2" -R "$PROJECT" --add-label "agent::parked" 2>/dev/null || true
+    gh issue edit "$2" -R "$PROJECT" --remove-label "agent::working" 2>/dev/null || true
+    gh issue edit "$2" -R "$PROJECT" --remove-label "agent::researching" 2>/dev/null || true
   fi
   echo "parked #$2"
   ;;
@@ -509,6 +522,9 @@ close)
     glab api -X PUT "projects/$ENC/issues/$2" -f state_event=close -f remove_labels="agent::working,agent::parked,agent::researching" >/dev/null
   else
     if [[ $# -ge 3 ]]; then gh issue comment "$2" -R "$PROJECT" -b "$3"; fi
+    gh issue edit "$2" -R "$PROJECT" --remove-label "agent::working" 2>/dev/null || true
+    gh issue edit "$2" -R "$PROJECT" --remove-label "agent::parked" 2>/dev/null || true
+    gh issue edit "$2" -R "$PROJECT" --remove-label "agent::researching" 2>/dev/null || true
     gh issue close "$2" -R "$PROJECT"
   fi
   echo "closed #$2"
@@ -518,8 +534,11 @@ mr)
   if [[ "$FORGE" == "gitlab" ]]; then create_gitlab_mr "$@"; else create_github_pr "$@"; fi
   ;;
 block)
-  [[ "$FORGE" == "gitlab" ]] || die "native blocking helper is currently GitLab-only"
+  if [[ "$FORGE" == "gitlab" ]]; then
   glab api -X POST "projects/$ENC/issues/$2/links" -f target_project_id="$(project_id)" -f target_issue_iid="$3" -f link_type=is_blocked_by >/dev/null
+  else
+    gh issue edit "$2" -R "$PROJECT" --add-blocked-by "$3" >/dev/null
+  fi
   echo "#$2 is now blocked by #$3"
   ;;
 triage)
