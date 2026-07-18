@@ -30,19 +30,19 @@ Two **category** roles:
 
 Five **state** roles:
 
-- `needs-triage` — maintainer needs to evaluate
-- `needs-info` — waiting on reporter for more information
-- `ready-for-agent` — fully specified, ready for an AFK agent
-- `ready-for-human` — needs human implementation
+- `triage::pending` — maintainer needs to evaluate
+- `triage::needs-info` — waiting on reporter for more information
+- `agent::ready` — fully specified, ready for an AFK agent
+- `agent::for-human` — needs human implementation
 - `wontfix` — will not be actioned
 
-For a PR, the same states read against the attached code: `ready-for-agent` means a brief is attached and an agent should take the next step on the diff; `ready-for-human` means it's ready for a human to merge.
+For a PR, the same states read against the attached code: `agent::ready` means a brief is attached and an agent should take the next step on the diff; `agent::for-human` means it's ready for a human to merge.
 
 Every triaged issue should carry exactly one category role and one state role. If state roles conflict, flag it and ask the maintainer before doing anything else.
 
 These are canonical role names — the actual label strings used in the issue tracker may differ. The mapping should have been provided to you - run `/forge` if not.
 
-State transitions: an unlabeled issue normally goes to `needs-triage` first; from there it moves to `needs-info`, `ready-for-agent`, `ready-for-human`, or `wontfix`. `needs-info` returns to `needs-triage` once the reporter replies. The maintainer can override at any time — flag transitions that look unusual and ask before proceeding.
+State transitions: an unlabeled issue normally goes to `triage::pending` first; from there it moves to `triage::needs-info`, `agent::ready`, `agent::for-human`, or `wontfix`. `triage::needs-info` returns to `triage::pending` once the reporter replies. The maintainer can override at any time — flag transitions that look unusual and ask before proceeding.
 
 ## Invocation
 
@@ -50,7 +50,7 @@ The maintainer invokes `/triage` and describes what they want in natural languag
 
 - "Show me anything that needs my attention"
 - "Let's look at #42" (issue or PR)
-- "Move #42 to ready-for-agent"
+- "Move #42 to agent::ready"
 - "What's ready for agents to pick up?"
 
 ## Show what needs attention
@@ -58,8 +58,8 @@ The maintainer invokes `/triage` and describes what they want in natural languag
 Query the issue tracker and present three buckets, oldest first:
 
 1. **Unlabeled** — never triaged.
-2. **`needs-triage`** — evaluation in progress.
-3. **`needs-info` with reporter activity since the last triage notes** — needs re-evaluation.
+2. **`triage::pending`** — evaluation in progress.
+3. **`triage::needs-info` with reporter activity since the last triage notes** — needs re-evaluation.
 
 When PRs are in scope, include external PRs in these buckets and tag each line `[PR]` or `[issue]`. Discovery surfaces only *external* PRs (the tracker config defines who counts as external) — a collaborator's in-flight PR is not triage work. This filter is discovery-only; an explicitly named PR is always triaged regardless of author.
 
@@ -71,23 +71,23 @@ Show counts and a one-line summary per item. Let the maintainer pick.
 
 2. **Recommend.** Tell the maintainer your category and state recommendation with reasoning, plus a brief codebase summary relevant to the request — including whether it's already implemented. Wait for direction.
 
-3. **Verify the claim.** Before any grilling, check that the claim holds up. For a bug, reproduce it from the reporter's steps. For a PR, confirm the diff does what it claims — check it out, run the relevant tests or commands. Report what happened: confirmed (with code path), failed, or insufficient detail (a strong `needs-info` signal). A confirmed verification makes a much stronger agent brief.
+3. **Verify the claim.** Before any grilling, check that the claim holds up. For a bug, reproduce it from the reporter's steps. For a PR, confirm the diff does what it claims — check it out, run the relevant tests or commands. Report what happened: confirmed (with code path), failed, or insufficient detail (a strong `triage::needs-info` signal). A confirmed verification makes a much stronger agent brief.
 
 4. **Grill (if needed).** If the request needs fleshing out, run the `/grill-with-docs` skill — grill it into shape one question at a time, sharpening domain terms and updating `CONTEXT.md`/ADRs inline as decisions land.
 
 5. **Apply the outcome:**
-   - `ready-for-agent` — post an agent brief comment ([AGENT-BRIEF.md](AGENT-BRIEF.md)).
-   - `ready-for-human` — same structure as an agent brief, but note why it can't be delegated (judgment calls, external access, design decisions, manual testing).
-   - `needs-info` — post triage notes (template below).
+   - `agent::ready` — post an agent brief comment ([AGENT-BRIEF.md](AGENT-BRIEF.md)).
+   - `agent::for-human` — same structure as an agent brief, but note why it can't be delegated (judgment calls, external access, design decisions, manual testing).
+   - `triage::needs-info` — post triage notes (template below).
    - `wontfix` — close, with the comment depending on *why*:
      - **Already implemented** — the change already exists in the codebase. Point to where it lives; do **not** write to `.out-of-scope/` (that KB is for *rejected* requests, not built ones).
      - **Rejected (bug)** — polite explanation, then close.
      - **Rejected (enhancement)** — write to `.out-of-scope/`, link to it from a comment, then close ([OUT-OF-SCOPE.md](OUT-OF-SCOPE.md)).
-   - `needs-triage` — apply the role. Optional comment if there's partial progress.
+   - `triage::pending` — apply the role. Optional comment if there's partial progress.
 
 ## Quick state override
 
-If the maintainer says "move #42 to ready-for-agent", trust them and apply the role directly. Confirm what you're about to do (role changes, comment, close), then act. Skip grilling. If moving to `ready-for-agent` without a grilling session, ask whether they want to write an agent brief.
+If the maintainer says "move #42 to agent::ready", trust them and apply the role directly. Confirm what you're about to do (role changes, comment, close), then act. Skip grilling. If moving to `agent::ready` without a grilling session, ask whether they want to write an agent brief.
 
 ## Needs-info template
 
