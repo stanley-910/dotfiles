@@ -78,6 +78,23 @@ with open(os.environ["FAKE_LOG"], "a") as f:
     f.write(json.dumps(["glab", *args]) + "\n")
 if args[:2] == ["api", "user"]:
     print(json.dumps({"id": 7}))
+elif args[:2] == ["api", "projects/group%2Fproject/boards"]:
+    print(json.dumps([{"id": 12}]))
+elif args[:2] == ["api", "projects/group%2Fproject/labels?per_page=100"]:
+    names = [
+        "triage::pending",
+        "agent::ready",
+        "agent::ready-research",
+        "agent::working",
+        "agent::researching",
+        "agent::parked",
+        "agent::mr-ready",
+        "agent::failed",
+        "agent::for-human",
+    ]
+    print(json.dumps([{"id": 101 + i, "name": name} for i, name in enumerate(names)]))
+elif args[:2] == ["api", "projects/group%2Fproject/boards/12/lists"]:
+    print(json.dumps([{"label": {"id": 104, "name": "agent::working"}}]))
 elif args and args[0] == "api" and "/issues/" in args[1] and "-X" not in args:
     iid = int(args[1].rsplit("/", 1)[-1])
     print(json.dumps({"iid": iid, "title": "Add async player card", "web_url": f"https://gitlab.example.com/group/project/-/issues/{iid}"}))
@@ -121,6 +138,60 @@ elif args[:2] == ["mr", "create"]:
 
     def calls(self) -> list[list[str]]:
         return [json.loads(line) for line in self.log.read_text().splitlines()]
+
+    def test_setup_migrates_creates_and_adds_gitlab_board_lists(self) -> None:
+        result = self.run_script("setup")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = self.calls()
+        legacy_triage = "-".join(("needs", "triage"))
+        self.assertIn(
+            [
+                "glab",
+                "api",
+                "-X",
+                "PUT",
+                "projects/group%2Fproject/labels",
+                "-f",
+                f"name={legacy_triage}",
+                "-f",
+                "new_name=triage::pending",
+            ],
+            calls,
+        )
+        create = next(
+            call
+            for call in calls
+            if call[:5]
+            == ["glab", "api", "-X", "POST", "projects/group%2Fproject/labels"]
+            and "name=agent::mr-ready" in call
+        )
+        self.assertIn("color=#6f42c1", create)
+        list_calls = [
+            call
+            for call in calls
+            if call[:5]
+            == [
+                "glab",
+                "api",
+                "-X",
+                "POST",
+                "projects/group%2Fproject/boards/12/lists",
+            ]
+        ]
+        self.assertEqual(
+            [call[-1] for call in list_calls],
+            [
+                "label_id=101",
+                "label_id=102",
+                "label_id=103",
+                "label_id=105",
+                "label_id=106",
+                "label_id=107",
+                "label_id=108",
+                "label_id=109",
+            ],
+        )
+        self.assertIn("skipped: list agent::working (already exists)", result.stdout)
 
     def test_mr_pins_current_source_and_default_target_then_verifies(self) -> None:
         result = self.run_script("mr", "--title", "Player card", "--yes")

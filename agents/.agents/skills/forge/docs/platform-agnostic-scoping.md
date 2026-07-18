@@ -1,6 +1,10 @@
 # Forge platform-agnostic scoping (GitHub + GitLab + Jira)
 
-Status: design scoping, 2026-07-18. Not yet implemented.
+Status: design scoping, 2026-07-18. Partially implemented — GitHub verb
+parity and the scoped label vocabulary landed 2026-07-18; the label names in
+this doc predate that migration. The canonical label vocabulary now lives in
+`~/EA/board-watcher/docs/label-contract.md` (ADOPTED), mirrored by
+REFERENCE.md.
 
 ## Story
 

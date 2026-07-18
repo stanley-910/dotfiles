@@ -1,38 +1,42 @@
 # Forge reference — default conventions
 
-These are the central GitLab board conventions. Repo-local tracker documents do
-not override them. When bootstrapping a new project's board, establish these
-(label creation is idempotent — 409 on re-create is fine).
+These are the central board conventions. Repo-local tracker documents do not
+override them. The canonical contract is board-watcher's
+`docs/label-contract.md`; this reference mirrors it for Forge clients.
 
 ## Label vocabulary
 
-Triage labels — every triaged issue gets exactly one category + one state:
+Every triaged issue gets exactly one category and one triage or lifecycle state:
 
-| Label             | Kind     | Meaning                                  | Color     |
-| ----------------- | -------- | ---------------------------------------- | --------- |
-| `bug`             | category | something is broken                      | `#d9534f` |
-| `enhancement`     | category | new feature / improvement                | `#5bc0de` |
-| `needs-triage`    | state    | maintainer must evaluate                 | `#f0ad4e` |
-| `needs-info`      | state    | waiting on reporter                      | `#f7e463` |
-| `ready-for-agent` | state    | fully specified, AFK-agent-grabbable     | `#5cb85c` |
-| `ready-for-human` | state    | needs a human                            | `#337ab7` |
-| `wontfix`         | state    | will not be actioned (closed)            | `#777777` |
+| Label                    | Kind      | Meaning                                  | Color     |
+| ------------------------ | --------- | ---------------------------------------- | --------- |
+| `bug`                    | category  | something is broken                      | `#d9534f` |
+| `enhancement`            | category  | new feature / improvement                | `#5bc0de` |
+| `triage::pending`        | triage    | maintainer must evaluate                 | `#f0ad4e` |
+| `triage::needs-info`     | triage    | waiting on reporter                      | `#f7e463` |
+| `agent::ready`           | trigger   | specified implementation work            | `#5cb85c` |
+| `agent::ready-research`  | trigger   | specified research work                  | `#45b39d` |
+| `agent::working`         | lifecycle | implementation run active                | `#1f883d` |
+| `agent::researching`     | lifecycle | research run active                      | `#33aaff` |
+| `agent::parked`          | lifecycle | paused or waiting on a human             | `#f0ad4e` |
+| `agent::mr-ready`        | lifecycle | done, MR opened, awaiting review         | `#6f42c1` |
+| `agent::failed`          | lifecycle | run crashed or timed out                 | `#c0392b` |
+| `agent::for-human`       | lifecycle | needs a human                            | `#337ab7` |
+| `hitl`                   | facet     | cannot proceed without the human         | `#cc0033` |
+| `wontfix`                | terminal  | will not be actioned (closed)            | `#777777` |
+| `wayfinder:map`          | wayfinder | shared investigation map                 | `#6699cc` |
+| `wayfinder:research`     | wayfinder | research ticket                          | `#33aa33` |
+| `wayfinder:prototype`    | wayfinder | prototype ticket                         | `#ff9900` |
+| `wayfinder:grilling`     | wayfinder | developer interview ticket               | `#cc3399` |
+| `wayfinder:task`         | wayfinder | implementation task                      | `#8e8e8e` |
 
-Wayfinder labels: `wayfinder:map` `#6699cc`, `:research` `#33aa33`,
-`:prototype` `#ff9900`, `:grilling` `#cc3399`, `:task` `#8e8e8e`.
+`hitl` is orthogonal to type: the ticket cannot proceed without the human. One
+query is then the human's whole queue (`-l hitl`); agent-takeable work is
+`--not -l hitl`. Mixed tickets carry it and mark steps `HITL:`/`AFK:`.
 
-Agent status labels (scoped — GitLab swaps same-scope labels automatically;
-set via `glab-board grab|park|close`, which also removes the siblings
-explicitly): `agent::working` `#1f883d`, `agent::researching` `#33aaff`,
-`agent::parked` `#f0ad4e`.
-
-`hitl` (`#cc0033`) — orthogonal to type: the ticket cannot proceed without the
-human. One query is then the human's whole queue (`-l hitl`); agent-takeable
-work is `--not -l hitl`. Mixed tickets carry it and mark steps `HITL:`/`AFK:`.
-
-```bash
-glab api -X POST "projects/$ENC/labels" -f name='wayfinder:map' -f color='#6699cc'
-```
+`glab-board setup` renames legacy labels in place and creates every contract
+label idempotently. On GitLab it also adds lifecycle columns to the default
+board; on GitHub it reports the one-time manual Projects v2 board-view step.
 
 ## Ticket body template
 
@@ -51,7 +55,7 @@ run-on paragraph. <mark steps `HITL:` / `AFK:` when mixed>
 **Detail:** <file/handoff pointer>
 ```
 
-Before applying `ready-for-agent`, turn implementation tickets into a closed
+Before applying `agent::ready`, turn implementation tickets into a closed
 execution contract:
 
 ```markdown
@@ -127,7 +131,7 @@ Create tickets first, wire blocking second (iids must exist). Resolve = post a
 
 Turning a raw notes file into issues: split into discrete observations →
 dedupe against open issues **by concept** (`glab-board list`, `--search`) →
-classify (category + state; default `needs-triage`, `ready-for-agent` only
+classify (category + state; default `triage::pending`, `agent::ready` only
 when fully specified) → create → report a table (observation → iid/URL or
 "duplicate of #N").
 

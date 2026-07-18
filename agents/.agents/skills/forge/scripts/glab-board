@@ -3,6 +3,7 @@
 # Derives the forge host and project from the cwd repo's origin remote.
 #
 # Usage:
+#   glab-board setup   bootstrap labels + board columns (idempotent)
 #   glab-board start <iid> [work|research]  create/reuse worktree + claim + record
 #   glab-board finish <iid> [--description-file <path>] [--draft] [--verify-cmd <cmd>] [--skip-verify]
 #   glab-board frontier            open + unblocked + unassigned issues
@@ -15,7 +16,7 @@
 #   glab-board close <iid> [text]  optional comment, clear agent status, close
 #   glab-board block <A> <B>       mark issue A blocked-by issue B
 #   glab-board mr [create-args]    push current branch, create/verify MR, record
-#   glab-board triage              open issues labeled needs-triage
+#   glab-board triage              open issues labeled triage::pending
 set -euo pipefail
 
 die() {
@@ -45,6 +46,108 @@ else
   command -v gh >/dev/null || die "gh not installed"
   PROJECT=$path
 fi
+
+setup_gitlab_board() {
+  local boards_json board_id labels_json lists_json lane label_id
+  local lanes=(
+    "triage::pending"
+    "agent::ready"
+    "agent::ready-research"
+    "agent::working"
+    "agent::researching"
+    "agent::parked"
+    "agent::mr-ready"
+    "agent::failed"
+    "agent::for-human"
+  )
+
+  boards_json=$(glab api "projects/$ENC/boards")
+  board_id=$(printf '%s' "$boards_json" | python3 -c 'import json,sys; boards=json.load(sys.stdin); print(boards[0]["id"] if boards else "")')
+  [[ -n "$board_id" ]] || die "project has no default board"
+
+  labels_json=$(glab api "projects/$ENC/labels?per_page=100")
+  lists_json=$(glab api "projects/$ENC/boards/$board_id/lists")
+  for lane in "${lanes[@]}"; do
+    label_id=$(printf '%s' "$labels_json" | python3 -c 'import json,sys; name=sys.argv[1]; print(next((str(label["id"]) for label in json.load(sys.stdin) if label["name"] == name), ""))' "$lane")
+    if [[ -z "$label_id" ]]; then
+      echo "skipped: list $lane (label missing)"
+    elif printf '%s' "$lists_json" | python3 -c 'import json,sys; wanted=sys.argv[1]; raise SystemExit(0 if any(str((item.get("label") or {}).get("id")) == wanted for item in json.load(sys.stdin)) else 1)' "$label_id"; then
+      echo "skipped: list $lane (already exists)"
+    elif glab api -X POST "projects/$ENC/boards/$board_id/lists" -f "label_id=$label_id" >/dev/null 2>&1; then
+      echo "list-added: $lane"
+    else
+      echo "skipped: list $lane (create failed)"
+    fi
+  done
+}
+
+setup_board() {
+  local row old new name color legacy_needs=needs legacy_ready=ready-for
+  local renames=(
+    "${legacy_needs}-triage|triage::pending"
+    "${legacy_needs}-info|triage::needs-info"
+    "${legacy_ready}-agent|agent::ready"
+    "${legacy_ready}-research|agent::ready-research"
+    "${legacy_ready}-human|agent::for-human"
+  )
+  local labels=(
+    "triage::pending|#f0ad4e"
+    "triage::needs-info|#f7e463"
+    "agent::ready|#5cb85c"
+    "agent::ready-research|#45b39d"
+    "agent::for-human|#337ab7"
+    "agent::mr-ready|#6f42c1"
+    "agent::failed|#c0392b"
+    "agent::working|#1f883d"
+    "agent::researching|#33aaff"
+    "agent::parked|#f0ad4e"
+    "bug|#d9534f"
+    "enhancement|#5bc0de"
+    "hitl|#cc0033"
+    "wontfix|#777777"
+    "wayfinder:map|#6699cc"
+    "wayfinder:research|#33aa33"
+    "wayfinder:prototype|#ff9900"
+    "wayfinder:grilling|#cc3399"
+    "wayfinder:task|#8e8e8e"
+  )
+
+  for row in "${renames[@]}"; do
+    IFS='|' read -r old new <<<"$row"
+    if [[ "$FORGE" == "gitlab" ]]; then
+      if glab api -X PUT "projects/$ENC/labels" -f "name=$old" -f "new_name=$new" >/dev/null 2>&1; then
+        echo "renamed: $old -> $new"
+      else
+        echo "skipped: rename $old -> $new"
+      fi
+    elif gh label edit "$old" --name "$new" -R "$PROJECT" 2>/dev/null; then
+      echo "renamed: $old -> $new"
+    else
+      echo "skipped: rename $old -> $new"
+    fi
+  done
+
+  for row in "${labels[@]}"; do
+    IFS='|' read -r name color <<<"$row"
+    if [[ "$FORGE" == "gitlab" ]]; then
+      if glab api -X POST "projects/$ENC/labels" -f "name=$name" -f "color=$color" >/dev/null 2>&1; then
+        echo "created: label $name"
+      else
+        echo "skipped: label $name (already exists)"
+      fi
+    elif gh label create "$name" --color "${color#\#}" -R "$PROJECT" 2>/dev/null; then
+      echo "created: label $name"
+    else
+      echo "skipped: label $name (already exists)"
+    fi
+  done
+
+  if [[ "$FORGE" == "gitlab" ]]; then
+    setup_gitlab_board
+  else
+    echo "labels bootstrapped; GitHub's API cannot create Projects v2 views; board setup is a one-time manual step (New project -> Board layout -> group by Status)."
+  fi
+}
 
 agent_link() {
   local al="$HOME/dotfiles/scripts/bin/agent-link"
@@ -457,6 +560,9 @@ finish_issue() {
 cmd=${1:-help}
 
 case "$cmd" in
+setup)
+  setup_board
+  ;;
 start)
   [[ $# -ge 2 ]] || die "usage: glab-board start <iid> [work|research] [--json]"
   mode=work; json=false
@@ -543,11 +649,11 @@ block)
   ;;
 triage)
   if [[ "$FORGE" == "gitlab" ]]; then
-    glab api "projects/$ENC/issues?state=opened&labels=needs-triage&per_page=100" | python3 -c '
+    glab api "projects/$ENC/issues?state=opened&labels=triage::pending&per_page=100" | python3 -c '
 import json, sys
 for i in json.load(sys.stdin): print("#%s | %s" % (i["iid"], i["title"]))'
   else
-    gh issue list -R "$PROJECT" --state open --label needs-triage --limit 100
+    gh issue list -R "$PROJECT" --state open --label triage::pending --limit 100
   fi
   ;;
 *)

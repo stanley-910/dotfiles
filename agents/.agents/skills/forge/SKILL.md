@@ -21,7 +21,7 @@ calls**: missing `GITLAB_HOST` and unencoded namespaces are where 404s come
 from.
 
 ```
-glab-board start <iid> [work|research] | finish <iid> [finish-options]
+glab-board setup | start <iid> [work|research] | finish <iid> [finish-options]
            | frontier | list | view <iid> | edit <iid> --description-file <path>
            | grab <iid> [work|research] | park <iid> [text]
            | note <iid> <text> | close <iid> [text]
@@ -87,14 +87,15 @@ and records it. An explicit source branch must match the checked-out branch.
 Some repos run a watcher that **dispatches agent sessions off labels**. Treat
 these as live wires, not descriptions:
 
-- `ready-for-agent` / `ready-for-research` — TRIGGER labels: applying one
+- `agent::ready` / `agent::ready-research` — TRIGGER labels: applying one
   dispatches a session. Apply only when the ticket is genuinely
   agent-runnable and fully specified; re-adding one means "run it again".
 - `agent::working` / `agent::researching` / `agent::parked` — status labels.
   Set them ONLY through `glab-board grab|park|close`, never by hand-editing
   labels; the watcher also reads and reconciles them.
-- Terminal states retire the trigger label and add `ready-for-human` (the
-  human review queue); any dispatch removes `ready-for-human`.
+- Terminal states retire the trigger label and add `agent::mr-ready` (MR
+  opened), `agent::failed` (crashed or timed out), or `agent::for-human`
+  (manual queue). Any dispatch removes the terminal status.
 
 ## Wayfinder awareness
 
@@ -110,7 +111,7 @@ child-ticket creation and GraphQL frontier queries, are in
 ## Writing issues and comments
 
 - Ticket bodies are structured, not prose: see the template in
-  [REFERENCE.md](REFERENCE.md). A `ready-for-agent` ticket must lock scope,
+  [REFERENCE.md](REFERENCE.md). An `agent::ready` ticket must lock scope,
   repository boundaries, decisions, edit sites, wire contracts, and success
   checks; it must not retain unresolved "Open questions". When a Details
   section supplies exact sites or precedents, read those before broad
