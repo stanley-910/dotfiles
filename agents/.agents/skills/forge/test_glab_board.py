@@ -109,17 +109,33 @@ elif args[:2] == ["api", "projects/group%2Fproject/boards/12/lists"]:
     print(json.dumps([{"label": {"id": 104, "name": "agent::working"}}]))
 elif args and args[0] == "api" and "/issues/" in args[1] and "-X" not in args:
     iid = int(args[1].rsplit("/", 1)[-1])
-    print(json.dumps({"iid": iid, "title": "Add async player card", "state": os.environ.get("FAKE_GITLAB_ISSUE_STATE", "opened"), "web_url": f"https://gitlab.example.com/group/project/-/issues/{iid}"}))
+    response = json.dumps({"iid": iid, "title": "Add async\nplayer card", "state": os.environ.get("FAKE_GITLAB_ISSUE_STATE", "opened"), "web_url": f"https://gitlab.example.com/group/project/-/issues/{iid}"})
+    if os.environ.get("FAKE_GITLAB_RAW_NEWLINE") == "1":
+        response = response.replace("\\n", "\n")
+    print(response)
+elif args[:4] == ["api", "-X", "POST", "projects/group%2Fproject/issues"]:
+    response = json.dumps({
+        "iid": 41,
+        "title": "first line\nsecond line",
+        "web_url": "https://gitlab.example.com/group/project/-/issues/41",
+    })
+    if os.environ.get("FAKE_GITLAB_RAW_NEWLINE") == "1":
+        response = response.replace("\\n", "\n")
+    print(response)
 elif args and args[0] == "api" and "merge_requests?" in args[1]:
     print("[]")
 elif args and args[0] == "api" and "/merge_requests/74" in args[1]:
-    print(json.dumps({
+    response = json.dumps({
         "source_branch": os.environ.get("FAKE_BRANCH", "issue-103-player-card"),
         "target_branch": "main",
         "draft": os.environ.get("FAKE_DRAFT") == "1",
         "changes_count": "4",
+        "description": "first line\nsecond line",
         "web_url": "https://gitlab.example.com/group/project/-/merge_requests/74",
-    }))
+    }, indent=2)
+    if os.environ.get("FAKE_GITLAB_RAW_NEWLINE") == "1":
+        response = response.replace("\\n", "\n")
+    print(response)
 elif args[:2] == ["mr", "create"]:
     print("https://gitlab.example.com/group/project/-/merge_requests/74")
 ''',
@@ -161,6 +177,9 @@ if args[:2] == ["issue", "view"] and "--json" in args:
     raise SystemExit(0)
 if args[:2] == ["label", "edit"]:
     raise SystemExit(1)
+if args[:4] == ["api", "-X", "POST", "repos/group/project/issues"]:
+    print(json.dumps({"number": 52, "html_url": "https://github.com/group/project/issues/52"}))
+    raise SystemExit(0)
 if args[:2] != ["api", "graphql"]:
     raise SystemExit(0)
 
@@ -308,6 +327,100 @@ else:
         }
         env.update(extra)
         return env
+
+    def test_create_gitlab_sends_fields_and_accepts_raw_newline_json(self) -> None:
+        body = self.root / "issue.md"
+        body.write_text("Issue body\nsecond line\n")
+        result = self.run_script(
+            "create",
+            "--title",
+            "Fix parser",
+            "--description-file",
+            str(body),
+            "--label",
+            "bug",
+            "--label",
+            "backend",
+            extra_env={"FAKE_GITLAB_RAW_NEWLINE": "1"},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "created #41: https://gitlab.example.com/group/project/-/issues/41\n")
+        self.assertIn(
+            [
+                "glab", "api", "-X", "POST", "projects/group%2Fproject/issues",
+                "-f", "title=Fix parser",
+                "-f", "description=Issue body\nsecond line",
+                "-f", "labels=bug,backend",
+            ],
+            self.calls(),
+        )
+        self.assertFalse((self.root / "calls.txt").exists())
+
+    def test_create_github_sends_body_and_repeated_labels(self) -> None:
+        body = self.root / "issue.md"
+        body.write_text("GitHub body\n")
+        result = self.run_script(
+            "create",
+            "--title",
+            "Fix parser",
+            "--description-file",
+            str(body),
+            "--label",
+            "bug",
+            "--label",
+            "backend",
+            extra_env=self.github_env(),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "created #52: https://github.com/group/project/issues/52\n")
+        self.assertIn(
+            [
+                "gh", "api", "-X", "POST", "repos/group/project/issues",
+                "-f", "title=Fix parser",
+                "-f", "body=GitHub body",
+                "-f", "labels[]=bug",
+                "-f", "labels[]=backend",
+            ],
+            self.calls(),
+        )
+        self.assertFalse((self.root / "calls.txt").exists())
+
+    def test_create_validates_all_arguments_before_forge_calls(self) -> None:
+        missing = self.root / "missing.md"
+        cases = [
+            ((), "create requires --title"),
+            (("--title",), "--title requires a value"),
+            (("--title", "   "), "create title must not be blank"),
+            (("--title", "Valid", "--description-file"), "--description-file requires a path"),
+            (("--title", "Valid", "--description-file", str(missing)), "description file not found"),
+            (("--title", "Valid", "--label"), "--label requires a value"),
+            (("--title", "Valid", "--label", "  "), "create label must not be blank"),
+            (("--title", "Valid", "--bogus"), "unknown create option"),
+        ]
+        for args, message in cases:
+            with self.subTest(args=args):
+                result = self.run_script("create", *args)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stderr)
+        self.assertFalse(any(call[0] in {"glab", "gh"} for call in self.calls()))
+
+    def test_show_alias_views_gitlab_issue(self) -> None:
+        result = self.run_script("show", "7")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(["glab", "issue", "view", "7", "-R", "group/project", "--comments"], self.calls())
+
+    def test_show_alias_views_github_issue(self) -> None:
+        result = self.run_script("show", "7", extra_env=self.github_env())
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(["gh", "issue", "view", "7", "-R", "group/project", "--comments"], self.calls())
+
+    def test_view_and_show_require_an_iid_before_forge_calls(self) -> None:
+        for command in ("view", "show"):
+            with self.subTest(command=command):
+                result = self.run_script(command)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("usage: glab-board view|show <iid>", result.stderr)
+        self.assertFalse(any(call[0] in {"glab", "gh"} for call in self.calls()))
 
     def test_setup_migrates_creates_and_adds_gitlab_board_lists(self) -> None:
         result = self.run_script("setup")
@@ -623,6 +736,17 @@ else:
         self.assertIn("verified MR:", result.stdout)
         self.assertIn("agent-link add mr", (self.root / "calls.txt").read_text())
 
+    def test_mr_accepts_gitlab_json_with_a_raw_newline_in_a_string(self) -> None:
+        result = self.run_script(
+            "mr",
+            "--title",
+            "Player card",
+            "--yes",
+            extra_env={"FAKE_GITLAB_RAW_NEWLINE": "1"},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("verified MR: https://gitlab.example.com/group/project/-/merge_requests/74", result.stdout)
+
     def test_mr_rejects_source_that_differs_from_current_branch(self) -> None:
         result = self.run_script("mr", "--source-branch", "wrong-branch", "--title", "Bad")
         self.assertNotEqual(result.returncode, 0)
@@ -638,6 +762,16 @@ else:
         self.assertTrue(Path(payload["worktree"]).is_dir())
         self.assertIn("grabbed #103", result.stderr)
         self.assertIn("agent-link issue", (self.root / "calls.txt").read_text())
+
+    def test_start_accepts_gitlab_issue_json_with_a_raw_newline(self) -> None:
+        result = self.run_script(
+            "start",
+            "103",
+            "--json",
+            extra_env={"FAKE_GITLAB_RAW_NEWLINE": "1"},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["branch"], "issue-103-add-async-player-card")
 
     def test_start_warns_but_excludes_dirty_shared_checkout(self) -> None:
         result = self.run_script("start", "103", "--json", extra_env={"FAKE_STATUS": " M AGENTS.md\n"})

@@ -22,7 +22,8 @@ from.
 
 ```
 glab-board setup | start <iid> [work|research] | finish <iid> [finish-options]
-           | frontier | list | view <iid> | edit <iid> --description-file <path>
+           | frontier | list | create --title TITLE [--description-file PATH] [--label LABEL ...]
+           | view|show <iid> | edit <iid> --description-file <path>
            | ready <iid> [research] | grab <iid> [work|research] | park <iid> [text]
            | note <iid> <text> | close <iid> [text]
            | block <A> <B> | mr <create-args> | triage
@@ -66,6 +67,10 @@ updates an already-open MR, while a bare
 retry preserves its existing description. `finish` never stages or commits
 files and never pushes main. Use `--draft` only when a draft is intentional;
 use `--skip-verify` only when the reason is explicit in the final reply.
+
+`glab-board create --title TITLE [--description-file PATH] [--label LABEL ...]`
+creates an issue on either platform and prints its number and URL; it does not
+record or claim the issue. `show` is an alias for `view`.
 
 `glab-board grab <iid> [work|research]` remains the lower-level claim verb for
 an already-created worktree. It assigns the issue, sets `agent::working` or

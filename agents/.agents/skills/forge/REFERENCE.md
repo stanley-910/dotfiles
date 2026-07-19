@@ -156,7 +156,8 @@ Create tickets first, wire blocking second (iids must exist). Resolve = post a
 Turning a raw notes file into issues: split into discrete observations →
 dedupe against open issues **by concept** (`glab-board list`, `--search`) →
 classify (category + state; default `triage::pending`, `agent::ready` only
-when fully specified) → create → report a table (observation → iid/URL or
+when fully specified) → create with `glab-board create --title ...` → report
+ a table (observation → iid/URL or
 "duplicate of #N").
 
 ## Recording contract (agent-link)

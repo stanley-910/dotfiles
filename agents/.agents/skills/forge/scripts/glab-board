@@ -8,7 +8,8 @@
 #   glab-board finish <iid> [--description-file <path>] [--draft] [--verify-cmd <cmd>] [--skip-verify]
 #   glab-board frontier            open + unblocked + unassigned issues
 #   glab-board list                all open issues (iid | blocked | assignee | labels | title)
-#   glab-board view <iid>          issue body + comments
+#   glab-board create --title TITLE [--description-file PATH] [--label LABEL ...]
+#   glab-board view|show <iid>     issue body + comments
 #   glab-board edit <iid> --description-file <path>
 #   glab-board grab <iid> [work|research]  assign + agent status + record
 #   glab-board ready <iid> [research]  promote to Ready / Ready-research
@@ -369,10 +370,59 @@ project_id() {
 list_issues() {
   glab api "projects/$ENC/issues?state=opened&per_page=100${1:-}" | python3 -c '
 import json, sys
-for i in sorted(json.load(sys.stdin), key=lambda x: x["iid"]):
+for i in sorted(json.load(sys.stdin, strict=False), key=lambda x: x["iid"]):
     assignee = i["assignees"][0]["username"] if i["assignees"] else "-"
     labels = ",".join(i["labels"])
     print("#%s | blocked=%s | asg=%s | [%s] | %s" % (i["iid"], i.get("blocked", False), assignee, labels, i["title"]))'
+}
+
+create_issue() {
+  local title="" description_file="" arg response parsed number url labels_csv label
+  local labels=()
+  while [[ $# -gt 0 ]]; do
+    arg=$1; shift
+    case "$arg" in
+    --title)
+      [[ $# -gt 0 && ${1:-} != --* ]] || die "--title requires a value"
+      title=$1; shift
+      ;;
+    --description-file)
+      [[ $# -gt 0 && ${1:-} != --* ]] || die "--description-file requires a path"
+      description_file=$1; shift
+      ;;
+    --label)
+      [[ $# -gt 0 && ${1:-} != --* ]] || die "--label requires a value"
+      labels+=("$1"); shift
+      ;;
+    *) die "unknown create option: $arg" ;;
+    esac
+  done
+
+  [[ -n "$title" ]] || die "create requires --title"
+  [[ "$title" =~ [^[:space:]] ]] || die "create title must not be blank"
+  [[ -z "$description_file" || -f "$description_file" ]] || die "description file not found: $description_file"
+  for label in "${labels[@]}"; do
+    [[ "$label" =~ [^[:space:]] ]] || die "create label must not be blank"
+  done
+
+  if [[ "$FORGE" == "gitlab" ]]; then
+    local gl_args=(-X POST "projects/$ENC/issues" -f "title=$title")
+    [[ -z "$description_file" ]] || gl_args+=(-f "description=$(cat "$description_file")")
+    if (( ${#labels[@]} )); then
+      labels_csv=$(IFS=,; printf '%s' "${labels[*]}")
+      gl_args+=(-f "labels=$labels_csv")
+    fi
+    response=$(glab api "${gl_args[@]}")
+    parsed=$(printf '%s' "$response" | python3 -c 'import json,sys; d=json.load(sys.stdin, strict=False); print("%s\t%s" % (d["iid"], d["web_url"]))')
+  else
+    local gh_args=(-X POST "repos/$PROJECT/issues" -f "title=$title")
+    [[ -z "$description_file" ]] || gh_args+=(-f "body=$(cat "$description_file")")
+    for label in "${labels[@]}"; do gh_args+=(-f "labels[]=$label"); done
+    response=$(gh api "${gh_args[@]}")
+    parsed=$(printf '%s' "$response" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("%s\t%s" % (d["number"], d["html_url"]))')
+  fi
+  IFS=$'\t' read -r number url <<<"$parsed"
+  printf 'created #%s: %s\n' "$number" "$url"
 }
 
 issue_json() {
@@ -384,11 +434,19 @@ issue_json() {
 }
 
 issue_title() {
-  issue_json "$1" | python3 -c 'import sys,json;print(json.load(sys.stdin)["title"])'
+  if [[ "$FORGE" == "gitlab" ]]; then
+    issue_json "$1" | python3 -c 'import sys,json;print(json.load(sys.stdin, strict=False)["title"])'
+  else
+    issue_json "$1" | python3 -c 'import sys,json;print(json.load(sys.stdin)["title"])'
+  fi
 }
 
 issue_url() {
-  issue_json "$1" | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d.get("web_url") or d["url"])'
+  if [[ "$FORGE" == "gitlab" ]]; then
+    issue_json "$1" | python3 -c 'import sys,json;d=json.load(sys.stdin, strict=False);print(d.get("web_url") or d["url"])'
+  else
+    issue_json "$1" | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d.get("web_url") or d["url"])'
+  fi
 }
 
 record_issue() {
@@ -447,7 +505,7 @@ ready_issue() {
   *) die "usage: glab-board ready <iid> [research]" ;;
   esac
   if [[ "$FORGE" == "gitlab" ]]; then
-    state=$(glab api "projects/$ENC/issues/$iid" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("state", ""))')
+    state=$(glab api "projects/$ENC/issues/$iid" | python3 -c 'import sys,json; print(json.load(sys.stdin, strict=False).get("state", ""))')
     [[ "$state" == "closed" ]] && die "issue #$iid is closed; refusing to mark ready"
     # Scoped agent::* swap is automatic; triage::* is a different scope, so remove it explicitly.
     glab api -X PUT "projects/$ENC/issues/$iid" -f add_labels="$gl_label" \
@@ -605,10 +663,10 @@ verify_gitlab_mr() {
   [[ -n "$iid" ]] || die "cannot parse merge request iid from: $url"
   local mr_json
   mr_json=$(glab api "projects/$ENC/merge_requests/$iid")
-  python3 - "$source" "$target" "$expect_draft" "$mr_json" <<'PY'
+  printf '%s' "$mr_json" | python3 -c '
 import json, sys
 source, target, expect_draft = sys.argv[1], sys.argv[2], sys.argv[3] == "true"
-mr = json.loads(sys.argv[4])
+mr = json.load(sys.stdin, strict=False)
 errors = []
 if mr.get("source_branch") != source:
     errors.append(f"source is {mr.get('source_branch')!r}, expected {source!r}")
@@ -621,7 +679,7 @@ if str(mr.get("changes_count") or "") == "0":
 if errors:
     raise SystemExit("glab-board: MR verification failed: " + "; ".join(errors))
 print(mr.get("web_url") or "")
-PY
+' "$source" "$target" "$expect_draft"
 }
 
 gitlab_mr_iid() {
@@ -632,7 +690,7 @@ ensure_gitlab_mr_state() {
   local url=$1 expect_draft=$2 iid actual_draft
   iid=$(gitlab_mr_iid "$url")
   [[ -n "$iid" ]] || die "cannot parse merge request iid from: $url"
-  actual_draft=$(glab api "projects/$ENC/merge_requests/$iid" | python3 -c 'import sys,json;print(str(bool(json.load(sys.stdin).get("draft"))).lower())')
+  actual_draft=$(glab api "projects/$ENC/merge_requests/$iid" | python3 -c 'import sys,json;print(str(bool(json.load(sys.stdin, strict=False).get("draft"))).lower())')
   [[ "$actual_draft" == "$expect_draft" ]] && return 0
   if [[ "$expect_draft" == true ]]; then
     glab mr update "$iid" -R "$PROJECT" --draft >/dev/null
@@ -759,7 +817,7 @@ finish_issue() {
   write_mr_description "$iid" "$target" "$description_file" "$verification" "$desc"
 
   if [[ "$FORGE" == "gitlab" ]]; then
-    existing_url=$(glab api "projects/$ENC/merge_requests?state=opened&source_branch=$branch&per_page=1" | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d[0]["web_url"] if d else "")')
+    existing_url=$(glab api "projects/$ENC/merge_requests?state=opened&source_branch=$branch&per_page=1" | python3 -c 'import sys,json;d=json.load(sys.stdin, strict=False);print(d[0]["web_url"] if d else "")')
     if [[ -n "$existing_url" ]]; then
       prepare_source_branch "$branch" "$target"
       if [[ -n "$description_file" ]]; then
@@ -825,7 +883,12 @@ for i in json.load(sys.stdin):
 list)
   if [[ "$FORGE" == "gitlab" ]]; then list_issues; else gh issue list -R "$PROJECT" --state open --limit 100; fi
   ;;
-view)
+create)
+  shift
+  create_issue "$@"
+  ;;
+view | show)
+  [[ $# -ge 2 && -n ${2:-} ]] || die "usage: glab-board view|show <iid>"
   if [[ "$FORGE" == "gitlab" ]]; then glab issue view "$2" -R "$PROJECT" --comments; else gh issue view "$2" -R "$PROJECT" --comments; fi
   ;;
 edit)
@@ -886,7 +949,7 @@ triage)
   if [[ "$FORGE" == "gitlab" ]]; then
     glab api "projects/$ENC/issues?state=opened&labels=triage::pending&per_page=100" | python3 -c '
 import json, sys
-for i in json.load(sys.stdin): print("#%s | %s" % (i["iid"], i["title"]))'
+for i in json.load(sys.stdin, strict=False): print("#%s | %s" % (i["iid"], i["title"]))'
   else
     gh issue list -R "$PROJECT" --state open --label triage::pending --limit 100
   fi
