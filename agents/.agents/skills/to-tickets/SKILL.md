@@ -10,6 +10,21 @@ Break a plan, spec, or conversation into a set of **tickets** — tracer-bullet 
 
 The issue tracker and triage label vocabulary should have been provided to you — run `/forge` if not.
 
+## Labels and ready states
+
+Every published ticket gets exactly one category label: `bug` or `enhancement`. Choose its ready state by deliverable:
+
+| Ticket kind | Type label | Ready state | Promotion command |
+| --- | --- | --- | --- |
+| Implementation slice that delivers a code, configuration, or documentation change | None | `agent::ready` | `glab-board ready <iid>` |
+| Research child that answers a question or completes an investigation with no code deliverable | `wayfinder:research` | `agent::ready-research` | `glab-board ready <iid> research` |
+
+A research child is fully specified only when its body states the exact question, where to look, and what its resolution comment must contain. It must leave no open questions about the assignment before promotion.
+
+The state names and transitions above are identical on both platforms; only the authority differs. On GitHub the canonical project's `Status` is the authoritative state and the sole command channel — the matching `agent::*`/`triage::*` label is a board-watcher-written shadow, never a trigger. On GitLab the label itself is authoritative. Either way, move a ticket by promoting it through `glab-board`; never hand-apply a lifecycle label.
+
+Promoting into either ready state must retire any `triage::pending` or `triage::needs-info` state on both platforms. The matching `glab-board ready` command performs that transition; do not add a ready label directly and leave the triage state behind.
+
 ## Process
 
 ### 1. Gather context
@@ -37,6 +52,8 @@ Break the work into **tracer bullet** tickets.
 
 Give each ticket its **blocking edges** — the other tickets that must complete before it can start. A ticket with no blockers can start immediately.
 
+Classify each ticket by deliverable while drafting. Most tracer-bullet slices are implementation tickets. If a child exists only to resolve a question or investigation before implementation can proceed, classify it as `wayfinder:research` and use the research ticket contract instead of inventing a build deliverable.
+
 **Wide refactors are the exception to vertical slicing.** A **wide refactor** is one mechanical change — rename a column, retype a shared symbol — whose **blast radius** fans across the whole codebase, so a single edit breaks thousands of call sites at once and no vertical slice can land green. Don't force it into a tracer bullet; sequence it as **expand–contract**. First expand: add the new form beside the old so nothing breaks. Then migrate the call sites over in batches sized by blast radius (per package, per directory), each batch its own ticket blocked by the expand, keeping CI green batch to batch because the old form still exists. Finally contract: delete the old form once no caller remains, in a ticket blocked by every migrate batch. When even the batches can't stay green alone, keep the sequence but let them share an integration branch that all block a final integrate-and-verify ticket — green is promised only there.
 
 ### 4. Quiz the user
@@ -60,7 +77,9 @@ Iterate until the user approves the breakdown.
 Publish the approved tickets. **How** depends on the tracker `/forge` onboarding discovered — the tickets are the same either way, only the shape of the blocking edges changes:
 
 - **Local files** → write one `tickets.md` in the repo root, all tickets in dependency order (blockers first), each with its "Blocked by" listing the titles it depends on. Use the file template below.
-- **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Promote each ticket to Ready with `glab-board ready <iid>` unless instructed otherwise — it writes Status on GitHub and the scoped `agent::ready` label on GitLab; never hand-apply the label. The tickets are agent-grabbable by construction.
+- **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply exactly one category label and any type label from the table above. Promote fully specified implementation tickets with `glab-board ready <iid>` and fully specified research children with `glab-board ready <iid> research`; each command selects the platform-native ready state and retires any prior triage state. Never hand-apply a lifecycle label. The tickets are agent-grabbable by construction.
+
+Do NOT promote a ticket with unresolved assignment questions. Leave it in triage until the scope and expected output are complete.
 
 Do NOT close or modify any parent issue.
 
@@ -107,6 +126,33 @@ The end-to-end behaviour this ticket makes work, from the user's perspective —
 - A reference to each blocking ticket, or "None — can start immediately".
 
 </issue-template>
+
+<research-issue-template>
+
+## Parent
+
+A reference to the parent issue or wayfinder map on the tracker.
+
+## Question
+
+The exact question or investigation this ticket resolves.
+
+## Where to look
+
+- The repositories, code areas, documents, APIs, or other primary sources to inspect.
+- Relevant constraints or known starting points.
+
+## Resolution comment must include
+
+- The direct answer and supporting evidence.
+- Links to sources or stable code references.
+- Implications and any follow-up work the parent ticket needs.
+
+## Blocked by
+
+- A reference to each blocking ticket, or "None — can start immediately".
+
+</research-issue-template>
 
 In either form, avoid specific file paths or code snippets — they go stale fast. Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits.
 

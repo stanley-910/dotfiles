@@ -28,23 +28,28 @@ Two **category** roles:
 - `bug` — something is broken
 - `enhancement` — new feature or improvement
 
-Five **state** roles:
+Six **state** roles:
 
 - `triage::pending` — maintainer needs to evaluate
 - `triage::needs-info` — waiting on reporter for more information
-- `agent::ready` — fully specified, ready for an AFK agent
+- `agent::ready` — fully specified implementation work, ready for an AFK agent
+- `agent::ready-research` — fully specified research work, ready for an AFK agent
 - `agent::for-human` — needs human implementation
 - `wontfix` — will not be actioned
 
-For a PR, the same states read against the attached code: `agent::ready` means a brief is attached and an agent should take the next step on the diff; `agent::for-human` means it's ready for a human to merge.
+Choose the ready state by deliverable. Use `agent::ready` when the ticket requires a code, configuration, or documentation change. Use `agent::ready-research` when the ticket asks a question or requests an investigation and has no code deliverable. A research ticket is fully specified only when its brief states the exact question, where to look, and what the resolution comment must contain; it must leave no open questions about the assignment.
+
+For a PR, the same states read against the attached code: `agent::ready` means a brief is attached and an agent should take the next implementation step on the diff; `agent::ready-research` means an agent should investigate a specified question about the diff without changing it; `agent::for-human` means it's ready for a human to merge.
 
 Every triaged issue should carry exactly one category role and one state role. If state roles conflict, flag it and ask the maintainer before doing anything else.
 
 These are canonical role names — the actual label strings used in the issue tracker may differ. The mapping should have been provided to you - run `/forge` if not.
 
-State transitions: an unlabeled issue normally goes to `triage::pending` first; from there it moves to `triage::needs-info`, `agent::ready`, `agent::for-human`, or `wontfix`. `triage::needs-info` returns to `triage::pending` once the reporter replies. The maintainer can override at any time — flag transitions that look unusual and ask before proceeding.
+State transitions: an unlabeled issue normally goes to `triage::pending` first; from there it moves to `triage::needs-info`, `agent::ready`, `agent::ready-research`, `agent::for-human`, or `wontfix`. `triage::needs-info` returns to `triage::pending` once the reporter replies. The maintainer can override at any time — flag transitions that look unusual and ask before proceeding.
 
 The state names and transitions above are identical on both platforms; only the authority differs. On GitHub the canonical project's `Status` is the authoritative state and the sole command channel — the matching `agent::*`/`triage::*` label is a board-watcher-written shadow, never a trigger. On GitLab the label itself is authoritative. Either way, move a ticket by promoting it through `glab-board`; never hand-apply a lifecycle label.
+
+Promoting into either ready state must retire any `triage::pending` or `triage::needs-info` state on both platforms. The matching `glab-board ready` command performs that transition; do not add a ready label directly and leave the triage state behind.
 
 ## Invocation
 
@@ -78,7 +83,8 @@ Show counts and a one-line summary per item. Let the maintainer pick.
 4. **Grill (if needed).** If the request needs fleshing out, run the `/grill-with-docs` skill — grill it into shape one question at a time, sharpening domain terms and updating `CONTEXT.md`/ADRs inline as decisions land.
 
 5. **Apply the outcome:**
-   - `agent::ready` — post the agent brief comment ([AGENT-BRIEF.md](AGENT-BRIEF.md)) first (it is the spec the agent will work from), then promote with `glab-board ready <iid>` (writes Status on GitHub, the scoped label on GitLab). Promoting is what dispatches the run, so the brief must exist before it.
+   - `agent::ready` — for implementation work, post the agent brief comment ([AGENT-BRIEF.md](AGENT-BRIEF.md)) first (it is the spec the agent will work from), then promote with `glab-board ready <iid>` (writes Status `Ready` on GitHub or the scoped `agent::ready` label on GitLab, and retires any triage state).
+   - `agent::ready-research` — for a question or investigation with no code deliverable, post the research brief first, then promote with `glab-board ready <iid> research` (writes Status `Ready-research` on GitHub or the scoped `agent::ready-research` label on GitLab, and retires any triage state). Do not promote until the brief names the question, where to look, and the required resolution comment contents.
    - `agent::for-human` — same structure as an agent brief, but note why it can't be delegated (judgment calls, external access, design decisions, manual testing).
    - `triage::needs-info` — post triage notes (template below).
    - `wontfix` — close, with the comment depending on *why*:
@@ -87,9 +93,11 @@ Show counts and a one-line summary per item. Let the maintainer pick.
      - **Rejected (enhancement)** — write to `.out-of-scope/`, link to it from a comment, then close ([OUT-OF-SCOPE.md](OUT-OF-SCOPE.md)).
    - `triage::pending` — apply the role. Optional comment if there's partial progress.
 
+Promoting is what dispatches the run, so the implementation or research brief must exist before its matching ready command.
+
 ## Quick state override
 
-If the maintainer says "move #42 to agent::ready", trust them and promote it with `glab-board ready <iid>` rather than editing the label by hand. Confirm what you're about to do (state change, comment, close), then act. Skip grilling. If moving to `agent::ready` without a grilling session, ask whether they want to write an agent brief.
+If the maintainer says "move #42 to agent::ready" or "move #42 to agent::ready-research", trust them and use the matching `glab-board ready <iid> [research]` command rather than editing the label by hand. Confirm what you're about to do (state change, comment, close), then act. Skip grilling. If moving to either ready state without a grilling session, ask whether they want to write the matching agent or research brief.
 
 ## Needs-info template
 

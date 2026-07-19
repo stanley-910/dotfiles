@@ -1,8 +1,10 @@
-# Writing Agent Briefs
+# Writing Agent and Research Briefs
 
-An agent brief is a structured comment posted on a GitHub issue or PR when it is promoted to Ready (via `glab-board ready <iid>`, which sets Status `Ready` on GitHub and the `agent::ready` label on GitLab). It is the authoritative specification that an AFK agent will work from. The original body and discussion are context — the agent brief is the contract.
+An agent brief is a structured comment posted on a GitHub issue or PR before it is promoted to a ready state. Use `glab-board ready <iid>` for implementation work; it sets Status `Ready` on GitHub and the `agent::ready` label on GitLab. Use `glab-board ready <iid> research` for a question or investigation with no code deliverable; it sets Status `Ready-research` on GitHub and the `agent::ready-research` label on GitLab. Both commands retire any prior triage state. The brief is the authoritative specification that an AFK agent will work from. The original body and discussion are context — the brief is the contract.
 
-The brief states **what the agent should do**, which stretches to both surfaces: for an issue, that's building the change from nothing; for a PR, it's what's left to do *to the existing diff* — finish it, close gaps, address review points. Same principles either way; the PR example below shows the difference.
+An implementation brief states **what the agent should build**, which stretches to both surfaces: for an issue, that's building the change from nothing; for a PR, it's what's left to do *to the existing diff* — finish it, close gaps, address review points. Same principles either way; the PR example below shows the difference.
+
+A research brief states **what the agent must answer**, where it should gather evidence, and what its resolution comment must report. Choose the ready state by that deliverable, not by how much codebase reading the agent may do: work that ends in a change is implementation; work that ends in an evidence-backed answer is research.
 
 ## Principles
 
@@ -36,7 +38,17 @@ The agent needs to know when it's done. Every agent brief must have concrete, te
 
 State what is out of scope. This prevents the agent from gold-plating or making assumptions about adjacent features.
 
-## Template
+### Research briefs have no open assignment questions
+
+A research ticket is ready only when another agent can resolve it without asking what to investigate or how to report the answer. Its brief must state:
+
+- **Question** — one precise question or investigation to resolve
+- **Where to look** — the repositories, code areas, documents, APIs, or other primary sources to inspect
+- **Resolution comment must include** — the evidence-backed answer, source links or code references, and any implications or follow-up work the parent ticket needs
+
+Unknown answers are the point of research. Unknown scope, evidence sources, or expected output mean the ticket is still `triage::needs-info`, not `agent::ready-research`.
+
+## Implementation template
 
 ```markdown
 ## Agent Brief
@@ -65,6 +77,29 @@ Be specific about edge cases and error conditions.
 **Out of scope:**
 - Thing that should NOT be changed or addressed in this issue
 - Adjacent feature that might seem related but is separate
+```
+
+## Research template
+
+```markdown
+## Research Brief
+
+**Category:** bug / enhancement
+
+**Question:**
+One precise question or investigation this ticket must resolve.
+
+**Where to look:**
+- Primary code, documentation, APIs, repositories, or other evidence sources
+- Relevant constraints or starting points
+
+**Resolution comment must include:**
+- The direct answer and supporting evidence
+- Links to sources or stable code references
+- Implications and any follow-up work the parent ticket needs
+
+**Out of scope:**
+- Adjacent questions this investigation must not expand into
 ```
 
 ## Examples
