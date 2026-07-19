@@ -16,7 +16,7 @@ The issue tracker and triage label vocabulary should have been provided to you â
 
 Check with the user that these seams match their expectations.
 
-3. Write the spec using the template below, then publish it to the project issue tracker. Apply the `agent::ready` triage label - no need for additional triage.
+3. Write the spec using the template below, then publish it to the project issue tracker. Promote it to Ready with `glab-board ready <iid>` â€” it writes Status on GitHub and the scoped `agent::ready` label on GitLab; never hand-apply the label. No need for additional triage.
 
 <spec-template>
 
