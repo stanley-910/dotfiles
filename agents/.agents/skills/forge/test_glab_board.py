@@ -395,6 +395,7 @@ else:
             (("--title", "Valid", "--description-file", str(missing)), "description file not found"),
             (("--title", "Valid", "--label"), "--label requires a value"),
             (("--title", "Valid", "--label", "  "), "create label must not be blank"),
+            (("--title", "Valid", "--label", "bug,backend"), "create label must not contain a comma"),
             (("--title", "Valid", "--bogus"), "unknown create option"),
         ]
         for args, message in cases:

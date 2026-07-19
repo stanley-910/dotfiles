@@ -403,6 +403,7 @@ create_issue() {
   [[ -z "$description_file" || -f "$description_file" ]] || die "description file not found: $description_file"
   for label in "${labels[@]}"; do
     [[ "$label" =~ [^[:space:]] ]] || die "create label must not be blank"
+    [[ "$label" != *,* ]] || die "create label must not contain a comma; pass each label with a separate --label: $label"
   done
 
   if [[ "$FORGE" == "gitlab" ]]; then
