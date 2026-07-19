@@ -3,7 +3,7 @@
 # Derives the forge host and project from the cwd repo's origin remote.
 #
 # Usage:
-#   glab-board setup   bootstrap labels + board columns (idempotent)
+#   glab-board setup [--board]   bootstrap labels (+ GitHub Projects v2 board with --board; GitLab always gets lanes) (idempotent)
 #   glab-board start <iid> [work|research]  create/reuse worktree + claim + record
 #   glab-board finish <iid> [--description-file <path>] [--draft] [--verify-cmd <cmd>] [--skip-verify]
 #   glab-board frontier            open + unblocked + unassigned issues
@@ -81,7 +81,77 @@ setup_gitlab_board() {
   done
 }
 
+setup_github_board() {
+  local owner repo viewer_id repository_id project_id project_title metadata_json create_json
+  local status_json status_field_id status_action
+  local desired_names='["Triage","Ready","Ready-research","Working","Researching","Parked","Review","Failed","For-human"]'
+
+  owner=${PROJECT%%/*}
+  repo=${PROJECT#*/}
+  project_title="$repo board"
+  metadata_json=$(gh api graphql -f query='query BootstrapProject($owner:String!,$repo:String!){viewer{id} repository(owner:$owner,name:$repo){id projectsV2(first:20){nodes{id title}}}}' -F "owner=$owner" -F "repo=$repo")
+  viewer_id=$(printf '%s' "$metadata_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["viewer"]["id"])')
+  repository_id=$(printf '%s' "$metadata_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["repository"]["id"])')
+  project_id=$(printf '%s' "$metadata_json" | python3 -c 'import json,sys; title=sys.argv[1]; projects=json.load(sys.stdin)["data"]["repository"]["projectsV2"]["nodes"]; print(next((project["id"] for project in projects if project["title"] == title), ""))' "$project_title")
+
+  if [[ -n "$project_id" ]]; then
+    echo "skipped: project $project_title (already linked)"
+  else
+    create_json=$(gh api graphql -f query='mutation CreateProject($ownerId:ID!,$title:String!){createProjectV2(input:{ownerId:$ownerId,title:$title}){projectV2{id}}}' -F "ownerId=$viewer_id" -F "title=$project_title")
+    project_id=$(printf '%s' "$create_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["createProjectV2"]["projectV2"]["id"])')
+    echo "created: project $project_title"
+    gh api graphql -f query='mutation LinkProject($projectId:ID!,$repositoryId:ID!){linkProjectV2ToRepository(input:{projectId:$projectId,repositoryId:$repositoryId}){repository{id}}}' -F "projectId=$project_id" -F "repositoryId=$repository_id" >/dev/null
+    echo "linked: project $project_title to $PROJECT"
+  fi
+
+  status_json=$(gh api graphql -f query='query ProjectStatus($projectId:ID!){node(id:$projectId){... on ProjectV2{fields(first:100){nodes{... on ProjectV2SingleSelectField{id name options{name}}}}}}}' -F "projectId=$project_id")
+  status_field_id=$(printf '%s' "$status_json" | python3 -c 'import json,sys; fields=json.load(sys.stdin)["data"]["node"]["fields"]["nodes"]; print(next((field["id"] for field in fields if field.get("name") == "Status"), ""))')
+  [[ -n "$status_field_id" ]] || die "project has no Status field"
+  status_action=$(printf '%s' "$status_json" | python3 -c 'import json,sys; desired=json.loads(sys.argv[1]); fields=json.load(sys.stdin)["data"]["node"]["fields"]["nodes"]; field=next(field for field in fields if field.get("name") == "Status"); current=[option["name"] for option in field["options"]]; defaults={"Todo", "In Progress", "Done"}; print("skip" if current == desired else "set" if set(current).issubset(defaults) else "warn")' "$desired_names")
+
+  case "$status_action" in
+  skip)
+    echo "skipped: status lanes (already set)"
+    ;;
+  set)
+    python3 - "$status_field_id" <<'PY' | gh api graphql --input - >/dev/null
+import json, sys
+options = [
+    ("Triage", "YELLOW"),
+    ("Ready", "GREEN"),
+    ("Ready-research", "GREEN"),
+    ("Working", "BLUE"),
+    ("Researching", "BLUE"),
+    ("Parked", "ORANGE"),
+    ("Review", "PURPLE"),
+    ("Failed", "RED"),
+    ("For-human", "GRAY"),
+]
+print(json.dumps({
+    "query": "mutation UpdateStatus($fieldId:ID!,$options:[ProjectV2SingleSelectFieldOptionInput!]!){updateProjectV2Field(input:{fieldId:$fieldId,singleSelectOptions:$options}){projectV2Field{... on ProjectV2SingleSelectField{id}}}}",
+    "variables": {
+        "fieldId": sys.argv[1],
+        "options": [
+            {"name": name, "color": color, "description": ""}
+            for name, color in options
+        ],
+    },
+}))
+PY
+    echo "set: status lanes (9)"
+    ;;
+  warn)
+    echo "warning: status lanes are customized; leaving them unchanged" >&2
+    ;;
+  esac
+
+  echo "manual: switch project view layout to Board (GitHub API unsupported)"
+  echo "manual: enable workflow Auto-add (is:issue is:open; GitHub API unsupported)"
+  echo "manual: enable workflow Item-added -> Status=Triage (GitHub API unsupported)"
+}
+
 setup_board() {
+  local with_board=${1:-false}
   local row old new name color legacy_needs=needs legacy_ready=ready-for
   local renames=(
     "${legacy_needs}-triage|triage::pending"
@@ -144,8 +214,10 @@ setup_board() {
 
   if [[ "$FORGE" == "gitlab" ]]; then
     setup_gitlab_board
+  elif [[ "$with_board" == true ]]; then
+    setup_github_board
   else
-    echo "labels bootstrapped; GitHub's API cannot create Projects v2 views; board setup is a one-time manual step (New project -> Board layout -> group by Status)."
+    echo "labels bootstrapped (queue-only); rerun with 'setup --board' to bootstrap a Projects v2 board"
   fi
 }
 
@@ -561,7 +633,9 @@ cmd=${1:-help}
 
 case "$cmd" in
 setup)
-  setup_board
+  board=false
+  [[ ${2:-} == --board ]] && board=true
+  setup_board "$board"
   ;;
 start)
   [[ $# -ge 2 ]] || die "usage: glab-board start <iid> [work|research] [--json]"

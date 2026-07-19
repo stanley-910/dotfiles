@@ -28,6 +28,7 @@ class GlabBoardTest(unittest.TestCase):
         agent_link.chmod(0o755)
         self._write_fake_git()
         self._write_fake_glab()
+        self._write_fake_gh()
 
     def tearDown(self) -> None:
         self.temp.cleanup()
@@ -46,7 +47,7 @@ args = sys.argv[1:]
 with open(os.environ["FAKE_LOG"], "a") as f:
     f.write(json.dumps(["git", *args]) + "\n")
 if args[:2] == ["remote", "get-url"]:
-    print("git@gitlab.example.com:group/project.git")
+    print(os.environ.get("FAKE_REMOTE", "git@gitlab.example.com:group/project.git"))
 elif args[:2] == ["branch", "--show-current"]:
     print(os.environ.get("FAKE_BRANCH", "issue-103-player-card"))
 elif args and args[0] == "symbolic-ref":
@@ -113,6 +114,82 @@ elif args[:2] == ["mr", "create"]:
 ''',
         )
 
+    def _write_fake_gh(self) -> None:
+        self._write_executable(
+            "gh",
+            r'''#!/usr/bin/env python3
+import json, os, re, sys
+args = sys.argv[1:]
+payload = {}
+if "--input" in args:
+    payload = json.load(sys.stdin)
+query = payload.get("query", "")
+if not query:
+    query = next((arg.removeprefix("query=") for arg in args if arg.startswith("query=")), "")
+match = re.search(r"\b(?:query|mutation)\s+(\w+)", query)
+operation = match.group(1) if match else ""
+call = ["gh", *args]
+if operation:
+    call.append(f"operation={operation}")
+mutation = re.search(r"\b(createProjectV2|linkProjectV2ToRepository|updateProjectV2Field)\b", query)
+if mutation:
+    call.append(f"mutation={mutation.group(1)}")
+if payload.get("variables"):
+    call.append("variables=" + json.dumps(payload["variables"], sort_keys=True))
+with open(os.environ["FAKE_LOG"], "a") as f:
+    f.write(json.dumps(call) + "\n")
+
+if args[:2] == ["label", "edit"]:
+    raise SystemExit(1)
+if args[:2] != ["api", "graphql"]:
+    raise SystemExit(0)
+
+project_state = os.environ.get("FAKE_GITHUB_PROJECT", "fresh")
+if operation == "BootstrapProject":
+    projects = []
+    if project_state in {"existing", "customized"}:
+        projects.append({"id": "PVT_existing", "title": "project board"})
+    print(json.dumps({"data": {
+        "viewer": {"id": "U_viewer"},
+        "repository": {
+            "id": "R_project",
+            "projectsV2": {"nodes": projects},
+        },
+    }}))
+elif operation == "CreateProject":
+    print(json.dumps({"data": {"createProjectV2": {"projectV2": {"id": "PVT_created"}}}}))
+elif operation == "LinkProject":
+    print(json.dumps({"data": {"linkProjectV2ToRepository": {"repository": {"id": "R_project"}}}}))
+elif operation == "ProjectStatus":
+    desired = [
+        "Triage",
+        "Ready",
+        "Ready-research",
+        "Working",
+        "Researching",
+        "Parked",
+        "Review",
+        "Failed",
+        "For-human",
+    ]
+    if project_state == "existing":
+        names = desired
+    elif project_state == "customized":
+        names = ["Backlog", "Doing", "Done"]
+    else:
+        names = ["Todo", "In Progress", "Done"]
+    print(json.dumps({"data": {"node": {"fields": {"nodes": [{
+        "id": "PVTSSF_status",
+        "name": "Status",
+        "options": [{"name": name} for name in names],
+    }]}}}}))
+elif operation == "UpdateStatus":
+    print(json.dumps({"data": {"updateProjectV2Field": {"projectV2Field": {"id": "PVTSSF_status"}}}}))
+else:
+    raise SystemExit(f"unexpected GraphQL operation: {operation}")
+''',
+        )
+
     def run_script(self, *args: str, extra_env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env.update(
@@ -123,6 +200,7 @@ elif args[:2] == ["mr", "create"]:
                 "FAKE_LOG": str(self.log),
                 "FAKE_TEXT_LOG": str(self.root / "calls.txt"),
                 "FAKE_BRANCH": "issue-103-player-card",
+                "FAKE_REMOTE": "git@gitlab.example.com:group/project.git",
             }
         )
         if extra_env:
@@ -192,6 +270,81 @@ elif args[:2] == ["mr", "create"]:
             ],
         )
         self.assertIn("skipped: list agent::working (already exists)", result.stdout)
+
+    def test_setup_github_creates_links_and_sets_fresh_project_status(self) -> None:
+        result = self.run_script(
+            "setup",
+            "--board",
+            extra_env={"FAKE_REMOTE": "git@github.com:group/project.git"},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        mutations = [
+            marker.removeprefix("mutation=")
+            for call in self.calls()
+            for marker in call
+            if marker.startswith("mutation=")
+        ]
+        self.assertEqual(
+            mutations,
+            ["createProjectV2", "linkProjectV2ToRepository", "updateProjectV2Field"],
+        )
+        update = next(call for call in self.calls() if "operation=UpdateStatus" in call)
+        variables = json.loads(next(value.removeprefix("variables=") for value in update if value.startswith("variables=")))
+        self.assertEqual(
+            [(option["name"], option["color"], option["description"]) for option in variables["options"]],
+            [
+                ("Triage", "YELLOW", ""),
+                ("Ready", "GREEN", ""),
+                ("Ready-research", "GREEN", ""),
+                ("Working", "BLUE", ""),
+                ("Researching", "BLUE", ""),
+                ("Parked", "ORANGE", ""),
+                ("Review", "PURPLE", ""),
+                ("Failed", "RED", ""),
+                ("For-human", "GRAY", ""),
+            ],
+        )
+        self.assertIn("created: project project board", result.stdout)
+        self.assertIn("linked: project project board to group/project", result.stdout)
+        self.assertIn("set: status lanes (9)", result.stdout)
+
+    def test_setup_github_default_is_queue_only(self) -> None:
+        result = self.run_script(
+            "setup",
+            extra_env={"FAKE_REMOTE": "git@github.com:group/project.git"},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("labels bootstrapped (queue-only)", result.stdout)
+        self.assertFalse(any("mutation=" in marker for call in self.calls() for marker in call))
+
+    def test_setup_github_reuses_existing_project(self) -> None:
+        result = self.run_script(
+            "setup",
+            "--board",
+            extra_env={
+                "FAKE_REMOTE": "git@github.com:group/project.git",
+                "FAKE_GITHUB_PROJECT": "existing",
+            },
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = self.calls()
+        self.assertIn("skipped: project project board (already linked)", result.stdout)
+        self.assertIn("skipped: status lanes (already set)", result.stdout)
+        self.assertFalse(any("operation=CreateProject" in call for call in calls))
+        self.assertFalse(any("operation=LinkProject" in call for call in calls))
+
+    def test_setup_github_preserves_customized_status(self) -> None:
+        result = self.run_script(
+            "setup",
+            "--board",
+            extra_env={
+                "FAKE_REMOTE": "git@github.com:group/project.git",
+                "FAKE_GITHUB_PROJECT": "customized",
+            },
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("warning: status lanes are customized; leaving them unchanged", result.stderr)
+        self.assertFalse(any("operation=UpdateStatus" in call for call in self.calls()))
 
     def test_mr_pins_current_source_and_default_target_then_verifies(self) -> None:
         result = self.run_script("mr", "--title", "Player card", "--yes")
