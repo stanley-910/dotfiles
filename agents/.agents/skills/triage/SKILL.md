@@ -44,6 +44,8 @@ These are canonical role names — the actual label strings used in the issue tr
 
 State transitions: an unlabeled issue normally goes to `triage::pending` first; from there it moves to `triage::needs-info`, `agent::ready`, `agent::for-human`, or `wontfix`. `triage::needs-info` returns to `triage::pending` once the reporter replies. The maintainer can override at any time — flag transitions that look unusual and ask before proceeding.
 
+The state names and transitions above are identical on both platforms; only the authority differs. On GitHub the canonical project's `Status` is the authoritative state and the sole command channel — the matching `agent::*`/`triage::*` label is a board-watcher-written shadow, never a trigger. On GitLab the label itself is authoritative. Either way, move a ticket by promoting it through `glab-board`; never hand-apply a lifecycle label.
+
 ## Invocation
 
 The maintainer invokes `/triage` and describes what they want in natural language. Interpret the request and act. Examples:
@@ -76,7 +78,7 @@ Show counts and a one-line summary per item. Let the maintainer pick.
 4. **Grill (if needed).** If the request needs fleshing out, run the `/grill-with-docs` skill — grill it into shape one question at a time, sharpening domain terms and updating `CONTEXT.md`/ADRs inline as decisions land.
 
 5. **Apply the outcome:**
-   - `agent::ready` — post an agent brief comment ([AGENT-BRIEF.md](AGENT-BRIEF.md)).
+   - `agent::ready` — post the agent brief comment ([AGENT-BRIEF.md](AGENT-BRIEF.md)) first (it is the spec the agent will work from), then promote with `glab-board ready <iid>` (writes Status on GitHub, the scoped label on GitLab). Promoting is what dispatches the run, so the brief must exist before it.
    - `agent::for-human` — same structure as an agent brief, but note why it can't be delegated (judgment calls, external access, design decisions, manual testing).
    - `triage::needs-info` — post triage notes (template below).
    - `wontfix` — close, with the comment depending on *why*:
@@ -87,7 +89,7 @@ Show counts and a one-line summary per item. Let the maintainer pick.
 
 ## Quick state override
 
-If the maintainer says "move #42 to agent::ready", trust them and apply the role directly. Confirm what you're about to do (role changes, comment, close), then act. Skip grilling. If moving to `agent::ready` without a grilling session, ask whether they want to write an agent brief.
+If the maintainer says "move #42 to agent::ready", trust them and promote it with `glab-board ready <iid>` rather than editing the label by hand. Confirm what you're about to do (state change, comment, close), then act. Skip grilling. If moving to `agent::ready` without a grilling session, ask whether they want to write an agent brief.
 
 ## Needs-info template
 

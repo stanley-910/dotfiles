@@ -4,6 +4,30 @@ These are the central board conventions. Repo-local tracker documents do not
 override them. The canonical contract is board-watcher's
 `docs/label-contract.md`; this reference mirrors it for Forge clients.
 
+## Authority — one vocabulary, platform-native
+
+The label names below are one shared vocabulary; which copy of the state is
+*authoritative* is platform-native:
+
+- **GitLab** — the mutually exclusive `agent::*` / `triage::*` label is the
+  authoritative open-ticket state; of these, only `agent::ready` /
+  `agent::ready-research` are watcher triggers (the other lifecycle labels are
+  status, not triggers). GitLab auto-swaps same-scope labels, so a card is in
+  exactly one lane.
+- **GitHub** — the canonical project's **Status** is the authoritative state
+  and the only lifecycle command channel. The `agent::*` / `triage::*` label
+  is a board-watcher-written shadow of the last observed Status: eventually
+  consistent and searchable for recovery, but never a command, never a
+  trigger, and not a complete transition journal. Only board-watcher writes
+  it; humans change Status by dragging in the canonical project, and agents
+  and skills change it through `glab-board` verbs. Any actor that discovers
+  work through a state-shadow label MUST re-read the canonical Status before
+  acting. Status carries an option for every open state (including
+  `Needs-info`), and exactly one corresponding shadow label may be present.
+
+`hitl`, category, `wayfinder:*`, and `wontfix` are orthogonal labels on both
+platforms; Closed is outside reconciliation.
+
 ## Label vocabulary
 
 Every triaged issue gets exactly one category and one triage or lifecycle state:
@@ -55,8 +79,8 @@ run-on paragraph. <mark steps `HITL:` / `AFK:` when mixed>
 **Detail:** <file/handoff pointer>
 ```
 
-Before applying `agent::ready`, turn implementation tickets into a closed
-execution contract:
+Before promoting a ticket to Ready with `glab-board ready <iid>`, turn
+implementation tickets into a closed execution contract:
 
 ```markdown
 ### Scope

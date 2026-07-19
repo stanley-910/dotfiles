@@ -23,7 +23,7 @@ from.
 ```
 glab-board setup | start <iid> [work|research] | finish <iid> [finish-options]
            | frontier | list | view <iid> | edit <iid> --description-file <path>
-           | grab <iid> [work|research] | park <iid> [text]
+           | ready <iid> [research] | grab <iid> [work|research] | park <iid> [text]
            | note <iid> <text> | close <iid> [text]
            | block <A> <B> | mr <create-args> | triage
 ```
@@ -84,18 +84,36 @@ and records it. An explicit source branch must match the checked-out branch.
 
 ## Label discipline (board-watcher repos)
 
-Some repos run a watcher that **dispatches agent sessions off labels**. Treat
-these as live wires, not descriptions:
+Some repos run a watcher that **dispatches agent sessions off ticket state**.
+Treat that state as a live wire, not a description — and know where the wire
+lives, because it is platform-native:
 
-- `agent::ready` / `agent::ready-research` — TRIGGER labels: applying one
-  dispatches a session. Apply only when the ticket is genuinely
-  agent-runnable and fully specified; re-adding one means "run it again".
-- `agent::working` / `agent::researching` / `agent::parked` — status labels.
-  Set them ONLY through `glab-board grab|park|close`, never by hand-editing
-  labels; the watcher also reads and reconciles them.
-- Terminal states retire the trigger label and add `agent::mr-ready` (MR
-  opened), `agent::failed` (crashed or timed out), or `agent::for-human`
-  (manual queue). Any dispatch removes the terminal status.
+- **GitLab** — the mutually exclusive `agent::*` / `triage::*` label IS the
+  authoritative state and the trigger. `agent::ready` / `agent::ready-research`
+  are the trigger labels: promoting a ticket into one dispatches a session.
+- **GitHub** — the canonical project's **Status** is the authoritative state
+  and the only lifecycle command channel; those same lanes are the `Ready` /
+  `Ready-research` Status options (the `agent::ready` / `agent::ready-research`
+  labels are their shadows, not the Status values). The `agent::*` /
+  `triage::*` label is only a board-watcher-written **shadow** of the last
+  observed Status — it triggers nothing. Any actor that discovers work through
+  a state-shadow label MUST re-read the canonical Status before acting.
+
+On both platforms change state ONLY through `glab-board` verbs, never by
+hand-applying a label:
+
+- `glab-board ready <iid> [research]` — promote to Ready / Ready-research
+  (writes Status on GitHub, the scoped trigger label on GitLab). Promote only
+  when the ticket is genuinely agent-runnable and fully specified. Dispatch
+  fires on the *transition into* Ready / Ready-research (from Triage,
+  Needs-info, Failed, or absent), so to re-run a ticket that is already there,
+  move it out and back — e.g. retry a `Failed` run by promoting it again.
+- `agent::working` / `agent::researching` / `agent::parked` — status set
+  through `glab-board grab | park | close`; the watcher also reads and
+  reconciles them.
+- Terminal states retire the trigger and add `agent::mr-ready` (MR opened),
+  `agent::failed` (crashed or timed out), or `agent::for-human` (manual
+  queue). Any dispatch removes the terminal status.
 
 ## Wayfinder awareness
 
