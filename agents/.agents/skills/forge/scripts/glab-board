@@ -11,6 +11,7 @@
 #   glab-board view <iid>          issue body + comments
 #   glab-board edit <iid> --description-file <path>
 #   glab-board grab <iid> [work|research]  assign + agent status + record
+#   glab-board ready <iid> [research]  promote to Ready / Ready-research
 #   glab-board park <iid> [text]   set agent::parked, optional comment
 #   glab-board note <iid> <text>   comment on an issue
 #   glab-board close <iid> [text]  optional comment, clear agent status, close
@@ -45,6 +46,8 @@ if [[ "$FORGE" == "gitlab" ]]; then
 else
   command -v gh >/dev/null || die "gh not installed"
   PROJECT=$path
+  owner=${PROJECT%%/*}
+  repo=${PROJECT#*/}
 fi
 
 setup_gitlab_board() {
@@ -82,19 +85,47 @@ setup_gitlab_board() {
 }
 
 setup_github_board() {
-  local owner repo viewer_id repository_id project_id project_title metadata_json create_json
-  local status_json status_field_id status_action
-  local desired_names='["Triage","Ready","Ready-research","Working","Researching","Parked","Review","Failed","For-human"]'
-
-  owner=${PROJECT%%/*}
-  repo=${PROJECT#*/}
+  local project_title viewer_id repository_id project_id create_json all_matches match_count
+  local after="" page page_matches has_next end_cursor
+  local status_json status_field_id status_body appended
+  local find_query='query FindProject($owner:String!,$repo:String!,$after:String){viewer{id} repository(owner:$owner,name:$repo){id projectsV2(first:100,after:$after){nodes{id title} pageInfo{hasNextPage endCursor}}}}'
   project_title="$repo board"
-  metadata_json=$(gh api graphql -f query='query BootstrapProject($owner:String!,$repo:String!){viewer{id} repository(owner:$owner,name:$repo){id projectsV2(first:20){nodes{id title}}}}' -F "owner=$owner" -F "repo=$repo")
-  viewer_id=$(printf '%s' "$metadata_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["viewer"]["id"])')
-  repository_id=$(printf '%s' "$metadata_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["repository"]["id"])')
-  project_id=$(printf '%s' "$metadata_json" | python3 -c 'import json,sys; title=sys.argv[1]; projects=json.load(sys.stdin)["data"]["repository"]["projectsV2"]["nodes"]; print(next((project["id"] for project in projects if project["title"] == title), ""))' "$project_title")
 
-  if [[ -n "$project_id" ]]; then
+  # Scan ALL pages (never a bounded first:N) and collect every title match so duplicates are
+  # detected rather than silently pinning an arbitrary one.
+  all_matches=""
+  while :; do
+    if [[ -n "$after" ]]; then
+      page=$(gh api graphql -f query="$find_query" -F "owner=$owner" -F "repo=$repo" -F "after=$after")
+    else
+      page=$(gh api graphql -f query="$find_query" -F "owner=$owner" -F "repo=$repo")
+    fi
+    # One value per line (empty lines preserved) so an empty match list or cursor never collapses.
+    { read -r viewer_id; read -r repository_id; read -r page_matches; read -r has_next; read -r end_cursor; } < <(printf '%s' "$page" | python3 -c '
+import json, sys
+title = sys.argv[1]
+data = json.load(sys.stdin)["data"]
+conn = data["repository"]["projectsV2"]
+matches = [n["id"] for n in conn["nodes"] if n["title"] == title]
+info = conn["pageInfo"]
+print(data["viewer"]["id"])
+print(data["repository"]["id"])
+print(",".join(matches))
+print("1" if info["hasNextPage"] else "0")
+print(info["endCursor"] or "")
+' "$project_title")
+    [[ -n "$page_matches" ]] && all_matches+="${page_matches//,/$'\n'}"$'\n'
+    [[ "$has_next" == "1" ]] || break
+    after=$end_cursor
+  done
+
+  match_count=$(printf '%s' "$all_matches" | grep -c . || true)
+  [[ -n "$match_count" ]] || match_count=0
+  project_id=""
+  if (( match_count > 1 )); then
+    die "multiple projects titled '$project_title' are linked to $PROJECT; pin the canonical one: git config forge.githubProjectId <PVT_...>"
+  elif (( match_count == 1 )); then
+    project_id=$(printf '%s' "$all_matches" | grep .)
     echo "skipped: project $project_title (already linked)"
   else
     create_json=$(gh api graphql -f query='mutation CreateProject($ownerId:ID!,$title:String!){createProjectV2(input:{ownerId:$ownerId,title:$title}){projectV2{id}}}' -F "ownerId=$viewer_id" -F "title=$project_title")
@@ -104,46 +135,43 @@ setup_github_board() {
     echo "linked: project $project_title to $PROJECT"
   fi
 
-  status_json=$(gh api graphql -f query='query ProjectStatus($projectId:ID!){node(id:$projectId){... on ProjectV2{fields(first:100){nodes{... on ProjectV2SingleSelectField{id name options{name}}}}}}}' -F "projectId=$project_id")
+  # Pin the canonical project node id per-clone (replace-all so a stale/ambiguous prior value is
+  # collapsed to exactly one); every GitHub verb reads this and fails closed without it.
+  git config --replace-all forge.githubProjectId "$project_id"
+  echo "config: forge.githubProjectId=$project_id"
+
+  status_json=$(gh api graphql -f query='query ProjectStatus($projectId:ID!){node(id:$projectId){... on ProjectV2{fields(first:100){nodes{... on ProjectV2SingleSelectField{id name options{id name color description}}}}}}}' -F "projectId=$project_id")
   status_field_id=$(printf '%s' "$status_json" | python3 -c 'import json,sys; fields=json.load(sys.stdin)["data"]["node"]["fields"]["nodes"]; print(next((field["id"] for field in fields if field.get("name") == "Status"), ""))')
   [[ -n "$status_field_id" ]] || die "project has no Status field"
-  status_action=$(printf '%s' "$status_json" | python3 -c 'import json,sys; desired=json.loads(sys.argv[1]); fields=json.load(sys.stdin)["data"]["node"]["fields"]["nodes"]; field=next(field for field in fields if field.get("name") == "Status"); current=[option["name"] for option in field["options"]]; defaults={"Todo", "In Progress", "Done"}; print("skip" if current == desired else "set" if set(current).issubset(defaults) else "warn")' "$desired_names")
 
-  case "$status_action" in
-  skip)
-    echo "skipped: status lanes (already set)"
-    ;;
-  set)
-    python3 - "$status_field_id" <<'PY' | gh api graphql --input - >/dev/null
+  # Append any missing desired options while preserving every existing option (and its card
+  # assignments) by re-sending it with its id. updateProjectV2Field replaces the whole list, so
+  # a dropped name would orphan its cards, including Closed. First stdout line = appended names,
+  # second line = the mutation body; empty output = nothing missing.
+  status_body=$(printf '%s' "$status_json" | python3 -c '
 import json, sys
-options = [
-    ("Triage", "YELLOW"),
-    ("Ready", "GREEN"),
-    ("Ready-research", "GREEN"),
-    ("Working", "BLUE"),
-    ("Researching", "BLUE"),
-    ("Parked", "ORANGE"),
-    ("Review", "PURPLE"),
-    ("Failed", "RED"),
-    ("For-human", "GRAY"),
-]
-print(json.dumps({
-    "query": "mutation UpdateStatus($fieldId:ID!,$options:[ProjectV2SingleSelectFieldOptionInput!]!){updateProjectV2Field(input:{fieldId:$fieldId,singleSelectOptions:$options}){projectV2Field{... on ProjectV2SingleSelectField{id}}}}",
-    "variables": {
-        "fieldId": sys.argv[1],
-        "options": [
-            {"name": name, "color": color, "description": ""}
-            for name, color in options
-        ],
-    },
-}))
-PY
-    echo "set: status lanes (9)"
-    ;;
-  warn)
-    echo "warning: status lanes are customized; leaving them unchanged" >&2
-    ;;
-  esac
+field_id = sys.argv[1]
+desired = [("Triage","YELLOW"),("Needs-info","YELLOW"),("Ready","GREEN"),("Ready-research","GREEN"),("Working","BLUE"),("Researching","BLUE"),("Parked","ORANGE"),("Review","PURPLE"),("Failed","RED"),("For-human","GRAY")]
+fields = json.load(sys.stdin)["data"]["node"]["fields"]["nodes"]
+field = next(f for f in fields if f.get("name") == "Status")
+existing = field["options"]
+existing_names = [o["name"] for o in existing]
+missing = [(n, c) for n, c in desired if n not in existing_names]
+if not missing:
+    raise SystemExit(0)
+options = [{"id": o["id"], "name": o["name"], "color": o["color"], "description": o.get("description") or ""} for o in existing]
+options += [{"name": n, "color": c, "description": ""} for n, c in missing]
+print(",".join(n for n, _ in missing))
+print(json.dumps({"query": "mutation UpdateStatus($fieldId:ID!,$options:[ProjectV2SingleSelectFieldOptionInput!]!){updateProjectV2Field(input:{fieldId:$fieldId,singleSelectOptions:$options}){projectV2Field{... on ProjectV2SingleSelectField{id}}}}", "variables": {"fieldId": field_id, "options": options}}))
+' "$status_field_id")
+
+  if [[ -z "$status_body" ]]; then
+    echo "skipped: status lanes (already present)"
+  else
+    appended=$(printf '%s\n' "$status_body" | sed -n '1p')
+    printf '%s\n' "$status_body" | sed -n '2,$p' | gh api graphql --input - >/dev/null
+    echo "appended: status lanes ($appended)"
+  fi
 
   echo "manual: switch project view layout to Board (GitHub API unsupported)"
   echo "manual: enable workflow Auto-add (is:issue is:open; GitHub API unsupported)"
@@ -152,12 +180,96 @@ PY
 
 AGENT_LABELS=(agent::ready agent::ready-research agent::working agent::researching agent::parked agent::mr-ready agent::failed agent::for-human)
 
-gh_clear_agent_labels() { # <iid> [keep]
-  local l
-  for l in "${AGENT_LABELS[@]}"; do
-    [[ "$l" == "${2:-}" ]] && continue
-    gh issue edit "$1" -R "$PROJECT" --remove-label "$l" 2>/dev/null || true
+# --- GitHub canonical-project Status helpers ------------------------------------------------
+# The canonical Projects v2 board's Status is authoritative on GitHub; lifecycle labels there are
+# a watcher-owned shadow that glab-board never writes.
+
+gh_project_id() { # echo the pinned canonical project node id, or die (fail closed on absent/ambiguous)
+  local ids count
+  ids=$(git config --get-all forge.githubProjectId 2>/dev/null || true)
+  [[ -n "$ids" ]] || die "GitHub canonical project unset; run 'glab-board setup --board' first"
+  count=$(printf '%s\n' "$ids" | grep -c . || true)
+  [[ "$count" == "1" ]] || die "forge.githubProjectId is ambiguous ($count values); pin one: git config --replace-all forge.githubProjectId <PVT_...>"
+  [[ "$ids" == PVT_* ]] || die "forge.githubProjectId '$ids' is not a project node id; run 'glab-board setup --board'"
+  printf '%s' "$ids"
+}
+
+gh_item_status() { # <item_id> -> Status option name ("" when unset)
+  gh api graphql -f query='query ItemStatus($itemId:ID!){node(id:$itemId){... on ProjectV2Item{fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}' -F "itemId=$1" \
+    | python3 -c 'import json,sys; v=json.load(sys.stdin)["data"]["node"]["fieldValueByName"]; print((v or {}).get("name") or "")'
+}
+
+# gh_set_status <iid> <status-name>: resolve everything per call, fail closed, fence the
+# Item-added->Triage workflow when we add the item, then write and verify by read-back.
+gh_set_status() {
+  local iid=$1 status=$2 pid issue_id issue_state item_id
+  local fields_json field_id option_id readback attempt current observed
+  local after="" page has_next end_cursor
+  local fence_attempts=${GLAB_BOARD_FENCE_ATTEMPTS:-30}
+  local fence_interval=${GLAB_BOARD_FENCE_INTERVAL:-1}
+  pid=$(gh_project_id)
+
+  # Resolve the issue node id, state, and whether it already has an item in the canonical
+  # project — paginating associations so a canonical item on a later page is never missed.
+  issue_id=""; issue_state=""; item_id=""
+  while :; do
+    if [[ -n "$after" ]]; then
+      page=$(gh api graphql -f query='query IssueItem($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){issue(number:$number){id state projectItems(first:100,after:$after){nodes{id project{id}} pageInfo{hasNextPage endCursor}}}}}' -F "owner=$owner" -F "repo=$repo" -F "number=$iid" -F "after=$after")
+    else
+      page=$(gh api graphql -f query='query IssueItem($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){issue(number:$number){id state projectItems(first:100,after:$after){nodes{id project{id}} pageInfo{hasNextPage endCursor}}}}}' -F "owner=$owner" -F "repo=$repo" -F "number=$iid")
+    fi
+    { read -r issue_id; read -r issue_state; read -r item_id; read -r has_next; read -r end_cursor; } < <(printf '%s' "$page" | python3 -c '
+import json, sys
+pid = sys.argv[1]
+issue = json.load(sys.stdin)["data"]["repository"]["issue"]
+conn = issue["projectItems"]
+item = next((it["id"] for it in conn["nodes"] if (it.get("project") or {}).get("id") == pid), "")
+info = conn["pageInfo"]
+print(issue["id"])
+print(issue["state"])
+print(item)
+print("1" if info["hasNextPage"] else "0")
+print(info["endCursor"] or "")
+' "$pid")
+    [[ -n "$item_id" || "$has_next" != "1" ]] && break
+    after=$end_cursor
   done
+  [[ "$issue_state" == "CLOSED" ]] && die "issue #$iid is closed; refusing to set Status"
+
+  fields_json=$(gh api graphql -f query='query ProjectFields($projectId:ID!){node(id:$projectId){... on ProjectV2{fields(first:100){nodes{... on ProjectV2SingleSelectField{id name options{id name}}}}}}}' -F "projectId=$pid")
+  read -r field_id option_id <<<"$(printf '%s' "$fields_json" | python3 -c '
+import json, sys
+status = sys.argv[1]
+fields = json.load(sys.stdin)["data"]["node"]["fields"]["nodes"]
+field = next((f for f in fields if f.get("name") == "Status"), None)
+if not field:
+    sys.exit(1)
+opt = next((o for o in field["options"] if o["name"] == status), None)
+if not opt:
+    sys.exit(2)
+print(field["id"], opt["id"])
+' "$status")"
+  [[ -n "$field_id" && -n "$option_id" ]] || die "Status option '$status' not found in canonical project"
+
+  if [[ -z "$item_id" ]]; then
+    item_id=$(gh api graphql -f query='mutation AddItem($projectId:ID!,$contentId:ID!){addProjectV2ItemById(input:{projectId:$projectId,contentId:$contentId}){item{id}}}' -F "projectId=$pid" -F "contentId=$issue_id" \
+      | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["addProjectV2ItemById"]["item"]["id"])')
+    # Fence the Item-added->Triage workflow: wait until it lands a Status, else it would clobber
+    # our write. Fail closed on timeout rather than racing an unfenced write.
+    observed=false
+    attempt=0
+    while (( attempt < fence_attempts )); do
+      current=$(gh_item_status "$item_id")
+      [[ -n "$current" ]] && { observed=true; break; }
+      attempt=$((attempt + 1))
+      sleep "$fence_interval"
+    done
+    [[ "$observed" == true ]] || die "Item-added->Triage workflow set no Status for #$iid within timeout; refusing to write (enable the workflow or retry)"
+  fi
+
+  gh api graphql -f query='mutation SetStatus($projectId:ID!,$itemId:ID!,$fieldId:ID!,$optionId:String!){updateProjectV2ItemFieldValue(input:{projectId:$projectId,itemId:$itemId,fieldId:$fieldId,value:{singleSelectOptionId:$optionId}}){projectV2Item{id}}}' -F "projectId=$pid" -F "itemId=$item_id" -F "fieldId=$field_id" -F "optionId=$option_id" >/dev/null
+  readback=$(gh_item_status "$item_id")
+  [[ "$readback" == "$status" ]] || die "Status read-back mismatch for #$iid: wanted '$status', got '${readback:-<null>}'"
 }
 
 gl_agent_labels_csv() { # [keep]
@@ -298,24 +410,53 @@ grab_label() {
   esac
 }
 
+grab_status() {
+  case "${1:-work}" in
+  work | implement) echo "Working" ;;
+  research) echo "Researching" ;;
+  *) die "grab mode must be work or research" ;;
+  esac
+}
+
 grab_issue() {
-  local iid=$1 mode=${2:-work} lbl remove color
-  read -r lbl remove <<<"$(grab_label "$mode")"
+  local iid=$1 mode=${2:-work}
   if [[ "$FORGE" == "gitlab" ]]; then
+    local lbl remove
+    read -r lbl remove <<<"$(grab_label "$mode")"
     glab api -X PUT "projects/$ENC/issues/$iid" -f assignee_ids="$(me_id)" \
       -f add_labels="$lbl" -f remove_labels="$remove" >/dev/null
+    record_issue "$iid"
+    echo "grabbed #$iid (assigned, $lbl, recorded)"
   else
-    case "$lbl" in
-    agent::working) color=1f883d ;;
-    agent::researching) color=33aaff ;;
-    agent::parked) color=f0ad4e ;;
-    esac
-    gh label create "$lbl" --color "$color" -R "$PROJECT" 2>/dev/null || true
-    gh issue edit "$iid" -R "$PROJECT" --add-assignee @me --add-label "$lbl"
-    gh_clear_agent_labels "$iid" "$lbl"
+    # GitHub: Status is authoritative; write it FIRST (fails closed on unset config / closed
+    # issue), then assign the human claim. Write NO lifecycle labels.
+    local status
+    status=$(grab_status "$mode")
+    gh_set_status "$iid" "$status"
+    gh issue edit "$iid" -R "$PROJECT" --add-assignee @me >/dev/null
+    record_issue "$iid"
+    echo "grabbed #$iid (assigned, Status=$status, recorded)"
+  fi
+}
+
+ready_issue() {
+  local iid=$1 mode=${2:-} status gl_label state
+  case "$mode" in
+  "") status=Ready; gl_label=agent::ready ;;
+  research) status=Ready-research; gl_label=agent::ready-research ;;
+  *) die "usage: glab-board ready <iid> [research]" ;;
+  esac
+  if [[ "$FORGE" == "gitlab" ]]; then
+    state=$(glab api "projects/$ENC/issues/$iid" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("state", ""))')
+    [[ "$state" == "closed" ]] && die "issue #$iid is closed; refusing to mark ready"
+    # Scoped agent::* swap is automatic; triage::* is a different scope, so remove it explicitly.
+    glab api -X PUT "projects/$ENC/issues/$iid" -f add_labels="$gl_label" \
+      -f remove_labels="triage::pending,triage::needs-info" >/dev/null
+  else
+    gh_set_status "$iid" "$status"
   fi
   record_issue "$iid"
-  echo "grabbed #$iid (assigned, $lbl, recorded)"
+  echo "ready #$iid ($status)"
 }
 
 default_remote_ref() {
@@ -387,6 +528,8 @@ start_issue() {
   local iid=$1 mode=${2:-work} json=${3:-false}
   [[ "$iid" =~ ^[0-9]+$ ]] || die "start requires a numeric issue iid"
   [[ "$mode" == work || "$mode" == research ]] || die "start mode must be work or research"
+  # Fail closed before any worktree side effect: on GitHub the claim needs the pinned project id.
+  [[ "$FORGE" != "github" ]] || gh_project_id >/dev/null
 
   local title slug branch base existing root project_name run_slug worktree
   title=$(issue_title "$iid")
@@ -698,15 +841,18 @@ edit)
 grab)
   grab_issue "$2" "${3:-work}"
   ;;
+ready)
+  [[ $# -ge 2 ]] || die "usage: glab-board ready <iid> [research]"
+  ready_issue "$2" "${3:-}"
+  ;;
 park)
   if [[ "$FORGE" == "gitlab" ]]; then
     if [[ $# -ge 3 ]]; then glab issue note "$2" -R "$PROJECT" -m "$3"; fi
     glab api -X PUT "projects/$ENC/issues/$2" -f add_labels="agent::parked" -f remove_labels="$(gl_agent_labels_csv agent::parked)" >/dev/null
   else
+    # Write Status first (fails closed) before any comment side effect.
+    gh_set_status "$2" "Parked"
     if [[ $# -ge 3 ]]; then gh issue comment "$2" -R "$PROJECT" -b "$3"; fi
-    gh label create "agent::parked" --color f0ad4e -R "$PROJECT" 2>/dev/null || true
-    gh issue edit "$2" -R "$PROJECT" --add-label "agent::parked" 2>/dev/null || true
-    gh_clear_agent_labels "$2" "agent::parked"
   fi
   echo "parked #$2"
   ;;
@@ -719,7 +865,7 @@ close)
     glab api -X PUT "projects/$ENC/issues/$2" -f state_event=close -f remove_labels="$(gl_agent_labels_csv)" >/dev/null
   else
     if [[ $# -ge 3 ]]; then gh issue comment "$2" -R "$PROJECT" -b "$3"; fi
-    gh_clear_agent_labels "$2"
+    # Status left alone: Closed is Stanley's project workflow, outside reconciliation.
     gh issue close "$2" -R "$PROJECT"
   fi
   echo "closed #$2"

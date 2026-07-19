@@ -64,6 +64,17 @@ elif args[:2] == ["worktree", "add"]:
     # Last two arguments are destination and start point.
     destination = pathlib.Path(args[-2])
     destination.mkdir(parents=True, exist_ok=True)
+elif args[0] == "config" and "forge.githubProjectId" in args:
+    key_index = args.index("forge.githubProjectId")
+    if key_index < len(args) - 1:
+        pass  # a value follows the key -> write form: log and succeed
+    else:
+        # read form (git config [--get-all] forge.githubProjectId); comma splits multiple values
+        value = os.environ.get("FAKE_GITHUB_PROJECT_ID", "")
+        if not value:
+            raise SystemExit(1)  # unset key exits non-zero, like real git
+        for one in value.split(","):
+            print(one)
 elif args and args[0] == "show-ref":
     raise SystemExit(1)
 ''',
@@ -98,7 +109,7 @@ elif args[:2] == ["api", "projects/group%2Fproject/boards/12/lists"]:
     print(json.dumps([{"label": {"id": 104, "name": "agent::working"}}]))
 elif args and args[0] == "api" and "/issues/" in args[1] and "-X" not in args:
     iid = int(args[1].rsplit("/", 1)[-1])
-    print(json.dumps({"iid": iid, "title": "Add async player card", "web_url": f"https://gitlab.example.com/group/project/-/issues/{iid}"}))
+    print(json.dumps({"iid": iid, "title": "Add async player card", "state": os.environ.get("FAKE_GITLAB_ISSUE_STATE", "opened"), "web_url": f"https://gitlab.example.com/group/project/-/issues/{iid}"}))
 elif args and args[0] == "api" and "merge_requests?" in args[1]:
     print("[]")
 elif args and args[0] == "api" and "/merge_requests/74" in args[1]:
@@ -128,6 +139,12 @@ if not query:
     query = next((arg.removeprefix("query=") for arg in args if arg.startswith("query=")), "")
 match = re.search(r"\b(?:query|mutation)\s+(\w+)", query)
 operation = match.group(1) if match else ""
+# Variables passed on argv via -f/-F key=value (item mutations use these, not --input).
+fargs = {}
+for i, a in enumerate(args):
+    if a in ("-f", "-F") and i + 1 < len(args) and "=" in args[i + 1]:
+        k, v = args[i + 1].split("=", 1)
+        fargs[k] = v
 call = ["gh", *args]
 if operation:
     call.append(f"operation={operation}")
@@ -139,52 +156,109 @@ if payload.get("variables"):
 with open(os.environ["FAKE_LOG"], "a") as f:
     f.write(json.dumps(call) + "\n")
 
+if args[:2] == ["issue", "view"] and "--json" in args:
+    print(json.dumps({"number": int(args[2]), "title": "Add async player card", "url": f"https://github.com/group/project/issues/{args[2]}"}))
+    raise SystemExit(0)
 if args[:2] == ["label", "edit"]:
     raise SystemExit(1)
 if args[:2] != ["api", "graphql"]:
     raise SystemExit(0)
 
+OPTION_IDS = {
+    "Triage": "OPT_triage", "Needs-info": "OPT_needsinfo", "Ready": "OPT_ready",
+    "Ready-research": "OPT_readyresearch", "Working": "OPT_working",
+    "Researching": "OPT_researching", "Parked": "OPT_parked", "Review": "OPT_review",
+    "Failed": "OPT_failed", "For-human": "OPT_forhuman", "Closed": "OPT_closed",
+}
+OPTION_NAMES = {v: k for k, v in OPTION_IDS.items()}
+COLORS = {
+    "Triage": "YELLOW", "Needs-info": "YELLOW", "Ready": "GREEN", "Ready-research": "GREEN",
+    "Working": "BLUE", "Researching": "BLUE", "Parked": "ORANGE", "Review": "PURPLE",
+    "Failed": "RED", "For-human": "GRAY", "Closed": "PINK",
+    "Todo": "GRAY", "In Progress": "BLUE", "Done": "GREEN",
+}
+
+
+def options(names):
+    return [{"id": f"OPT_{n}", "name": n, "color": COLORS.get(n, "GRAY"), "description": ""} for n in names]
+
+
 project_state = os.environ.get("FAKE_GITHUB_PROJECT", "fresh")
-if operation == "BootstrapProject":
-    projects = []
-    if project_state in {"existing", "customized"}:
-        projects.append({"id": "PVT_existing", "title": "project board"})
-    print(json.dumps({"data": {
-        "viewer": {"id": "U_viewer"},
-        "repository": {
-            "id": "R_project",
-            "projectsV2": {"nodes": projects},
-        },
-    }}))
+canonical = os.environ.get("FAKE_GITHUB_PROJECT_ID", "PVT_canonical")
+state_path = os.environ.get("FAKE_GH_STATE", "")
+
+if operation == "FindProject":
+    after = fargs.get("after")
+    if project_state == "paged":
+        if not after:
+            page = {"nodes": [{"id": "PVT_unrelated", "title": "some other board"}], "pageInfo": {"hasNextPage": True, "endCursor": "CURSOR1"}}
+        else:
+            page = {"nodes": [{"id": "PVT_paged", "title": "project board"}], "pageInfo": {"hasNextPage": False, "endCursor": "CURSOR2"}}
+    elif project_state == "dup":
+        nodes = [{"id": "PVT_one", "title": "project board"}, {"id": "PVT_two", "title": "project board"}]
+        page = {"nodes": nodes, "pageInfo": {"hasNextPage": False, "endCursor": None}}
+    else:
+        nodes = [{"id": "PVT_existing", "title": "project board"}] if project_state in {"liveboard", "complete", "reuse"} else []
+        page = {"nodes": nodes, "pageInfo": {"hasNextPage": False, "endCursor": None}}
+    print(json.dumps({"data": {"viewer": {"id": "U_viewer"}, "repository": {"id": "R_project", "projectsV2": page}}}))
 elif operation == "CreateProject":
     print(json.dumps({"data": {"createProjectV2": {"projectV2": {"id": "PVT_created"}}}}))
 elif operation == "LinkProject":
     print(json.dumps({"data": {"linkProjectV2ToRepository": {"repository": {"id": "R_project"}}}}))
 elif operation == "ProjectStatus":
-    desired = [
-        "Triage",
-        "Ready",
-        "Ready-research",
-        "Working",
-        "Researching",
-        "Parked",
-        "Review",
-        "Failed",
-        "For-human",
-    ]
-    if project_state == "existing":
-        names = desired
-    elif project_state == "customized":
-        names = ["Backlog", "Doing", "Done"]
+    new_desired = ["Triage", "Needs-info", "Ready", "Ready-research", "Working", "Researching", "Parked", "Review", "Failed", "For-human"]
+    old_lanes = ["Triage", "Ready", "Ready-research", "Working", "Researching", "Parked", "Review", "Failed", "For-human"]
+    if project_state == "complete":
+        names = new_desired
+    elif project_state == "liveboard":
+        names = old_lanes + ["Closed"]
     else:
         names = ["Todo", "In Progress", "Done"]
-    print(json.dumps({"data": {"node": {"fields": {"nodes": [{
-        "id": "PVTSSF_status",
-        "name": "Status",
-        "options": [{"name": name} for name in names],
-    }]}}}}))
+    print(json.dumps({"data": {"node": {"fields": {"nodes": [{"id": "PVTSSF_status", "name": "Status", "options": options(names)}]}}}}))
 elif operation == "UpdateStatus":
     print(json.dumps({"data": {"updateProjectV2Field": {"projectV2Field": {"id": "PVTSSF_status"}}}}))
+elif operation == "IssueItem":
+    after = fargs.get("after")
+    issue_state = os.environ.get("FAKE_ISSUE_STATE", "OPEN")
+    exists = os.environ.get("FAKE_ITEM_EXISTS", "0")
+    if exists == "page2":
+        # Canonical item only on the second page of associations.
+        if not after:
+            page = {"nodes": [{"id": "PVTI_other", "project": {"id": "PVT_someoneelse"}}], "pageInfo": {"hasNextPage": True, "endCursor": "ICURSOR1"}}
+        else:
+            page = {"nodes": [{"id": "PVTI_item", "project": {"id": canonical}}], "pageInfo": {"hasNextPage": False, "endCursor": "ICURSOR2"}}
+    elif exists == "1":
+        page = {"nodes": [{"id": "PVTI_item", "project": {"id": canonical}}], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+    else:
+        page = {"nodes": [], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+    print(json.dumps({"data": {"repository": {"issue": {"id": "I_issue", "state": issue_state, "projectItems": page}}}}))
+elif operation == "ProjectFields":
+    print(json.dumps({"data": {"node": {"fields": {"nodes": [{"id": "PVTSSF_status", "name": "Status", "options": [{"id": v, "name": k} for k, v in OPTION_IDS.items()]}]}}}}))
+elif operation == "AddItem":
+    print(json.dumps({"data": {"addProjectV2ItemById": {"item": {"id": "PVTI_added"}}}}))
+elif operation == "SetStatus":
+    name = OPTION_NAMES.get(fargs.get("optionId", ""), "")
+    if state_path:
+        json.dump({"set": name}, open(state_path, "w"))
+    print(json.dumps({"data": {"updateProjectV2ItemFieldValue": {"projectV2Item": {"id": fargs.get("itemId", "")}}}}))
+elif operation == "ItemStatus":
+    st = {}
+    if state_path and os.path.exists(state_path):
+        st = json.load(open(state_path))
+    if "set" in st:
+        # Read-back returns what we set, unless a mismatch is being simulated.
+        name = "Failed" if os.environ.get("FAKE_READBACK_WRONG") == "1" else st["set"]
+        print(json.dumps({"data": {"node": {"fieldValueByName": {"name": name}}}}))
+    else:
+        polls = st.get("polls", 0) + 1
+        st["polls"] = polls
+        if state_path:
+            json.dump(st, open(state_path, "w"))
+        nulls = int(os.environ.get("FAKE_FENCE_NULLS", "1"))
+        if polls <= nulls:
+            print(json.dumps({"data": {"node": {"fieldValueByName": None}}}))
+        else:
+            print(json.dumps({"data": {"node": {"fieldValueByName": {"name": "Triage"}}}}))
 else:
     raise SystemExit(f"unexpected GraphQL operation: {operation}")
 ''',
@@ -199,6 +273,7 @@ else:
                 "WORKTREE_ROOT": str(self.root / "worktrees"),
                 "FAKE_LOG": str(self.log),
                 "FAKE_TEXT_LOG": str(self.root / "calls.txt"),
+                "FAKE_GH_STATE": str(self.root / "gh_state.json"),
                 "FAKE_BRANCH": "issue-103-player-card",
                 "FAKE_REMOTE": "git@gitlab.example.com:group/project.git",
             }
@@ -216,6 +291,23 @@ else:
 
     def calls(self) -> list[list[str]]:
         return [json.loads(line) for line in self.log.read_text().splitlines()]
+
+    def gh_ops(self) -> list[str]:
+        return [
+            marker.removeprefix("operation=")
+            for call in self.calls()
+            for marker in call
+            if marker.startswith("operation=")
+        ]
+
+    def github_env(self, **extra: str) -> dict[str, str]:
+        env = {
+            "FAKE_REMOTE": "git@github.com:group/project.git",
+            "FAKE_GITHUB_PROJECT_ID": "PVT_canonical",
+            "GLAB_BOARD_FENCE_INTERVAL": "0",
+        }
+        env.update(extra)
+        return env
 
     def test_setup_migrates_creates_and_adds_gitlab_board_lists(self) -> None:
         result = self.run_script("setup")
@@ -271,12 +363,8 @@ else:
         )
         self.assertIn("skipped: list agent::working (already exists)", result.stdout)
 
-    def test_setup_github_creates_links_and_sets_fresh_project_status(self) -> None:
-        result = self.run_script(
-            "setup",
-            "--board",
-            extra_env={"FAKE_REMOTE": "git@github.com:group/project.git"},
-        )
+    def test_setup_github_creates_links_pins_id_and_appends_status(self) -> None:
+        result = self.run_script("setup", "--board", extra_env=self.github_env())
         self.assertEqual(result.returncode, 0, result.stderr)
         mutations = [
             marker.removeprefix("mutation=")
@@ -288,25 +376,25 @@ else:
             mutations,
             ["createProjectV2", "linkProjectV2ToRepository", "updateProjectV2Field"],
         )
+        # The freshly created project's node id is pinned to git config.
+        self.assertIn(["git", "config", "--replace-all", "forge.githubProjectId", "PVT_created"], self.calls())
         update = next(call for call in self.calls() if "operation=UpdateStatus" in call)
         variables = json.loads(next(value.removeprefix("variables=") for value in update if value.startswith("variables=")))
+        names = [option["name"] for option in variables["options"]]
+        # Never drop an existing option: GitHub's placeholder defaults are preserved (re-sent with id).
+        self.assertEqual(names[:3], ["Todo", "In Progress", "Done"])
+        for option in variables["options"][:3]:
+            self.assertTrue(option["id"])
+        # All ten desired options are appended (without ids -> newly created), Needs-info included.
         self.assertEqual(
-            [(option["name"], option["color"], option["description"]) for option in variables["options"]],
-            [
-                ("Triage", "YELLOW", ""),
-                ("Ready", "GREEN", ""),
-                ("Ready-research", "GREEN", ""),
-                ("Working", "BLUE", ""),
-                ("Researching", "BLUE", ""),
-                ("Parked", "ORANGE", ""),
-                ("Review", "PURPLE", ""),
-                ("Failed", "RED", ""),
-                ("For-human", "GRAY", ""),
-            ],
+            names[3:],
+            ["Triage", "Needs-info", "Ready", "Ready-research", "Working", "Researching", "Parked", "Review", "Failed", "For-human"],
         )
+        for option in variables["options"][3:]:
+            self.assertNotIn("id", option)
         self.assertIn("created: project project board", result.stdout)
         self.assertIn("linked: project project board to group/project", result.stdout)
-        self.assertIn("set: status lanes (9)", result.stdout)
+        self.assertIn("config: forge.githubProjectId=PVT_created", result.stdout)
 
     def test_setup_github_default_is_queue_only(self) -> None:
         result = self.run_script(
@@ -318,59 +406,189 @@ else:
         self.assertFalse(any("mutation=" in marker for call in self.calls() for marker in call))
 
     def test_setup_github_reuses_existing_project(self) -> None:
-        result = self.run_script(
-            "setup",
-            "--board",
-            extra_env={
-                "FAKE_REMOTE": "git@github.com:group/project.git",
-                "FAKE_GITHUB_PROJECT": "existing",
-            },
-        )
+        result = self.run_script("setup", "--board", extra_env=self.github_env(FAKE_GITHUB_PROJECT="complete"))
         self.assertEqual(result.returncode, 0, result.stderr)
         calls = self.calls()
         self.assertIn("skipped: project project board (already linked)", result.stdout)
-        self.assertIn("skipped: status lanes (already set)", result.stdout)
+        self.assertIn("skipped: status lanes (already present)", result.stdout)
+        self.assertIn(["git", "config", "--replace-all", "forge.githubProjectId", "PVT_existing"], calls)
         self.assertFalse(any("operation=CreateProject" in call for call in calls))
         self.assertFalse(any("operation=LinkProject" in call for call in calls))
 
-    def test_setup_github_preserves_customized_status(self) -> None:
-        result = self.run_script(
-            "setup",
-            "--board",
-            extra_env={
-                "FAKE_REMOTE": "git@github.com:group/project.git",
-                "FAKE_GITHUB_PROJECT": "customized",
-            },
-        )
+    def test_setup_github_appends_needs_info_preserving_existing(self) -> None:
+        # Live board has the nine agent lanes plus a hand-added Closed; setup must append only
+        # the missing Needs-info and re-send every existing option (Closed included) with its id.
+        result = self.run_script("setup", "--board", extra_env=self.github_env(FAKE_GITHUB_PROJECT="liveboard"))
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("warning: status lanes are customized; leaving them unchanged", result.stderr)
-        self.assertFalse(any("operation=UpdateStatus" in call for call in self.calls()))
+        update = next(call for call in self.calls() if "operation=UpdateStatus" in call)
+        variables = json.loads(next(v.removeprefix("variables=") for v in update if v.startswith("variables=")))
+        options = variables["options"]
+        existing = ["Triage", "Ready", "Ready-research", "Working", "Researching", "Parked", "Review", "Failed", "For-human", "Closed"]
+        # Existing options re-sent unchanged, each carrying its id so card assignments survive.
+        self.assertEqual([o["name"] for o in options[:-1]], existing)
+        for option in options[:-1]:
+            self.assertTrue(option["id"])
+        self.assertIn("Closed", [o["name"] for o in options])
+        # Needs-info is the only appended option, and it is new (no id).
+        self.assertEqual(options[-1]["name"], "Needs-info")
+        self.assertNotIn("id", options[-1])
+        self.assertIn("appended: status lanes (Needs-info)", result.stdout)
 
-    def test_close_clears_every_agent_label_github(self) -> None:
+    def test_setup_github_paginates_to_find_canonical_project(self) -> None:
+        result = self.run_script("setup", "--board", extra_env=self.github_env(FAKE_GITHUB_PROJECT="paged"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        finds = [c for c in self.calls() if "operation=FindProject" in c]
+        # Two pages fetched; the second carries the cursor from the first page.
+        self.assertEqual(len(finds), 2)
+        self.assertTrue(any("after=CURSOR1" in c for c in finds))
+        # Project found on page 2 -> reused (no create) and its id pinned.
+        self.assertFalse(any("operation=CreateProject" in c for c in self.calls()))
+        self.assertIn(["git", "config", "--replace-all", "forge.githubProjectId", "PVT_paged"], self.calls())
+
+    def test_github_verb_fails_closed_without_pinned_project_id(self) -> None:
         result = self.run_script(
-            "close",
+            "grab",
             "7",
             extra_env={"FAKE_REMOTE": "git@github.com:group/project.git"},
         )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("run 'glab-board setup --board' first", result.stderr)
+        # Fails before ANY side effect: no Status write and no assignment.
+        self.assertNotIn("SetStatus", self.gh_ops())
+        self.assertFalse(any("--add-assignee" in c for c in self.calls() if c[0] == "gh"))
+
+    def test_github_verb_fails_closed_on_ambiguous_project_id(self) -> None:
+        result = self.run_script("grab", "7", extra_env=self.github_env(FAKE_GITHUB_PROJECT_ID="PVT_a,PVT_b"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("ambiguous", result.stderr)
+        self.assertNotIn("SetStatus", self.gh_ops())
+
+    def test_setup_github_refuses_ambiguous_duplicate_projects(self) -> None:
+        result = self.run_script("setup", "--board", extra_env=self.github_env(FAKE_GITHUB_PROJECT="dup"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("multiple projects titled", result.stderr)
+        # Never pins an arbitrary id when ambiguous: no config write carrying a PVT_ value.
+        self.assertFalse(any(
+            c[:2] == ["git", "config"] and any(part.startswith("PVT_") for part in c)
+            for c in self.calls()
+        ))
+
+    def test_grab_github_writes_status_and_no_labels(self) -> None:
+        result = self.run_script("grab", "7", extra_env=self.github_env(FAKE_ITEM_EXISTS="1"))
         self.assertEqual(result.returncode, 0, result.stderr)
-        removed = [
-            call[call.index("--remove-label") + 1]
-            for call in self.calls()
-            if call[:3] == ["gh", "issue", "edit"] and "--remove-label" in call
-        ]
-        self.assertEqual(
-            sorted(removed),
-            sorted([
-                "agent::ready",
-                "agent::ready-research",
-                "agent::working",
-                "agent::researching",
-                "agent::parked",
-                "agent::mr-ready",
-                "agent::failed",
-                "agent::for-human",
-            ]),
+        gh_calls = [c for c in self.calls() if c[0] == "gh"]
+        set_status = next(c for c in gh_calls if "operation=SetStatus" in c)
+        self.assertIn("optionId=OPT_working", set_status)
+        # The human claim is assigned, but NO lifecycle labels are written on GitHub.
+        self.assertTrue(any(c[:3] == ["gh", "issue", "edit"] and "--add-assignee" in c for c in gh_calls))
+        self.assertFalse(any("--add-label" in c or "--remove-label" in c for c in gh_calls))
+        self.assertFalse(any(c[:3] == ["gh", "label", "create"] for c in gh_calls))
+        # Item already present -> no add + no fence poll needed.
+        self.assertNotIn("AddItem", self.gh_ops())
+
+    def test_grab_github_research_sets_researching(self) -> None:
+        result = self.run_script("grab", "7", "research", extra_env=self.github_env(FAKE_ITEM_EXISTS="1"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        set_status = next(c for c in self.calls() if "operation=SetStatus" in c)
+        self.assertIn("optionId=OPT_researching", set_status)
+
+    def test_github_item_added_fences_workflow_before_write(self) -> None:
+        # Item absent from the canonical project: add it, wait for the Item-added->Triage workflow,
+        # THEN write the target Status (else the workflow would clobber our write).
+        result = self.run_script("grab", "7", extra_env=self.github_env(FAKE_ITEM_EXISTS="0", FAKE_FENCE_NULLS="1"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        ops = self.gh_ops()
+        self.assertIn("AddItem", ops)
+        # add -> fence poll (ItemStatus) -> write, in that order.
+        self.assertLess(ops.index("AddItem"), ops.index("ItemStatus"))
+        self.assertLess(ops.index("ItemStatus"), ops.index("SetStatus"))
+        # The item added by AddItem is the one whose Status is written.
+        set_status = next(c for c in self.calls() if "operation=SetStatus" in c)
+        self.assertIn("itemId=PVTI_added", set_status)
+
+    def test_github_item_added_fence_timeout_refuses_to_write(self) -> None:
+        # Workflow never lands a Status: fail closed rather than race an unfenced write.
+        result = self.run_script(
+            "grab",
+            "7",
+            extra_env=self.github_env(FAKE_ITEM_EXISTS="0", FAKE_FENCE_NULLS="99", GLAB_BOARD_FENCE_ATTEMPTS="3"),
         )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("workflow set no Status", result.stderr)
+        self.assertNotIn("SetStatus", self.gh_ops())
+
+    def test_github_item_lookup_paginates_associations(self) -> None:
+        # Canonical item is on the second page of the issue's project associations: found, not re-added.
+        result = self.run_script("grab", "7", extra_env=self.github_env(FAKE_ITEM_EXISTS="page2"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        issue_item_calls = [c for c in self.calls() if "operation=IssueItem" in c]
+        self.assertEqual(len(issue_item_calls), 2)
+        self.assertTrue(any("after=ICURSOR1" in c for c in issue_item_calls))
+        self.assertNotIn("AddItem", self.gh_ops())
+        set_status = next(c for c in self.calls() if "operation=SetStatus" in c)
+        self.assertIn("itemId=PVTI_item", set_status)
+
+    def test_github_status_read_back_mismatch_fails(self) -> None:
+        result = self.run_script("grab", "7", extra_env=self.github_env(FAKE_ITEM_EXISTS="1", FAKE_READBACK_WRONG="1"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("read-back mismatch", result.stderr)
+
+    def test_ready_github_sets_status_no_labels(self) -> None:
+        result = self.run_script("ready", "7", extra_env=self.github_env(FAKE_ITEM_EXISTS="1"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        set_status = next(c for c in self.calls() if "operation=SetStatus" in c)
+        self.assertIn("optionId=OPT_ready", set_status)
+        self.assertFalse(any("--add-label" in c or "--remove-label" in c for c in self.calls() if c[0] == "gh"))
+        self.assertIn("ready #7 (Ready)", result.stdout)
+
+    def test_ready_research_github_sets_ready_research(self) -> None:
+        result = self.run_script("ready", "7", "research", extra_env=self.github_env(FAKE_ITEM_EXISTS="1"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        set_status = next(c for c in self.calls() if "operation=SetStatus" in c)
+        self.assertIn("optionId=OPT_readyresearch", set_status)
+
+    def test_ready_refuses_closed_issue_github(self) -> None:
+        result = self.run_script("ready", "7", extra_env=self.github_env(FAKE_ISSUE_STATE="CLOSED"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("closed", result.stderr)
+        self.assertNotIn("SetStatus", self.gh_ops())
+
+    def test_ready_gitlab_adds_ready_and_strips_triage(self) -> None:
+        result = self.run_script("ready", "7")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        put = next(
+            call for call in self.calls()
+            if call[:4] == ["glab", "api", "-X", "PUT"] and any(p == "add_labels=agent::ready" for p in call)
+        )
+        remove = next(p for p in put if p.startswith("remove_labels="))
+        self.assertEqual(
+            sorted(remove.removeprefix("remove_labels=").split(",")),
+            sorted(["triage::pending", "triage::needs-info"]),
+        )
+
+    def test_ready_research_gitlab_adds_ready_research(self) -> None:
+        result = self.run_script("ready", "7", "research")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(any(
+            call[:4] == ["glab", "api", "-X", "PUT"] and "add_labels=agent::ready-research" in call
+            for call in self.calls()
+        ))
+
+    def test_park_github_sets_parked_status_no_labels(self) -> None:
+        result = self.run_script("park", "7", extra_env=self.github_env(FAKE_ITEM_EXISTS="1"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        set_status = next(c for c in self.calls() if "operation=SetStatus" in c)
+        self.assertIn("optionId=OPT_parked", set_status)
+        self.assertFalse(any("--add-label" in c or "--remove-label" in c for c in self.calls() if c[0] == "gh"))
+
+    def test_close_github_closes_without_touching_labels_or_status(self) -> None:
+        result = self.run_script("close", "7", extra_env=self.github_env(FAKE_ITEM_EXISTS="1"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        gh_calls = [c for c in self.calls() if c[0] == "gh"]
+        self.assertTrue(any(c[:3] == ["gh", "issue", "close"] for c in gh_calls))
+        self.assertFalse(any("--add-label" in c or "--remove-label" in c for c in gh_calls))
+        # Closed is outside reconciliation: no Status write.
+        self.assertNotIn("SetStatus", self.gh_ops())
 
     def test_close_clears_every_agent_label_gitlab(self) -> None:
         result = self.run_script("close", "7")
