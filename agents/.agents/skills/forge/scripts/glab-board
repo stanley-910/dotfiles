@@ -150,6 +150,25 @@ PY
   echo "manual: enable workflow Item-added -> Status=Triage (GitHub API unsupported)"
 }
 
+AGENT_LABELS=(agent::ready agent::ready-research agent::working agent::researching agent::parked agent::mr-ready agent::failed agent::for-human)
+
+gh_clear_agent_labels() { # <iid> [keep]
+  local l
+  for l in "${AGENT_LABELS[@]}"; do
+    [[ "$l" == "${2:-}" ]] && continue
+    gh issue edit "$1" -R "$PROJECT" --remove-label "$l" 2>/dev/null || true
+  done
+}
+
+gl_agent_labels_csv() { # [keep]
+  local l out=""
+  for l in "${AGENT_LABELS[@]}"; do
+    [[ "$l" == "${1:-}" ]] && continue
+    out+="${out:+,}$l"
+  done
+  printf '%s' "$out"
+}
+
 setup_board() {
   local with_board=${1:-false}
   local row old new name color legacy_needs=needs legacy_ready=ready-for
@@ -293,8 +312,7 @@ grab_issue() {
     esac
     gh label create "$lbl" --color "$color" -R "$PROJECT" 2>/dev/null || true
     gh issue edit "$iid" -R "$PROJECT" --add-assignee @me --add-label "$lbl"
-    gh issue edit "$iid" -R "$PROJECT" --remove-label "${remove%%,*}" 2>/dev/null || true
-    gh issue edit "$iid" -R "$PROJECT" --remove-label "${remove##*,}" 2>/dev/null || true
+    gh_clear_agent_labels "$iid" "$lbl"
   fi
   record_issue "$iid"
   echo "grabbed #$iid (assigned, $lbl, recorded)"
@@ -683,13 +701,12 @@ grab)
 park)
   if [[ "$FORGE" == "gitlab" ]]; then
     if [[ $# -ge 3 ]]; then glab issue note "$2" -R "$PROJECT" -m "$3"; fi
-    glab api -X PUT "projects/$ENC/issues/$2" -f add_labels="agent::parked" -f remove_labels="agent::working,agent::researching" >/dev/null
+    glab api -X PUT "projects/$ENC/issues/$2" -f add_labels="agent::parked" -f remove_labels="$(gl_agent_labels_csv agent::parked)" >/dev/null
   else
     if [[ $# -ge 3 ]]; then gh issue comment "$2" -R "$PROJECT" -b "$3"; fi
     gh label create "agent::parked" --color f0ad4e -R "$PROJECT" 2>/dev/null || true
     gh issue edit "$2" -R "$PROJECT" --add-label "agent::parked" 2>/dev/null || true
-    gh issue edit "$2" -R "$PROJECT" --remove-label "agent::working" 2>/dev/null || true
-    gh issue edit "$2" -R "$PROJECT" --remove-label "agent::researching" 2>/dev/null || true
+    gh_clear_agent_labels "$2" "agent::parked"
   fi
   echo "parked #$2"
   ;;
@@ -699,12 +716,10 @@ note)
 close)
   if [[ "$FORGE" == "gitlab" ]]; then
     if [[ $# -ge 3 ]]; then glab issue note "$2" -R "$PROJECT" -m "$3"; fi
-    glab api -X PUT "projects/$ENC/issues/$2" -f state_event=close -f remove_labels="agent::working,agent::parked,agent::researching" >/dev/null
+    glab api -X PUT "projects/$ENC/issues/$2" -f state_event=close -f remove_labels="$(gl_agent_labels_csv)" >/dev/null
   else
     if [[ $# -ge 3 ]]; then gh issue comment "$2" -R "$PROJECT" -b "$3"; fi
-    gh issue edit "$2" -R "$PROJECT" --remove-label "agent::working" 2>/dev/null || true
-    gh issue edit "$2" -R "$PROJECT" --remove-label "agent::parked" 2>/dev/null || true
-    gh issue edit "$2" -R "$PROJECT" --remove-label "agent::researching" 2>/dev/null || true
+    gh_clear_agent_labels "$2"
     gh issue close "$2" -R "$PROJECT"
   fi
   echo "closed #$2"

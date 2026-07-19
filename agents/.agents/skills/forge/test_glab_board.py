@@ -346,6 +346,54 @@ else:
         self.assertIn("warning: status lanes are customized; leaving them unchanged", result.stderr)
         self.assertFalse(any("operation=UpdateStatus" in call for call in self.calls()))
 
+    def test_close_clears_every_agent_label_github(self) -> None:
+        result = self.run_script(
+            "close",
+            "7",
+            extra_env={"FAKE_REMOTE": "git@github.com:group/project.git"},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        removed = [
+            call[call.index("--remove-label") + 1]
+            for call in self.calls()
+            if call[:3] == ["gh", "issue", "edit"] and "--remove-label" in call
+        ]
+        self.assertEqual(
+            sorted(removed),
+            sorted([
+                "agent::ready",
+                "agent::ready-research",
+                "agent::working",
+                "agent::researching",
+                "agent::parked",
+                "agent::mr-ready",
+                "agent::failed",
+                "agent::for-human",
+            ]),
+        )
+
+    def test_close_clears_every_agent_label_gitlab(self) -> None:
+        result = self.run_script("close", "7")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        put = next(
+            call for call in self.calls()
+            if call[:2] == ["glab", "api"] and any("state_event=close" in part for part in call)
+        )
+        removal = next(part for part in put if part.startswith("remove_labels="))
+        self.assertEqual(
+            sorted(removal.removeprefix("remove_labels=").split(",")),
+            sorted([
+                "agent::ready",
+                "agent::ready-research",
+                "agent::working",
+                "agent::researching",
+                "agent::parked",
+                "agent::mr-ready",
+                "agent::failed",
+                "agent::for-human",
+            ]),
+        )
+
     def test_mr_pins_current_source_and_default_target_then_verifies(self) -> None:
         result = self.run_script("mr", "--title", "Player card", "--yes")
         self.assertEqual(result.returncode, 0, result.stderr)
