@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# claude-wipe-session — remove Claude Code conversation content (transcripts, prompt
+# history, job dirs, caches, background-job roster). Preserves credentials, ~/.claude.json
+# config, dotfiles symlinks, and tooling dirs (agents/commands/hooks/skills/plugins).
+#
+# Run from a normal shell AFTER quitting all Claude Code sessions: a live session
+# continuously rewrites its own transcript/history and cannot delete its own trail.
+set -u
+C="$HOME/.claude"
+
+# Idle spare processes are harmless; an actually-open session is not. Warn, don't block.
+if pgrep -f "claude.*bg-pty-host|claude.*--bg-spare" >/dev/null 2>&1; then
+  echo "!! claude background processes detected (spare pool and/or a live session)."
+  echo "   If a Claude Code window/session is OPEN, quit it first. Idle spares are fine."
+  echo "   Continuing in 5s — Ctrl-C to abort."
+  sleep 5
+fi
+
+echo "Wiping Claude Code conversation content under $C ..."
+
+# Session transcripts + global prompt history (the conversation content).
+find "$C/projects" -type f -name "*.jsonl" -delete 2>/dev/null
+rm -f "$C/history.jsonl"
+
+# Background jobs, their state/summaries, and per-session caches.
+find "$C/jobs" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} + 2>/dev/null
+rm -rf "$C"/image-cache/* "$C"/paste-cache/* "$C"/sessions/* "$C"/session-env/* 2>/dev/null
+
+# Reset the background-job roster so the daemon has no finished jobs to re-list.
+if [ -f "$C/daemon/roster.json" ]; then
+  python3 - "$C/daemon/roster.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p))
+d["workers"] = {}
+json.dump(d, open(p, "w"), indent=2)
+PY
+fi
+
+# Keep an empty memory dir so the CLI still works on next launch.
+mkdir -p "$C/projects/-Users-stanwang/memory"
+
+echo
+leftover="$(find "$C" -name "*.jsonl" -not -path "*/plugins/*" 2>/dev/null)"
+if [ -z "$leftover" ]; then
+  echo "[clean] no transcripts or history remain."
+else
+  echo "[!!] still present:"; echo "$leftover"
+fi
+
+echo
+echo "Content wiped. Credentials and config are untouched — Claude Code still works."
+echo "For final unrecoverability: empty Trash, then reboot (lets TRIM erase the freed SSD blocks)."
