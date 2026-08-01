@@ -367,13 +367,27 @@ project_id() {
   glab api "projects/$ENC" | python3 -c 'import sys,json;print(json.load(sys.stdin)["id"])'
 }
 
+graphql_blocked_iids() { # -> newline-separated iids of OPEN work items GraphQL's linked-items widget reports blocked
+  glab api graphql -f query="{project(fullPath:\"$PROJECT\"){workItems(first:100,state:opened){nodes{iid widgets{... on WorkItemWidgetLinkedItems{blocked}}}}}}" | python3 -c '
+import json, sys
+nodes = json.load(sys.stdin, strict=False)["data"]["project"]["workItems"]["nodes"]
+for n in nodes:
+    if any(isinstance(w, dict) and w.get("blocked") for w in (n.get("widgets") or [])):
+        print(n["iid"])
+'
+}
+
 list_issues() {
+  local gql_blocked
+  gql_blocked=$(graphql_blocked_iids || true)
   glab api "projects/$ENC/issues?state=opened&per_page=100${1:-}" | python3 -c '
 import json, sys
+gql_blocked = set(sys.argv[1].split())
 for i in sorted(json.load(sys.stdin, strict=False), key=lambda x: x["iid"]):
     assignee = i["assignees"][0]["username"] if i["assignees"] else "-"
     labels = ",".join(i["labels"])
-    print("#%s | blocked=%s | asg=%s | [%s] | %s" % (i["iid"], i.get("blocked", False), assignee, labels, i["title"]))'
+    blocked = i.get("blocked", False) or str(i["iid"]) in gql_blocked
+    print("#%s | blocked=%s | asg=%s | [%s] | %s" % (i["iid"], blocked, assignee, labels, i["title"]))' "$gql_blocked"
 }
 
 create_issue() {
@@ -870,7 +884,7 @@ finish)
   ;;
 frontier)
   if [[ "$FORGE" == "gitlab" ]]; then
-    list_issues | awk -F' \\| ' '$2 == "blocked=False" && $3 == "asg=-"'
+    list_issues | awk -F' \\| ' '$2 == "blocked=False" && $3 == "asg=-" && $4 !~ /agent::(working|researching|parked)/'
   else
     gh issue list -R "$PROJECT" --state open --limit 100 --json number,title,labels,assignees,blockedBy | python3 -c '
 import json, sys
