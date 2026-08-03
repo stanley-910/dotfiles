@@ -415,7 +415,7 @@ create_issue() {
   [[ -n "$title" ]] || die "create requires --title"
   [[ "$title" =~ [^[:space:]] ]] || die "create title must not be blank"
   [[ -z "$description_file" || -f "$description_file" ]] || die "description file not found: $description_file"
-  for label in "${labels[@]}"; do
+  for label in ${labels[@]+"${labels[@]}"}; do
     [[ "$label" =~ [^[:space:]] ]] || die "create label must not be blank"
     [[ "$label" != *,* ]] || die "create label must not contain a comma; pass each label with a separate --label: $label"
   done
@@ -432,7 +432,7 @@ create_issue() {
   else
     local gh_args=(-X POST "repos/$PROJECT/issues" -f "title=$title")
     [[ -z "$description_file" ]] || gh_args+=(-f "body=$(cat "$description_file")")
-    for label in "${labels[@]}"; do gh_args+=(-f "labels[]=$label"); done
+    for label in ${labels[@]+"${labels[@]}"}; do gh_args+=(-f "labels[]=$label"); done
     response=$(gh api "${gh_args[@]}")
     parsed=$(printf '%s' "$response" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("%s\t%s" % (d["number"], d["html_url"]))')
   fi
