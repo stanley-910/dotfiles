@@ -697,3 +697,5 @@ export MANPAGER='nvim +Man!'
 # honored automatically). Default python/python3 shims live in ~/.local/bin via
 # `uv python install --default`, and ~/.local/bin is on PATH from .zshenv —
 # so there is nothing Python-related to export here. No pyenv.
+
+if command -v wt >/dev/null 2>&1; then eval "$(command wt config shell init zsh)"; fi
