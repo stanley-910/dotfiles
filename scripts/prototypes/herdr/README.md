@@ -1,7 +1,8 @@
 # Herdr helper prototypes
 
 Isolated Herdr ports of the tmux helper scripts. Nothing here is stowed, added
-to `PATH`, aliased, or bound in Herdr. The production scripts remain untouched.
+to `PATH`, or aliased. The prototype `git-menu` is bound to `prefix+g` in the
+Herdr prototype config. The production scripts remain untouched.
 
 ## Run manually
 
@@ -33,8 +34,8 @@ The ports resolve the caller in this order:
 
 ## Trial boundary
 
-Do not add aliases, symlinks, shell hooks, or Herdr keybindings until the copies
-have been tested interactively. Do not replace:
+Do not add aliases, symlinks, or shell hooks while testing these copies. The
+`prefix+g` binding is the only Herdr integration. Do not replace:
 
 - `scripts/bin/agent-link`
 - `scripts/.config/scripts/git-menu`
