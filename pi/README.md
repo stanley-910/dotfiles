@@ -13,6 +13,20 @@ Tracked source files therefore live under `~/dotfiles/pi/.config/pi/agent/` and
 stow to `~/.config/pi/agent/`. Sessions are kept in
 `~/.local/state/pi/sessions/` instead of the config directory.
 
+## Default model
+
+`settings.json` pins Pi to the Headroom/Copilot `gpt-5.6-sol` model with the
+`high` thinking level. This uses the local Headroom proxy defined in
+`models.json`, not Pi's built-in `github-copilot` provider:
+
+```json
+{
+  "defaultProvider": "headroom-copilot",
+  "defaultModel": "gpt-5.6-sol",
+  "defaultThinkingLevel": "high"
+}
+```
+
 Use no-folding because `~/.config/pi/agent` also contains runtime state such as
 auth, package installs, generated extension config, package caches, and locally
 installed skills/agents:
@@ -65,31 +79,36 @@ single-ticket work. Keep worktrees persistent until Stanley asks for cleanup.
 
 `~/.config/pi/agent/extensions/starshipline/index.ts` installs a Pi extension that:
 
-- renders a clean left footer using colors/symbols from `~/.config/starship.toml`;
-- can fall back to the raw `starship prompt` output with `/starshipline left starship`;
-- shows richer git info: branch, staged/modified/untracked counts, stash, ahead/behind;
-- adds Pi-side stats on the right: token totals, cache efficiency, cache read/write,
-  cost, context pressure meter, model, and thinking level;
+- renders a clean path and detailed Git state using colors/symbols from
+  `~/.config/starship.toml`;
+- keeps path/Git and model/thinking compact on the left, while right-aligning
+  extension statuses and context with two-space separators;
+- shows context pressure as percent, a ten-cell bar, and compact current/limit
+  tokens;
+- includes only actionable extension statuses: Pi Talk play/pause state and speed,
+  RPIV workflow stage, and active/queued subagent counts;
+- keeps token totals, cache telemetry, cost, MCP health, rewind checkpoints, and
+  generic RPIV skill labels hidden by default;
+- can fall back to raw `starship prompt` output with `/starshipline left starship`;
 - provides `/starshipline` for live theme preset and color changes;
-- has built-in Starshipline presets such as `starship-nord` (no separate Pi theme file is tracked).
+- has built-in Starshipline presets such as `starship-nord` (no separate Pi theme
+  file is tracked).
 
 Runtime config is written to `~/.config/pi/agent/starshipline.json` and is
-intentionally not tracked.
-
-Common commands:
+intentionally not tracked. Common commands:
 
 ```text
 /starshipline                          open interactive menu
-/starshipline left clean               clean path + git footer, no user@host or prompt symbol
+/starshipline left clean               clean path + Git footer
 /starshipline left starship            raw Starship prompt mode
-/starshipline path-segments 8          set clean path truncation length
+/starshipline path-segments 5          set clean path truncation length
 /starshipline theme from-starship      derive Pi theme colors from starship.toml
 /starshipline theme starship-nord      use bundled Nord-like preset
 /starshipline color accent #8fbcbb     override one Pi theme token live
-/starshipline context-meter on         show context pressure bar
-/starshipline cache-efficiency on      show prompt-cache efficiency
+/starshipline context-meter on         show context percent, bar, and token usage
+/starshipline cache-efficiency on      opt into prompt-cache efficiency
 /starshipline prompt-char hide         hide trailing Starship prompt symbol in starship mode
-/starshipline thinking on              show thinking level, e.g. gpt-5.5 · xhigh
-/starshipline stats off                hide context/tokens/cache/cost
+/starshipline thinking on              show thinking level, e.g. gpt-5.6-sol · high
+/starshipline stats off                hide context and optional telemetry
 /starshipline refresh                  rerender the footer
 ```
