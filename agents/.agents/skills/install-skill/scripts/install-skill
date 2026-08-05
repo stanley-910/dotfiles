@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly SCRIPT_DIR
+# shellcheck source=skill-lib.sh
+source "$SCRIPT_DIR/skill-lib.sh"
+
+usage() {
+  cat <<'EOF'
+Usage: install-skill [--scope shared|claude] [--force] <name>
+
+Install an owned skill from the dotfiles source and verify every required target.
+The default scope is shared. --force removes a path that blocks a required
+shared-skill consumer symlink.
+EOF
+}
+
+ensure_consumer_link() {
+  local link_path=$1
+  local expected_target=$2
+
+  if [[ -L $link_path && $(readlink "$link_path") == "$expected_target" ]]; then
+    printf 'OK existing link %s -> %s\n' "$link_path" "$expected_target"
+    return
+  fi
+
+  if [[ -e $link_path || -L $link_path ]]; then
+    if ((SKILL_FORCE == 0)); then
+      skill_die "$link_path blocks the required link; inspect it or rerun with --force"
+    fi
+    rm -rf "$link_path"
+  fi
+
+  mkdir -p "$(dirname -- "$link_path")"
+  ln -s "$expected_target" "$link_path"
+  printf 'OK created link %s -> %s\n' "$link_path" "$expected_target"
+}
+
+main() {
+  local parse_status=0
+  skill_parse_common_args "$@" || parse_status=$?
+  if ((parse_status == 64)); then
+    usage
+    return 0
+  elif ((parse_status != 0)); then
+    usage >&2
+    return "$parse_status"
+  fi
+
+  local source_dir
+  local skill_file
+  local declared_name
+  local package
+
+  source_dir=$(skill_source_dir "$SKILL_SCOPE" "$SKILL_NAME")
+  skill_file="$source_dir/SKILL.md"
+  [[ -f $skill_file ]] || skill_die "missing canonical skill file: $skill_file"
+
+  declared_name=$(skill_frontmatter_name "$skill_file") ||
+    skill_die "cannot read a frontmatter name from $skill_file"
+  [[ $declared_name == "$SKILL_NAME" ]] ||
+    skill_die "frontmatter name '$declared_name' does not match directory '$SKILL_NAME'"
+
+  command -v stow >/dev/null 2>&1 || skill_die 'GNU Stow is not available on PATH'
+
+  if [[ $SKILL_SCOPE == shared ]]; then
+    package=agents
+  else
+    package=claude
+  fi
+
+  printf 'Installing %s skill %s\n' "$SKILL_SCOPE" "$SKILL_NAME"
+  (
+    cd -- "$DOTFILES_ROOT"
+    stow --restow --no-folding --ignore='__pycache__' --target="$HOME" "$package"
+  )
+
+  if [[ $SKILL_SCOPE == shared ]]; then
+    ensure_consumer_link \
+      "$CLAUDE_TARGET_ROOT/$SKILL_NAME" \
+      "../../.agents/skills/$SKILL_NAME"
+    ensure_consumer_link \
+      "$PI_TARGET_ROOT/$SKILL_NAME" \
+      "../../../../.agents/skills/$SKILL_NAME"
+  fi
+
+  "$SCRIPT_DIR/verify-skill" --scope "$SKILL_SCOPE" "$SKILL_NAME"
+}
+
+main "$@"

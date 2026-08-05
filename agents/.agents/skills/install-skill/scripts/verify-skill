@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly SCRIPT_DIR
+# shellcheck source=skill-lib.sh
+source "$SCRIPT_DIR/skill-lib.sh"
+
+FAILURES=0
+
+usage() {
+  cat <<'EOF'
+Usage: verify-skill [--scope shared|claude] <name>
+
+Read-only integrity check for an owned skill. The default scope is shared.
+Every required location is reported as OK, MISSING, or INVALID.
+EOF
+}
+
+report_ok() {
+  printf 'OK      %-8s %s\n' "$1" "$2"
+}
+
+report_missing() {
+  printf 'MISSING %-8s %s\n' "$1" "$2"
+  ((FAILURES += 1))
+}
+
+report_invalid() {
+  printf 'INVALID %-8s %s\n' "$1" "$2"
+  ((FAILURES += 1))
+}
+
+resolved_path() {
+  realpath "$1" 2>/dev/null
+}
+
+check_source() {
+  local source_dir=$1
+  local skill_file="$source_dir/SKILL.md"
+  local declared_name
+
+  if [[ ! -d $source_dir || ! -f $skill_file ]]; then
+    report_missing source "$skill_file"
+    return
+  fi
+
+  if ! declared_name=$(skill_frontmatter_name "$skill_file"); then
+    report_invalid source "$skill_file has no readable frontmatter name"
+  elif [[ $declared_name != "$SKILL_NAME" ]]; then
+    report_invalid source "frontmatter name '$declared_name' does not match '$SKILL_NAME'"
+  else
+    report_ok source "$source_dir"
+  fi
+}
+
+check_stowed_tree() {
+  local label=$1
+  local source_dir=$2
+  local target_dir=$3
+  local source_file
+  local target_file
+  local relative_path
+  local tree_invalid=0
+
+  if [[ ! -d $target_dir || ! -f $target_dir/SKILL.md ]]; then
+    report_missing "$label" "$target_dir/SKILL.md"
+    return
+  fi
+  if [[ ! -d $source_dir || ! -f $source_dir/SKILL.md ]]; then
+    report_invalid "$label" "$target_dir cannot be compared because the canonical source is missing"
+    return
+  fi
+
+  while IFS= read -r -d '' source_file; do
+    relative_path=${source_file#"$source_dir/"}
+    target_file="$target_dir/$relative_path"
+
+    if [[ ! -e $target_file && ! -L $target_file ]]; then
+      report_missing "$label" "$target_file"
+      tree_invalid=1
+      continue
+    fi
+    if [[ $(resolved_path "$source_file") != $(resolved_path "$target_file") ]]; then
+      report_invalid "$label" "$target_file does not resolve to $source_file"
+      tree_invalid=1
+    fi
+  done < <(
+    find "$source_dir" \
+      \( -type f -o -type l \) \
+      -not -path '*/__pycache__/*' \
+      -print0
+  )
+
+  if ((tree_invalid == 0)); then
+    report_ok "$label" "$target_dir"
+  fi
+}
+
+check_consumer_link() {
+  local label=$1
+  local link_path=$2
+  local expected_target=$3
+  local canonical_skill_file=$4
+  local actual_target
+
+  if [[ ! -e $link_path && ! -L $link_path ]]; then
+    report_missing "$label" "$link_path"
+    return
+  fi
+  if [[ ! -L $link_path ]]; then
+    report_invalid "$label" "$link_path is not a symlink"
+    return
+  fi
+
+  actual_target=$(readlink "$link_path")
+  if [[ $actual_target != "$expected_target" ]]; then
+    report_invalid "$label" "$link_path -> $actual_target; expected $expected_target"
+    return
+  fi
+  if [[ ! -f $link_path/SKILL.md ]]; then
+    report_invalid "$label" "$link_path/SKILL.md is missing or broken"
+    return
+  fi
+  if [[ $(resolved_path "$link_path/SKILL.md") != $(resolved_path "$canonical_skill_file") ]]; then
+    report_invalid "$label" "$link_path/SKILL.md does not resolve to $canonical_skill_file"
+    return
+  fi
+
+  report_ok "$label" "$link_path -> $expected_target"
+}
+
+main() {
+  local parse_status=0
+  skill_parse_common_args "$@" || parse_status=$?
+  if ((parse_status == 64)); then
+    usage
+    return 0
+  elif ((parse_status != 0)); then
+    usage >&2
+    return "$parse_status"
+  fi
+  if ((SKILL_FORCE != 0)); then
+    skill_usage_error '--force is not valid for the read-only verifier'
+    usage >&2
+    return 2
+  fi
+
+  command -v realpath >/dev/null 2>&1 || skill_die 'realpath is not available on PATH'
+
+  local source_dir
+  source_dir=$(skill_source_dir "$SKILL_SCOPE" "$SKILL_NAME")
+
+  check_source "$source_dir"
+
+  if [[ $SKILL_SCOPE == shared ]]; then
+    check_stowed_tree hub "$source_dir" "$HUB_ROOT/$SKILL_NAME"
+    check_consumer_link \
+      claude \
+      "$CLAUDE_TARGET_ROOT/$SKILL_NAME" \
+      "../../.agents/skills/$SKILL_NAME" \
+      "$source_dir/SKILL.md"
+    check_consumer_link \
+      pi \
+      "$PI_TARGET_ROOT/$SKILL_NAME" \
+      "../../../../.agents/skills/$SKILL_NAME" \
+      "$source_dir/SKILL.md"
+  else
+    check_stowed_tree claude "$source_dir" "$CLAUDE_TARGET_ROOT/$SKILL_NAME"
+  fi
+
+  if ((FAILURES != 0)); then
+    printf 'FAILED  %s issue(s) found for %s (%s)\n' "$FAILURES" "$SKILL_NAME" "$SKILL_SCOPE"
+    return 1
+  fi
+
+  printf 'PASS    %s (%s) is installed in every required location\n' "$SKILL_NAME" "$SKILL_SCOPE"
+}
+
+main "$@"
