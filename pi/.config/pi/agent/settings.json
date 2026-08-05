@@ -1,58 +1,57 @@
 {
- "lastChangelogVersion": "0.80.7",
- "defaultProvider": "github-copilot",
- "defaultModel": "gpt-5.6-sol",
- "defaultThinkingLevel": "medium",
- "compaction": {
-  "enabled": true
- },
- "enableInstallTelemetry": false,
- "doubleEscapeAction": "tree",
- "treeFilterMode": "default",
- "quietStartup": true,
- "steeringMode": "one-at-a-time",
- "followUpMode": "all",
- "warnings": {
-  "anthropicExtraUsage": true
- },
- "terminal": {
-  "showTerminalProgress": true
- },
- "packages": [
-  {
-   "source": "npm:@juicesharp/rpiv-pi",
-   "skills": [
-    "-skills/implement/SKILL.md",
-    "-skills/research/SKILL.md"
-   ]
+  "lastChangelogVersion": "0.80.7",
+  "defaultProvider": "headroom-copilot",
+  "defaultModel": "gpt-5.6-sol",
+  "defaultThinkingLevel": "xhigh",
+  "compaction": {
+    "enabled": true
   },
-  "npm:@juicesharp/rpiv-todo",
-  "npm:@juicesharp/rpiv-btw",
-  "npm:@juicesharp/rpiv-workflow",
-  "npm:@juicesharp/rpiv-args",
-  "npm:@juicesharp/rpiv-i18n",
-  "npm:@juicesharp/rpiv-ask-user-question",
-  "npm:pi-mcp-adapter",
-  "npm:@juicesharp/rpiv-web-tools",
-  "npm:@that-yolanda/pi-context",
-  "npm:pi-rewind",
-  "npm:@tintinweb/pi-subagents",
-  "npm:@juicesharp/rpiv-advisor",
-  "npm:context-mode",
-  "git:github.com/stanley-910/pi-talk"
- ],
- "autocompleteMaxVisible": 20,
- "enabledModels": [
-  "github-copilot/gpt-5.5",
-  "github-copilot/gpt-5.6-sol",
-  "github-copilot/gpt-5.6-luna",
-  "github-copilot/gpt-5.6-terra",
-  "github-copilot/gpt-5.4-mini",
-  "github-copilot/claude-opus-4.6",
-  "github-copilot/claude-sonnet-4.6",
-  "github-copilot/claude-opus-4.8",
-  "github-copilot/gemini-3.1-pro-preview",
-  "github-copilot/gemini-3.5-flash"
- ],
- "theme": "dark"
+  "enableInstallTelemetry": false,
+  "doubleEscapeAction": "tree",
+  "treeFilterMode": "default",
+  "quietStartup": true,
+  "steeringMode": "one-at-a-time",
+  "followUpMode": "all",
+  "warnings": {
+    "anthropicExtraUsage": true
+  },
+  "terminal": {
+    "showTerminalProgress": true
+  },
+  "packages": [
+    {
+      "source": "npm:@juicesharp/rpiv-pi",
+      "skills": [
+        "-skills/implement/SKILL.md",
+        "-skills/research/SKILL.md"
+      ]
+    },
+    "npm:@juicesharp/rpiv-todo",
+    "npm:@juicesharp/rpiv-btw",
+    "npm:@juicesharp/rpiv-workflow",
+    "npm:@juicesharp/rpiv-args",
+    "npm:@juicesharp/rpiv-i18n",
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:pi-mcp-adapter",
+    "npm:@juicesharp/rpiv-web-tools",
+    "npm:@that-yolanda/pi-context",
+    "npm:pi-rewind",
+    "npm:@tintinweb/pi-subagents",
+    "npm:@juicesharp/rpiv-advisor",
+    "npm:context-mode",
+    "git:github.com/stanley-910/pi-talk"
+  ],
+  "autocompleteMaxVisible": 20,
+  "enabledModels": [
+    "github-copilot/gpt-5.5",
+    "headroom-copilot/gpt-5.6-sol",
+    "github-copilot/gpt-5.6-luna",
+    "github-copilot/gpt-5.6-terra",
+    "github-copilot/gpt-5.4-mini",
+    "github-copilot/claude-opus-4.6",
+    "github-copilot/claude-sonnet-4.6",
+    "github-copilot/claude-opus-4.8",
+    "github-copilot/gemini-3.1-pro-preview"
+  ],
+  "theme": "dark"
 }
