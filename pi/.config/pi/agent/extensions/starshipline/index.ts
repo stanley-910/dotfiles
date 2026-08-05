@@ -78,22 +78,25 @@ interface UsageStats {
 
 const CONFIG_PATH = join(getAgentDir(), "starshipline.json");
 const DEFAULT_STARSHIP_CONFIG = process.env.STARSHIP_CONFIG || "~/.config/starship.toml";
+const VISIBLE_EXTENSION_STATUS_KEYS = new Set(["pi-talk", "rpiv-workflow", "subagents"]);
+const PI_TALK_PLAY_ICON = "▶";
+const PI_TALK_PAUSE_ICON = "Ⅱ";
 
 const DEFAULT_CONFIG: StarshiplineConfig = {
 	enabled: true,
 	starshipConfig: DEFAULT_STARSHIP_CONFIG,
 	refreshIntervalMs: 5000,
 	leftMode: "clean",
-	pathMaxSegments: 8,
+	pathMaxSegments: 5,
 	stripPromptCharacter: true,
 	showGitStatus: true,
 	showPiStats: true,
-	showTokenStats: true,
-	showCacheEfficiency: true,
-	showCacheTotals: true,
+	showTokenStats: false,
+	showCacheEfficiency: false,
+	showCacheTotals: false,
 	showContextMeter: true,
 	contextMeterWidth: 10,
-	showCost: true,
+	showCost: false,
 	showModel: true,
 	showThinkingLevel: true,
 	showExtensionStatuses: true,
@@ -678,7 +681,7 @@ async function buildCleanLeftLine(ctx: ExtensionContext, config: StarshiplineCon
 	const git = config.showGitStatus ? await getGitInfo(ctx.cwd) : undefined;
 	const path = stylePath(formatPathForFooter(ctx.cwd, config.pathMaxSegments), git?.root, styles);
 	const gitText = config.showGitStatus ? buildGitText(git, styles) : "";
-	return gitText ? `${path}  ${gitText}` : path;
+	return gitText ? `${path} ${gitText}` : path;
 }
 
 function cleanupStarshipOutput(output: string, stripPromptCharacter: boolean): string {
@@ -767,15 +770,20 @@ function buildContextMeter(ctx: ExtensionContext, config: StarshiplineConfig, th
 	const usage = ctx.getContextUsage();
 	const contextWindow = usage?.contextWindow ?? ctx.model?.contextWindow ?? 0;
 	const percent = usage?.percent;
-	const label = contextWindow ? `/${formatTokens(contextWindow)}` : "";
-
-	if (percent === null || percent === undefined) return theme.fg("dim", `ctx ?${label}`);
-
+	const tokens = usage?.tokens;
+	const tokenUsage = `${tokens === null || tokens === undefined ? "?" : formatTokens(tokens)}/${
+		contextWindow ? formatTokens(contextWindow) : "?"
+	}`;
 	const width = Math.max(4, Math.round(config.contextMeterWidth));
+
+	if (percent === null || percent === undefined) {
+		return theme.fg("dim", `?% ${"░".repeat(width)} ${tokenUsage}`);
+	}
+
 	const filled = Math.max(0, Math.min(width, Math.round((percent / 100) * width)));
 	const bar = `${"█".repeat(filled)}${"░".repeat(width - filled)}`;
 	const color: ThemeColor = percent > 90 ? "error" : percent > 70 ? "warning" : percent > 50 ? "accent" : "muted";
-	return theme.fg(color, `ctx ${bar} ${percent.toFixed(0)}%${label}`);
+	return theme.fg(color, `${percent.toFixed(0)}% ${bar} ${tokenUsage}`);
 }
 
 function buildCacheEfficiency(stats: UsageStats): string | undefined {
@@ -783,6 +791,20 @@ function buildCacheEfficiency(stats: UsageStats): string | undefined {
 	const denominator = stats.input + stats.cacheRead;
 	if (!denominator) return undefined;
 	return `cache ${Math.round((stats.cacheRead / denominator) * 100)}%`;
+}
+
+function formatExtensionStatus(key: string, value: string): string {
+	const compact = value.replace(/\s*·\s*/g, "·");
+	if (key !== "pi-talk") return compact;
+
+	const speed = compact.match(/·(.+)$/)?.[1];
+	const icon = /^talking\b/.test(compact)
+		? PI_TALK_PAUSE_ICON
+		: /^(?:gagged|paused)\b/.test(compact)
+			? PI_TALK_PLAY_ICON
+			: undefined;
+	if (!icon) return compact;
+	return speed ? `${icon}  ${speed}` : icon;
 }
 
 export default function starshipline(pi: ExtensionAPI) {
@@ -823,6 +845,15 @@ export default function starshipline(pi: ExtensionAPI) {
 		}
 	}
 
+	function buildModelText(ctx: ExtensionContext, theme: ExtensionContext["ui"]["theme"]): string {
+		if (config.showModel && ctx.model) {
+			const thinking = config.showThinkingLevel ? pi.getThinkingLevel() : undefined;
+			return theme.fg("muted", thinking ? `${ctx.model.id}·${thinking}` : ctx.model.id);
+		}
+		if (config.showThinkingLevel) return theme.fg("muted", pi.getThinkingLevel());
+		return "";
+	}
+
 	function buildRightSide(
 		ctx: ExtensionContext,
 		theme: ExtensionContext["ui"]["theme"],
@@ -832,20 +863,21 @@ export default function starshipline(pi: ExtensionAPI) {
 
 		if (config.showExtensionStatuses) {
 			for (const [key, value] of footerData.getExtensionStatuses()) {
-				if (key === "starshipline" || !value) continue;
-				parts.push(value);
+				if (!VISIBLE_EXTENSION_STATUS_KEYS.has(key) || !value) continue;
+				parts.push(formatExtensionStatus(key, value));
 			}
 		}
 
 		if (config.showPiStats) {
-			const stats = getUsageStats(ctx);
+			const needsUsageStats = config.showTokenStats || config.showCacheEfficiency || config.showCacheTotals || config.showCost;
+			const stats = needsUsageStats ? getUsageStats(ctx) : undefined;
 
-			if (config.showTokenStats) {
+			if (config.showTokenStats && stats) {
 				if (stats.input) parts.push(theme.fg("dim", `↑${formatTokens(stats.input)}`));
 				if (stats.output) parts.push(theme.fg("dim", `↓${formatTokens(stats.output)}`));
 			}
 
-			if (config.showCacheEfficiency) {
+			if (config.showCacheEfficiency && stats) {
 				const efficiency = buildCacheEfficiency(stats);
 				if (efficiency) {
 					const cacheDetails = config.showCacheTotals
@@ -855,12 +887,12 @@ export default function starshipline(pi: ExtensionAPI) {
 						: efficiency;
 					parts.push(theme.fg("dim", cacheDetails));
 				}
-			} else if (config.showCacheTotals) {
+			} else if (config.showCacheTotals && stats) {
 				if (stats.cacheRead) parts.push(theme.fg("dim", `R${formatTokens(stats.cacheRead)}`));
 				if (stats.cacheWrite) parts.push(theme.fg("dim", `W${formatTokens(stats.cacheWrite)}`));
 			}
 
-			if (config.showCost && (stats.cost || isUsingSubscription(ctx))) {
+			if (config.showCost && stats && (stats.cost || isUsingSubscription(ctx))) {
 				parts.push(theme.fg("dim", `$${stats.cost.toFixed(3)}${isUsingSubscription(ctx) ? " sub" : ""}`));
 			}
 
@@ -869,15 +901,12 @@ export default function starshipline(pi: ExtensionAPI) {
 				const usage = ctx.getContextUsage();
 				const contextWindow = usage?.contextWindow ?? ctx.model?.contextWindow ?? 0;
 				const percent = usage?.percent;
-				parts.push(theme.fg("dim", `ctx ${percent === null || percent === undefined ? "?" : `${percent.toFixed(1)}%`}/${formatTokens(contextWindow)}`));
+				const tokens = usage?.tokens;
+				const tokenUsage = `${tokens === null || tokens === undefined ? "?" : formatTokens(tokens)}/${
+					contextWindow ? formatTokens(contextWindow) : "?"
+				}`;
+				parts.push(theme.fg("dim", `${percent === null || percent === undefined ? "?" : percent.toFixed(1)}% ${tokenUsage}`));
 			}
-		}
-
-		if (config.showModel && ctx.model) {
-			const thinking = config.showThinkingLevel ? pi.getThinkingLevel() : undefined;
-			parts.push(theme.fg("muted", thinking ? `${ctx.model.id} · ${thinking}` : ctx.model.id));
-		} else if (config.showThinkingLevel) {
-			parts.push(theme.fg("muted", pi.getThinkingLevel()));
 		}
 
 		return parts.join("  ");
@@ -910,19 +939,21 @@ export default function starshipline(pi: ExtensionAPI) {
 						? theme.fg("warning", `starshipline unavailable: ${formatPathForFooter(ctx.cwd, config.pathMaxSegments)}`)
 						: theme.fg("muted", formatPathForFooter(ctx.cwd, config.pathMaxSegments));
 					const left = leftLine || fallback;
+					const model = buildModelText(ctx, theme);
+					const leftGroup = model ? `${left} ${model}` : left;
 					const right = buildRightSide(ctx, theme, footerData);
 
-					if (!right) return [truncateToWidth(left, width)];
+					if (!right) return [truncateToWidth(leftGroup, width, "…")];
 
-					const leftWidth = visibleWidth(left);
+					const leftWidth = visibleWidth(leftGroup);
 					const rightWidth = visibleWidth(right);
 					if (leftWidth + rightWidth + 1 <= width) {
-						return [left + " ".repeat(width - leftWidth - rightWidth) + right];
+						return [leftGroup + " ".repeat(width - leftWidth - rightWidth) + right];
 					}
 
 					const availableLeft = Math.max(0, width - rightWidth - 1);
-					if (availableLeft <= 0) return [truncateToWidth(right, width)];
-					return [truncateToWidth(left, availableLeft, "…") + " " + right];
+					if (availableLeft <= 0) return [truncateToWidth(right, width, "…")];
+					return [truncateToWidth(leftGroup, availableLeft, "…") + " " + right];
 				},
 			};
 		});
