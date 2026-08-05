@@ -1,0 +1,37 @@
+#!/bin/sh
+# tq — authenticated tldraw canvas API helper.
+set -eu
+
+usage() {
+  echo 'usage: tq <METHOD> <path> [body]' >&2
+  exit 2
+}
+
+[ "$#" -ge 2 ] || usage
+command -v jq >/dev/null 2>&1 || { echo 'tq: jq is required' >&2; exit 127; }
+command -v curl >/dev/null 2>&1 || { echo 'tq: curl is required' >&2; exit 127; }
+
+server_json="${TLDRAW_SERVER_JSON:-$HOME/Library/Application Support/tldraw/server.json}"
+[ -f "$server_json" ] || { echo "tq: tldraw server metadata not found: $server_json" >&2; exit 1; }
+
+port=$(jq -er '.port' "$server_json")
+token=$(jq -er '.token' "$server_json")
+method=$1
+request_path=$2
+body=${3-}
+
+# tldraw Desktop 1.11.0 matches raw colon-bearing document ids and does not
+# decode percent-encoded route parameters. Normalize the common encoded form.
+request_path=$(printf '%s' "$request_path" | sed -e 's/%3A/:/g' -e 's/%3a/:/g')
+url="http://localhost:$port$request_path"
+auth="authorization: Bearer $token"
+
+if [ -z "$body" ]; then
+  curl -sS -X "$method" "$url" -H "$auth"
+else
+  case "$body" in
+    '{'*) content_type='content-type: application/json' ;;
+    *)    content_type='content-type: text/plain' ;;
+  esac
+  curl -sS -X "$method" "$url" -H "$auth" -H "$content_type" --data-binary "$body"
+fi
