@@ -2,6 +2,12 @@
 
 GNU Stow-managed dotfiles for macOS (Apple Silicon). Each top-level directory is a stow package.
 
+## Pi agent defaults
+
+- Claude-family Pi agents, such as `claude-opus-4.8`, use the `github-copilot` provider.
+- All other Pi agents use `headroom-copilot` and the latest GPT model. The current default is `gpt-5.6-sol:high`.
+- Parallel `github-copilot` launches can race while refreshing auth. Start those agents one at a time until each passes auth, then let them run concurrently. If a batch fails auth, retry it with sequenced launches.
+
 ## Commits
 
 Stagger commits by stow package (the "tool") — one package per commit, never mix packages in a single commit. Use Conventional Commits with the package name as the scope: `feat(nvim): ...`, `fix(zsh): ...`, `chore(zed): ...`. When one package has unrelated changes, make separate focused commits, each still scoped to that package. (No `Co-Authored-By` trailers — see global CLAUDE.md.)
@@ -37,7 +43,9 @@ Every skill is an owned, version-controlled file — no `/install` and no `.skil
 - **Shared hub** (`dotfiles/agents/.agents/skills/`, `agents` stow package, `--no-folding`) holds every agent-agnostic skill. It's the cross-agent source of truth: `~/.agents/skills/<name>/*` are stow symlinks into the repo, and consumers point back at the hub — `~/.claude/skills/<name>` → `../../.agents/skills/<name>`, and pi's `~/.config/pi/agent/skills/<name>` → `../../../../.agents/skills/<name>`.
 - **Claude-only skills** (`dotfiles/claude/.claude/skills/`, `claude` stow package) are the few that lean on Claude-specific tooling (parallel Agent-tool sub-agents, etc.) — e.g. `code-review`, `codebase-design`, `orchestrate`. `~/.claude/skills/<name>/*` are per-file symlinks into that package.
 
-A skill belongs in the hub unless it has genuine Claude quirks; grep a candidate for `Agent tool`/`subagent`/`Explore` before deciding. On a fresh machine: `stow --no-folding agents claude` — that's the whole setup.
+A skill belongs in the hub unless it has genuine Claude quirks; grep a candidate for `Agent tool`/`subagent`/`Explore` before deciding. Do not replace `~/.claude/skills` with a directory symlink because shared child links must coexist with stowed Claude-only skills.
+
+Every agent installing, updating, repairing, or auditing a skill must use `agents/.agents/skills/install-skill/scripts/install-skill` or its read-only `verify-skill` companion. These scripts enforce the source, Stow hub, Claude, and Pi location invariants. When the user supplies raw `SKILL.md` content, extract its frontmatter name, choose the scope, write the canonical source first, then run the installer by name; the scripts do not accept raw content or stdin. On a fresh machine, stow `agents` once to bootstrap the installer, then use it for each owned skill; pass `--scope claude` for Claude-only skills.
 
 ## Stow and symlinks
 
