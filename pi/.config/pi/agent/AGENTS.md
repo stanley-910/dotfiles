@@ -4,6 +4,12 @@
 
 Be direct. No pretty language. No praise. No filler. Use terse bullets. State uncertainty plainly.
 
+## Pi worker defaults
+
+- Claude-family Pi workers, such as `claude-opus-4.8`, use the `github-copilot` provider.
+- All other Pi workers use `headroom-copilot` and the latest GPT model. The current default is `gpt-5.6-sol:high`.
+- Parallel `github-copilot` launches can race while refreshing auth. Start those workers one at a time until each passes auth, then let them run concurrently. If a batch fails auth, retry it with sequenced launches.
+
 ## Worktree taxonomy
 
 When creating isolated worktrees, match Stanley's Claude-agent convention.
@@ -36,6 +42,10 @@ Example:
 ~/worktrees/madden-agent/2026-06-29_uc3-multi-item/a1-canonical-plan-policy
 ```
 
+## External tracker safety
+
+- Never create or comment on another owner's remote without Stanley's explicit approval. If approved, omit all AI-generation descriptors.
+
 ## Record forge links (agent-link)
 
 When you grab an issue or open a merge/pull request during a session, record it
@@ -49,6 +59,12 @@ Run it from inside your worktree — it stores per-worktree metadata and tags th
 tmux pane, so it must execute with the worktree as cwd. Re-run to update; it is
 idempotent. `agent-link status` shows what's recorded. If the command is
 missing, skip silently — do not install anything.
+
+## Skill installation
+
+- Skill installs, updates, and repairs: use `~/dotfiles/agents/.agents/skills/install-skill/scripts/install-skill`; use sibling `verify-skill` for audits.
+- Pasted `SKILL.md`: derive name and scope, write the canonical source, then install by name. The scripts do not accept raw content or stdin.
+- Never symlink all of `~/.claude/skills`; shared child links must coexist with stowed Claude-only skills.
 
 ## Log papercuts
 
