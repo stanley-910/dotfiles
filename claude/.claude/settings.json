@@ -1,67 +1,8 @@
 {
-  "agentPushNotifEnabled": true,
-  "editorMode": "vim",
-  "effortLevel": "high",
-  "enabledPlugins": {
-    "clangd-lsp@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true,
-    "obsidian@obsidian-skills": false
-  },
   "env": {
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:8787",
     "PATH": "/Users/stanwang/dotfiles/scripts/bin:/Users/stanwang/.headroom/bin:/Users/stanwang/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Applications/Obsidian.app/Contents/MacOS:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
   },
-  "extraKnownMarketplaces": {
-    "obsidian-skills": {
-      "source": {
-        "repo": "kepano/obsidian-skills",
-        "source": "github"
-      }
-    },
-    "superwhisper": {
-      "source": {
-        "repo": "superultrainc/superwhisper-claude-code",
-        "source": "github"
-      }
-    }
-  },
-  "hooks": {
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "bash ~/.claude/hooks/agent-link-autorecord.sh",
-            "type": "command"
-          }
-        ],
-        "matcher": "Bash"
-      }
-    ],
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "/opt/homebrew/bin/rtk hook claude",
-            "type": "command"
-          }
-        ],
-        "matcher": "Bash"
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "command": "bash '/Users/stanwang/.claude/hooks/herdr-agent-state.sh' session",
-            "timeout": 10,
-            "type": "command"
-          }
-        ],
-        "matcher": "*"
-      }
-    ]
-  },
-  "inputNeededNotifEnabled": true,
   "permissions": {
     "allow": [
       "mcp__deepwiki__ask_question",
@@ -75,8 +16,7 @@
     "defaultMode": "bypassPermissions",
     "skipDangerousModePermissionPrompt": true
   },
-  "preferredNotifChannel": "ghostty",
-  "showTurnDuration": true,
+  "model": "claude-fable-5[1m]",
   "skillOverrides": {
     "caveman": "name-only",
     "claude-api": "off",
@@ -98,22 +38,94 @@
     "update-config": "user-invocable-only",
     "write-a-skill": "name-only"
   },
-  "skipDangerousModePermissionPrompt": true,
-  "statusLine": {
-    "command": "bash ~/.claude/statusline-command.sh",
-    "type": "command"
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/agent-link-autorecord.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/homebrew/bin/rtk hook claude"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/stanwang/.claude/hooks/herdr-agent-state.sh' session",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "tldraw-offline",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$HOME/.agents/skills/tldraw-offline/inject-server-context.sh\" SubagentStart"
+          }
+        ]
+      }
+    ]
   },
-  "syntaxHighlightingDisabled": false,
-  "theme": "dark",
-  "tui": "fullscreen",
-  "verbose": false,
+  "worktree": {
+    "baseRef": "fresh"
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh"
+  },
+  "enabledPlugins": {
+    "clangd-lsp@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "obsidian@obsidian-skills": false
+  },
+  "extraKnownMarketplaces": {
+    "obsidian-skills": {
+      "source": {
+        "source": "github",
+        "repo": "kepano/obsidian-skills"
+      }
+    },
+    "superwhisper": {
+      "source": {
+        "source": "github",
+        "repo": "superultrainc/superwhisper-claude-code"
+      }
+    }
+  },
   "viewMode": "verbose",
+  "syntaxHighlightingDisabled": false,
+  "effortLevel": "high",
+  "tui": "fullscreen",
   "voice": {
     "enabled": true,
     "mode": "hold"
   },
-  "voiceEnabled": true,
-  "worktree": {
-    "baseRef": "fresh"
-  }
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark",
+  "editorMode": "vim",
+  "verbose": false,
+  "preferredNotifChannel": "ghostty",
+  "showTurnDuration": true,
+  "inputNeededNotifEnabled": true,
+  "agentPushNotifEnabled": true,
+  "voiceEnabled": true
 }
