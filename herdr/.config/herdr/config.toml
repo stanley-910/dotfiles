@@ -1,3 +1,4 @@
+onboarding = false
 # PROTOTYPE — evaluate Herdr before adopting it as the primary multiplexer.
 # Delete or absorb this package after the trial.
 #
@@ -11,13 +12,21 @@ new_cwd = "follow"
 prefix = "alt+space"
 detach = "prefix+d"
 settings = "prefix+ctrl+s"
+goto = "prefix+e"
 
-workspace_picker = "prefix+s"
+toggle_sidebar = "cmd+e"
+
+workspace_picker = ["prefix+s", "cmd+s"]
 rename_workspace = "prefix+shift+s"
 open_worktree = "prefix+w"
 
-next_agent = "ctrl+alt+j"
-previous_agent = "ctrl+alt+k"
+#
+
+
+
+
+next_agent = ["alt+a", "ctrl+alt+j"]
+previous_agent = ["alt+shift+a", "ctrl+alt+k"]
 
 next_tab = ["prefix+n", "alt+n"]
 previous_tab = ["prefix+shift+n", "alt+shift+n"]
@@ -28,10 +37,10 @@ last_pane = ["prefix+q", "alt+q", "alt+shift+d"]
 
 split_vertical = "prefix+backslash"
 split_horizontal = "prefix+minus"
-focus_pane_left = "prefix+h"
-focus_pane_down = "prefix+j"
-focus_pane_up = "prefix+k"
-focus_pane_right = "prefix+l"
+focus_pane_left = ["prefix+h", "ctrl+shift+h"]
+focus_pane_down = ["prefix+j", "ctrl+shift+j"]
+focus_pane_up = ["prefix+k", "ctrl+shift+k"]
+focus_pane_right = ["prefix+l", "ctrl+shift+l"]
 
 # Inside the Spaces navigator: j/k select workspaces; arrows move vertically
 # between panes. Normal prefix+h/j/k/l pane navigation remains unchanged.
@@ -61,7 +70,27 @@ name = "gruvbox"
 auto_switch = false
 
 [ui.toast]
-delivery = "herdr"
+delivery = "off"
 
 [experimental]
 pane_history = false
+
+[[keys.command]]
+key = "prefix+space"
+type = "pane"
+command = "lazygit"
+description = "run lazygit"
+
+[[keys.command]]
+key = "prefix+g"
+type = "popup"
+command = "~/dotfiles/scripts/prototypes/herdr/git-menu"
+description = "open git menu"
+
+[[keys.command]]
+key = "cmd+r"
+type = "plugin_action"
+command = "persiyanov.reviewr.toggle"   # <plugin_id>.<action_id> — note the id, not the name
+
+[ui.sound]
+enabled = false
