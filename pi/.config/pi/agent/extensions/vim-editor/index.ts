@@ -35,11 +35,25 @@ type Operator = "d" | "c" | "y";
 type YankKind = "char" | "line";
 type TextObjectScope = "inner" | "around";
 type VisualKind = "char" | "line";
+type FindKind = "f" | "F" | "t" | "T";
+type WordKind = "word" | "WORD";
 
 interface PendingTextObject {
 	operator: Operator;
 	count: number;
 	scope: TextObjectScope;
+}
+
+interface PendingFind {
+	kind: FindKind;
+	count: number;
+	context: "normal" | "visual" | "operator";
+	operator?: Operator;
+}
+
+interface LastFind {
+	kind: FindKind;
+	char: string;
 }
 
 interface TextRange {
@@ -59,8 +73,11 @@ class VimEditor extends CustomEditor {
 	private pendingOperator: Operator | undefined;
 	private pendingOperatorCount = 1;
 	private pendingPrefix: "g" | undefined;
+	private pendingPrefixCount = 1;
 	private pendingTextObject: PendingTextObject | undefined;
+	private pendingFind: PendingFind | undefined;
 	private pendingReplaceCount = 0;
+	private lastFind: LastFind | undefined;
 	private yankText = "";
 	private yankKind: YankKind = "line";
 	private visualAnchorOffset = 0;
@@ -118,6 +135,12 @@ class VimEditor extends CustomEditor {
 		// Ctrl+C, Ctrl+D, Ctrl+L, Ctrl+P, extension shortcuts, etc.
 		if (!isPlainPrintable(data)) {
 			super.handleInput(data);
+			return;
+		}
+
+		if (this.pendingFind) {
+			this.handleFindTarget(data);
+			this.tui.requestRender();
 			return;
 		}
 
@@ -213,12 +236,59 @@ class VimEditor extends CustomEditor {
 		this.pendingOperator = undefined;
 		this.pendingOperatorCount = 1;
 		this.pendingPrefix = undefined;
+		this.pendingPrefixCount = 1;
 		this.pendingTextObject = undefined;
+		this.pendingFind = undefined;
 		this.pendingReplaceCount = 0;
 	}
 
 	private clearRedo(): void {
 		this.redoStack = [];
+	}
+
+	private handleFindTarget(char: string): void {
+		const pending = this.pendingFind;
+		this.pendingFind = undefined;
+		if (!pending) return;
+
+		const destination = findChar(this.getText(), this.cursorOffset(), pending.kind, char, pending.count);
+		if (destination === undefined) return;
+
+		this.lastFind = { kind: pending.kind, char };
+		if (pending.context === "operator" && pending.operator) {
+			const range = this.findOperatorRange(pending.kind, destination);
+			if (range) this.applyRangeOperator(pending.operator, range);
+			return;
+		}
+
+		this.moveToOffset(destination);
+	}
+
+	private repeatLastFind(reverse: boolean, count: number, operator?: Operator): boolean {
+		if (!this.lastFind) return true;
+
+		const kind = reverse ? reverseFindKind(this.lastFind.kind) : this.lastFind.kind;
+		const destination = findChar(this.getText(), this.cursorOffset(), kind, this.lastFind.char, count, true);
+		if (destination === undefined) return true;
+
+		if (operator) {
+			const range = this.findOperatorRange(kind, destination);
+			if (range) this.applyRangeOperator(operator, range);
+			return true;
+		}
+
+		this.moveToOffset(destination);
+		return true;
+	}
+
+	private findOperatorRange(kind: FindKind, destination: number): TextRange | undefined {
+		const cursor = this.cursorOffset();
+		if (kind === "f" || kind === "t") {
+			const end = Math.min(this.getText().length, destination + 1);
+			return cursor < end ? { start: cursor, end, kind: "char" } : undefined;
+		}
+
+		return destination < cursor ? { start: destination, end: cursor, kind: "char" } : undefined;
 	}
 
 	private handleVisualInput(data: string): void {
@@ -230,6 +300,12 @@ class VimEditor extends CustomEditor {
 
 		if (!isPlainPrintable(data)) {
 			super.handleInput(data);
+			return;
+		}
+
+		if (this.pendingFind) {
+			this.handleFindTarget(data);
+			this.tui.requestRender();
 			return;
 		}
 
@@ -271,23 +347,42 @@ class VimEditor extends CustomEditor {
 				this.repeat(KEY.left, count);
 				return true;
 			case "j":
-				this.repeat(KEY.down, count);
+				this.moveVertical(1, count);
 				return true;
 			case "k":
-				this.repeat(KEY.up, count);
+				this.moveVertical(-1, count);
 				return true;
 			case "l":
 				this.repeat(KEY.right, count);
 				return true;
 			case "w":
-				this.repeat(KEY.wordRight, count);
+				this.moveWithScan(nextWordStart, count);
+				return true;
+			case "W":
+				this.moveWithScan(nextWORDStart, count);
 				return true;
 			case "b":
-				this.repeat(KEY.wordLeft, count);
+				this.moveWithScan(previousWordStart, count);
+				return true;
+			case "B":
+				this.moveWithScan(previousWORDStart, count);
 				return true;
 			case "e":
-				this.moveToNextWordEnd(count);
+				this.moveWithScan(nextWordEnd, count);
 				return true;
+			case "E":
+				this.moveWithScan(nextWORDEnd, count);
+				return true;
+			case "f":
+			case "F":
+			case "t":
+			case "T":
+				this.pendingFind = { kind: data, count, context: "visual" };
+				return true;
+			case ";":
+				return this.repeatLastFind(false, count);
+			case ",":
+				return this.repeatLastFind(true, count);
 			case "0":
 			case "^":
 				this.repeat(KEY.lineStart, 1);
@@ -297,6 +392,7 @@ class VimEditor extends CustomEditor {
 				return true;
 			case "g":
 				this.pendingPrefix = "g";
+				this.pendingPrefixCount = count;
 				return true;
 			case "G":
 				this.goDocumentEnd();
@@ -324,9 +420,19 @@ class VimEditor extends CustomEditor {
 	private handlePrefixedKey(data: string): boolean {
 		if (this.pendingPrefix !== "g") return false;
 		this.pendingPrefix = undefined;
+		const count = this.pendingPrefixCount;
+		this.pendingPrefixCount = 1;
 
 		if (data === "g") {
 			this.goDocumentStart();
+			return true;
+		}
+		if (data === "e") {
+			this.moveWithScan(previousWordEnd, count);
+			return true;
+		}
+		if (data === "E") {
+			this.moveWithScan(previousWORDEnd, count);
 			return true;
 		}
 		return false;
@@ -341,20 +447,20 @@ class VimEditor extends CustomEditor {
 	}
 
 	private findTextObjectRange(scope: TextObjectScope, data: string, count: number): TextRange | undefined {
-		const objectKey = data === "W" ? "w" : data;
-		if (objectKey === "w") return this.findWordTextObject(scope, count);
+		if (data === "w") return this.findWordTextObject(scope, count, "word");
+		if (data === "W") return this.findWordTextObject(scope, count, "WORD");
 
-		const pair = pairForTextObject(objectKey);
+		const pair = pairForTextObject(data);
 		if (pair) return this.findBlockTextObject(scope, pair[0], pair[1]);
 
-		if (objectKey === "'" || objectKey === '"' || objectKey === "`") {
-			return this.findQuoteTextObject(scope, objectKey);
+		if (data === "'" || data === '"' || data === "`") {
+			return this.findQuoteTextObject(scope, data);
 		}
 
 		return undefined;
 	}
 
-	private findWordTextObject(scope: TextObjectScope, count: number): TextRange | undefined {
+	private findWordTextObject(scope: TextObjectScope, count: number, wordKind: WordKind): TextRange | undefined {
 		const text = this.getText();
 		if (!text) return undefined;
 
@@ -371,15 +477,17 @@ class VimEditor extends CustomEditor {
 			else return undefined;
 		}
 
+		const anchorClass = wordClass(text[anchor] ?? "", wordKind);
 		let start = anchor;
-		while (start > 0 && !isWhitespace(text[start - 1] ?? "")) start -= 1;
+		while (start > 0 && wordClass(text[start - 1] ?? "", wordKind) === anchorClass) start -= 1;
 
 		let end = anchor + 1;
-		while (end < text.length && !isWhitespace(text[end] ?? "")) end += 1;
+		while (end < text.length && wordClass(text[end] ?? "", wordKind) === anchorClass) end += 1;
 
 		for (let i = 1; i < count; i += 1) {
 			while (end < text.length && isWhitespace(text[end] ?? "")) end += 1;
-			while (end < text.length && !isWhitespace(text[end] ?? "")) end += 1;
+			const nextClass = wordClass(text[end] ?? "", wordKind);
+			while (end < text.length && wordClass(text[end] ?? "", wordKind) === nextClass) end += 1;
 		}
 
 		if (scope === "around") {
@@ -500,10 +608,24 @@ class VimEditor extends CustomEditor {
 		return offset + cursor.col;
 	}
 
+	private moveVertical(delta: -1 | 1, count: number): void {
+		// Clamp to the buffer edge: overshooting Up in the base editor turns
+		// into prompt-history navigation (see goDocumentStart), which vim's
+		// j/k must never trigger. Arrow keys keep the history behavior. Presses
+		// stay ≤ the logical-line distance, which never exceeds the visual one.
+		const line = this.getCursor().line;
+		const room = delta < 0 ? line : this.getLines().length - 1 - line;
+		this.repeat(delta < 0 ? KEY.up : KEY.down, Math.min(count, room));
+	}
+
 	private moveToOffset(offset: number): void {
-		const clamped = Math.max(0, Math.min(offset, this.getText().length));
-		this.goDocumentStart();
-		this.repeat(KEY.right, clamped);
+		// Walk back from the end rather than out from the start: reaching the
+		// start costs a history-safe end-anchor plus a full left walk anyway
+		// (see goDocumentStart), so this halves the key replay.
+		const length = this.getText().length;
+		const clamped = Math.max(0, Math.min(offset, length));
+		this.goDocumentEnd();
+		this.repeat(KEY.left, length - clamped);
 	}
 
 	private lineStartOffset(line: number): number {
@@ -561,18 +683,90 @@ class VimEditor extends CustomEditor {
 	}
 
 	private changeInnerWord(count: number): void {
-		const range = this.findWordTextObject("inner", count);
+		const range = this.findWordTextObject("inner", count, "word");
 		if (!range) return;
 		this.applyRangeOperator("c", range);
 	}
 
-	private moveToNextWordEnd(count: number): void {
+	private scanOffset(scan: (text: string, offset: number) => number, count: number): number {
 		const text = this.getText();
 		let offset = this.cursorOffset();
-		for (let i = 0; i < count; i += 1) {
-			offset = nextWordEnd(text, offset);
+		for (let i = 0; i < count; i += 1) offset = scan(text, offset);
+		return offset;
+	}
+
+	private moveWithScan(scan: (text: string, offset: number) => number, count: number): void {
+		this.moveToOffset(this.scanOffset(scan, count));
+	}
+
+	private applyWordOperator(operator: Operator, motion: "w" | "W" | "e" | "E" | "b" | "B", count: number): boolean {
+		const text = this.getText();
+		const cursor = this.cursorOffset();
+		let range: TextRange | undefined;
+
+		if (motion === "b" || motion === "B") {
+			const scan = motion === "b" ? previousWordStart : previousWORDStart;
+			const start = this.scanOffset(scan, count);
+			if (start < cursor) range = { start, end: cursor, kind: "char" };
+		} else if (operator === "c" && (motion === "w" || motion === "W") && !isWhitespace(text[cursor] ?? "")) {
+			const scan = motion === "W" ? nextWORDStart : nextWordStart;
+			let end = this.scanOffset(scan, count);
+			while (end > cursor && isWhitespace(text[end - 1] ?? "")) end -= 1;
+			if (cursor < end) range = { start: cursor, end, kind: "char" };
+		} else if (motion === "e" || motion === "E") {
+			const scan = motion === "E" ? nextWORDEnd : nextWordEnd;
+			const end = Math.min(text.length, this.scanOffset(scan, count) + 1);
+			if (cursor < end) range = { start: cursor, end, kind: "char" };
+		} else {
+			const scan = motion === "W" ? nextWORDStart : nextWordStart;
+			const end = this.scanOffset(scan, count);
+			if (cursor < end) range = { start: cursor, end, kind: "char" };
 		}
-		this.moveToOffset(offset);
+
+		if (range) this.applyRangeOperator(operator, range);
+		return true;
+	}
+
+	private toggleCase(count: number): void {
+		const text = this.getText();
+		const start = this.cursorOffset();
+		const chars = Array.from(text.slice(start)).slice(0, count);
+		if (chars.length === 0) return;
+
+		const original = chars.join("");
+		const toggled = chars
+			.map((char) => {
+				if (/^[a-z]$/.test(char)) return char.toUpperCase();
+				if (/^[A-Z]$/.test(char)) return char.toLowerCase();
+				return char;
+			})
+			.join("");
+		if (toggled === original) this.moveToOffset(start + original.length);
+		else this.replaceRange(start, start + original.length, toggled);
+	}
+
+	private joinLines(count: number): void {
+		const joins = Math.max(2, count) - 1;
+		let searchFrom = this.cursorOffset();
+		let firstJoin: number | undefined;
+
+		for (let i = 0; i < joins; i += 1) {
+			const text = this.getText();
+			const newline = text.indexOf("\n", searchFrom);
+			if (newline < 0) break;
+
+			const lineStart = text.lastIndexOf("\n", newline - 1) + 1;
+			let start = newline;
+			while (start > lineStart && isWhitespace(text[start - 1] ?? "")) start -= 1;
+
+			let end = newline + 1;
+			while (end < text.length && text[end] !== "\n" && isWhitespace(text[end] ?? "")) end += 1;
+			this.replaceRange(start, end, " ");
+			if (firstJoin === undefined) firstJoin = start;
+			searchFrom = start + 1;
+		}
+
+		if (firstJoin !== undefined) this.moveToOffset(firstJoin);
 	}
 
 	private enterVisual(kind: VisualKind): void {
@@ -622,23 +816,42 @@ class VimEditor extends CustomEditor {
 				this.repeat(KEY.left, count);
 				return true;
 			case "j":
-				this.repeat(KEY.down, count);
+				this.moveVertical(1, count);
 				return true;
 			case "k":
-				this.repeat(KEY.up, count);
+				this.moveVertical(-1, count);
 				return true;
 			case "l":
 				this.repeat(KEY.right, count);
 				return true;
 			case "w":
-				this.repeat(KEY.wordRight, count);
+				this.moveWithScan(nextWordStart, count);
+				return true;
+			case "W":
+				this.moveWithScan(nextWORDStart, count);
 				return true;
 			case "b":
-				this.repeat(KEY.wordLeft, count);
+				this.moveWithScan(previousWordStart, count);
+				return true;
+			case "B":
+				this.moveWithScan(previousWORDStart, count);
 				return true;
 			case "e":
-				this.moveToNextWordEnd(count);
+				this.moveWithScan(nextWordEnd, count);
 				return true;
+			case "E":
+				this.moveWithScan(nextWORDEnd, count);
+				return true;
+			case "f":
+			case "F":
+			case "t":
+			case "T":
+				this.pendingFind = { kind: data, count, context: "normal" };
+				return true;
+			case ";":
+				return this.repeatLastFind(false, count);
+			case ",":
+				return this.repeatLastFind(true, count);
 			case "0":
 			case "^":
 				this.repeat(KEY.lineStart, 1);
@@ -648,9 +861,16 @@ class VimEditor extends CustomEditor {
 				return true;
 			case "g":
 				this.pendingPrefix = "g";
+				this.pendingPrefixCount = count;
 				return true;
 			case "G":
 				this.goDocumentEnd();
+				return true;
+			case "~":
+				this.toggleCase(count);
+				return true;
+			case "J":
+				this.joinLines(count);
 				return true;
 			case "x":
 				this.clearRedo();
@@ -710,10 +930,22 @@ class VimEditor extends CustomEditor {
 
 		switch (data) {
 			case "w":
+			case "W":
 			case "e":
-				return this.applyForwardWordOperator(operator, count);
+			case "E":
 			case "b":
-				return this.applyBackwardWordOperator(operator, count);
+			case "B":
+				return this.applyWordOperator(operator, data, count);
+			case "f":
+			case "F":
+			case "t":
+			case "T":
+				this.pendingFind = { kind: data, count, context: "operator", operator };
+				return true;
+			case ";":
+				return this.repeatLastFind(false, count, operator);
+			case ",":
+				return this.repeatLastFind(true, count, operator);
 			case "h":
 				return this.applyBackwardCharOperator(operator, count);
 			case "l":
@@ -743,34 +975,6 @@ class VimEditor extends CustomEditor {
 		}
 
 		this.deleteCurrentLines(count);
-	}
-
-	private applyForwardWordOperator(operator: Operator, count: number): boolean {
-		const yank = this.textForwardWord(count);
-		if (operator === "y") {
-			this.setCharYank(yank);
-			return true;
-		}
-
-		this.setCharYank(yank);
-		this.clearRedo();
-		this.repeat(KEY.deleteWordForward, count);
-		if (operator === "c") this.mode = "insert";
-		return true;
-	}
-
-	private applyBackwardWordOperator(operator: Operator, count: number): boolean {
-		const yank = this.textBackwardWord(count);
-		if (operator === "y") {
-			this.setCharYank(yank);
-			return true;
-		}
-
-		this.setCharYank(yank);
-		this.clearRedo();
-		this.repeat(KEY.deleteWordBackward, count);
-		if (operator === "c") this.mode = "insert";
-		return true;
 	}
 
 	private applyForwardCharOperator(operator: Operator, count: number): boolean {
@@ -922,29 +1126,14 @@ class VimEditor extends CustomEditor {
 		return (this.getLines()[line] ?? "").slice(Math.max(0, col - count), col);
 	}
 
-	private textForwardWord(count: number): string {
-		const { line, col } = this.getCursor();
-		const text = this.getLines()[line] ?? "";
-		let end = col;
-		for (let i = 0; i < count; i += 1) {
-			end = nextWordBoundary(text, end);
-		}
-		return text.slice(col, end);
-	}
-
-	private textBackwardWord(count: number): string {
-		const { line, col } = this.getCursor();
-		const text = this.getLines()[line] ?? "";
-		let start = col;
-		for (let i = 0; i < count; i += 1) {
-			start = previousWordBoundary(text, start);
-		}
-		return text.slice(start, col);
-	}
-
 	private goDocumentStart(): void {
-		this.repeat(KEY.up, Math.max(1, this.getText().length + this.getLines().length));
-		this.repeat(KEY.lineStart, 1);
+		// Never spam KEY.up here: the base editor turns Up on the first visual
+		// line (col 0, or empty) into prompt-history navigation, which replaces
+		// the buffer once history is non-empty. Anchor at the end (history-safe
+		// setText trick) and walk back with Left, which wraps lines and never
+		// touches history.
+		this.goDocumentEnd();
+		this.repeat(KEY.left, this.getText().length);
 	}
 
 	private goDocumentEnd(): void {
@@ -1012,6 +1201,7 @@ class VimEditor extends CustomEditor {
 
 	private normalLabel(): string {
 		if (this.pendingReplaceCount > 0) return ` r${this.pendingReplaceCount} `;
+		if (this.pendingFind) return ` ${this.pendingFind.operator ?? ""}${this.pendingFind.kind}? `;
 		if (this.pendingTextObject) {
 			const scope = this.pendingTextObject.scope === "inner" ? "i" : "a";
 			return ` ${this.pendingTextObject.operator}${scope}? `;
@@ -1214,59 +1404,238 @@ function repeatText(text: string, count: number, separator: string): string {
 	return Array.from({ length: count }, () => text).join(separator);
 }
 
-function nextWordBoundary(text: string, start: number): number {
-	let index = Math.max(0, Math.min(start, text.length));
+function wordClass(char: string, wordKind: WordKind): number {
+	if (!char || isWhitespace(char)) return 0;
+	if (wordKind === "WORD" || /^[A-Za-z0-9_]$/.test(char)) return 1;
+	return 2;
+}
+
+function nextStart(text: string, offset: number, wordKind: WordKind): number {
+	let index = Math.max(0, Math.min(offset, text.length));
 	if (index >= text.length) return text.length;
 
-	if (/\s/.test(text[index] ?? "")) {
-		while (index < text.length && /\s/.test(text[index] ?? "")) index += 1;
-		while (index < text.length && !/\s/.test(text[index] ?? "")) index += 1;
+	const currentClass = wordClass(text[index] ?? "", wordKind);
+	if (currentClass === 0) {
+		while (index < text.length && wordClass(text[index] ?? "", wordKind) === 0) index += 1;
 		return index;
 	}
 
-	while (index < text.length && !/\s/.test(text[index] ?? "")) index += 1;
-	while (index < text.length && /\s/.test(text[index] ?? "")) index += 1;
+	while (index < text.length && wordClass(text[index] ?? "", wordKind) === currentClass) index += 1;
+	while (index < text.length && wordClass(text[index] ?? "", wordKind) === 0) index += 1;
 	return index;
 }
 
-function previousWordBoundary(text: string, start: number): number {
-	let index = Math.max(0, Math.min(start, text.length));
+function previousStart(text: string, offset: number, wordKind: WordKind): number {
+	let index = Math.max(0, Math.min(offset, text.length));
 	if (index <= 0) return 0;
 
 	index -= 1;
-	while (index > 0 && /\s/.test(text[index] ?? "")) index -= 1;
-	while (index > 0 && !/\s/.test(text[index - 1] ?? "")) index -= 1;
+	while (index > 0 && wordClass(text[index] ?? "", wordKind) === 0) index -= 1;
+	const targetClass = wordClass(text[index] ?? "", wordKind);
+	while (index > 0 && wordClass(text[index - 1] ?? "", wordKind) === targetClass) index -= 1;
 	return index;
 }
 
-function nextWordEnd(text: string, start: number): number {
+function nextEnd(text: string, offset: number, wordKind: WordKind): number {
 	if (!text) return 0;
 
-	const original = Math.max(0, Math.min(start, text.length - 1));
+	const original = Math.max(0, Math.min(offset, text.length));
+	if (original >= text.length) return text.length;
 	let index = original;
+	let targetClass = wordClass(text[index] ?? "", wordKind);
 
-	if (!isWhitespace(text[index] ?? "")) {
-		if (index + 1 < text.length && !isWhitespace(text[index + 1] ?? "")) {
-			while (index + 1 < text.length && !isWhitespace(text[index + 1] ?? "")) index += 1;
-			return index;
-		}
-
-		// Already at the end of a word; search for the next word instead of
-		// bouncing back to the whitespace before it.
+	if (targetClass === 0) {
+		while (index < text.length && wordClass(text[index] ?? "", wordKind) === 0) index += 1;
+	} else {
+		while (index + 1 < text.length && wordClass(text[index + 1] ?? "", wordKind) === targetClass) index += 1;
+		if (index > original) return index;
 		index += 1;
+		while (index < text.length && wordClass(text[index] ?? "", wordKind) === 0) index += 1;
 	}
 
-	while (index < text.length && isWhitespace(text[index] ?? "")) index += 1;
 	if (index >= text.length) return original;
-
-	while (index + 1 < text.length && !isWhitespace(text[index + 1] ?? "")) index += 1;
+	targetClass = wordClass(text[index] ?? "", wordKind);
+	while (index + 1 < text.length && wordClass(text[index + 1] ?? "", wordKind) === targetClass) index += 1;
 	return index;
 }
 
+function previousEnd(text: string, offset: number, wordKind: WordKind): number {
+	if (!text) return 0;
+
+	const original = Math.max(0, Math.min(offset, text.length));
+	if (original <= 0) return 0;
+	let index = original - 1;
+
+	if (original < text.length && wordClass(text[original] ?? "", wordKind) !== 0) {
+		const currentClass = wordClass(text[original] ?? "", wordKind);
+		while (index >= 0 && wordClass(text[index] ?? "", wordKind) === currentClass) index -= 1;
+	}
+	while (index >= 0 && wordClass(text[index] ?? "", wordKind) === 0) index -= 1;
+	return Math.max(0, index);
+}
+
+export function nextWordStart(text: string, offset: number): number {
+	return nextStart(text, offset, "word");
+}
+
+export function nextWORDStart(text: string, offset: number): number {
+	return nextStart(text, offset, "WORD");
+}
+
+export function previousWordStart(text: string, offset: number): number {
+	return previousStart(text, offset, "word");
+}
+
+export function previousWORDStart(text: string, offset: number): number {
+	return previousStart(text, offset, "WORD");
+}
+
+export function nextWordEnd(text: string, offset: number): number {
+	return nextEnd(text, offset, "word");
+}
+
+export function nextWORDEnd(text: string, offset: number): number {
+	return nextEnd(text, offset, "WORD");
+}
+
+export function previousWordEnd(text: string, offset: number): number {
+	return previousEnd(text, offset, "word");
+}
+
+export function previousWORDEnd(text: string, offset: number): number {
+	return previousEnd(text, offset, "WORD");
+}
+
+export function findCharForward(
+	text: string,
+	offset: number,
+	char: string,
+	count = 1,
+	skipAdjacent = false,
+): number | undefined {
+	if (!text || !char) return undefined;
+	const cursor = Math.max(0, Math.min(offset, text.length));
+	const lineEnd = text.indexOf("\n", cursor);
+	const limit = lineEnd < 0 ? text.length : lineEnd;
+	let searchFrom = cursor + 1;
+	if (skipAdjacent && text[searchFrom] === char) searchFrom += char.length;
+
+	let found = -1;
+	for (let i = 0; i < Math.max(1, count); i += 1) {
+		found = text.indexOf(char, searchFrom);
+		if (found < 0 || found >= limit) return undefined;
+		searchFrom = found + char.length;
+	}
+	return found;
+}
+
+export function findCharBackward(
+	text: string,
+	offset: number,
+	char: string,
+	count = 1,
+	skipAdjacent = false,
+): number | undefined {
+	if (!text || !char) return undefined;
+	const cursor = Math.max(0, Math.min(offset, text.length));
+	const lineStart = text.lastIndexOf("\n", Math.max(0, cursor - 1)) + 1;
+	let searchFrom = cursor - 1;
+	if (skipAdjacent && text[searchFrom] === char) searchFrom -= char.length;
+
+	let found = -1;
+	for (let i = 0; i < Math.max(1, count); i += 1) {
+		found = text.lastIndexOf(char, searchFrom);
+		if (found < lineStart) return undefined;
+		searchFrom = found - 1;
+	}
+	return found;
+}
+
+export function findChar(
+	text: string,
+	offset: number,
+	kind: FindKind,
+	char: string,
+	count = 1,
+	repeat = false,
+): number | undefined {
+	if (kind === "f" || kind === "t") {
+		const found = findCharForward(text, offset, char, count, repeat && kind === "t");
+		if (found === undefined) return undefined;
+		return kind === "t" ? found - 1 : found;
+	}
+
+	const found = findCharBackward(text, offset, char, count, repeat && kind === "T");
+	if (found === undefined) return undefined;
+	return kind === "T" ? found + 1 : found;
+}
+
+function reverseFindKind(kind: FindKind): FindKind {
+	if (kind === "f") return "F";
+	if (kind === "F") return "f";
+	if (kind === "t") return "T";
+	return "t";
+}
+
+// Reclaim loop bounds. rpiv-core's session_start chain awaits git I/O before
+// its lane-switcher handler installs LaneDockEditor, so its clobber can land
+// well after our own handler ran — a one-shot deferred install loses that
+// race. Instead we re-assert on an interval until the slot has stayed ours.
+const RECLAIM_TICK_MS = 100;
+const RECLAIM_WINDOW_TICKS = 300; // stop contesting after 30s uncontested
+const RECLAIM_STABLE_TICKS = 5; // stop early once beaten + held 500ms
+
 export default function (pi: ExtensionAPI) {
+	// setEditorComponent is last-wins. rpiv-core (loaded after this extension
+	// from the npm dir) installs its LaneDockEditor exactly once per runtime:
+	// ctx.ui is the runner's stable uiContext and rpiv latches on its
+	// identity. So whoever installs after rpiv's single shot owns the editor
+	// until /reload. Install now (Vim is live while rpiv's chain is still
+	// awaiting git I/O), then re-assert each tick a foreign factory appears;
+	// once beaten and held, or after the window expires uncontested (e.g.
+	// rpiv absent), stop. Trade-off: rpiv's editor-only gestures
+	// (Down-on-empty opens top lane, Escape clears done lanes) are
+	// unavailable; /lanes, its hotkey, and the dock widget keep working.
+	let generation = 0;
+
 	pi.on("session_start", (_event, ctx) => {
 		if (ctx.mode !== "tui") return;
 
-		ctx.ui.setEditorComponent((tui, theme, keybindings) => new VimEditor(tui, theme, keybindings));
+		const token = ++generation;
+		const factory = (...args: ConstructorParameters<typeof VimEditor>) => new VimEditor(...args);
+		ctx.ui.setEditorComponent(factory);
+
+		let ticks = 0;
+		let heldTicks = 0;
+		let contested = false;
+		const timer = setInterval(() => {
+			try {
+				if (token !== generation) {
+					clearInterval(timer);
+					return;
+				}
+				ticks += 1;
+				if (ctx.ui.getEditorComponent() === factory) {
+					heldTicks += 1;
+					if ((contested && heldTicks >= RECLAIM_STABLE_TICKS) || ticks >= RECLAIM_WINDOW_TICKS) {
+						clearInterval(timer);
+					}
+					return;
+				}
+				contested = true;
+				heldTicks = 0;
+				ctx.ui.setEditorComponent(factory);
+			} catch {
+				// ctx.ui asserts the runner is still active; if it tore down
+				// without session_shutdown reaching us, just stop.
+				clearInterval(timer);
+			}
+		}, RECLAIM_TICK_MS);
+	});
+
+	pi.on("session_shutdown", () => {
+		// Invalidate the reclaim loop so a quit/reload/session-swap never
+		// installs an editor against a torn-down ctx.
+		generation += 1;
 	});
 }
