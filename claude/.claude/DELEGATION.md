@@ -4,13 +4,22 @@ Fable-5 driver offloads token-heavy or parallelizable work to the flat-rate
 enterprise Copilot fleet through the Pi harness. This file holds the mechanics;
 the trigger/policy lives in `CLAUDE.md`.
 
+## Provider and model defaults
+
+- Claude-family Pi workers, such as `claude-opus-4.8`, use `github-copilot`.
+- Other Pi workers use `headroom-copilot`. Their default model is the latest GPT
+  worker, currently `gpt-5.6-sol:high`.
+- Direct `github-copilot` launches can race while refreshing shared auth. Start
+  several workers one at a time until each passes auth. They can run concurrently
+  after startup. If a group fails auth, retry it with sequenced launches.
+
 ## Three patterns
 
 **A. Direct shell-out.** Driver runs `pi -p` itself. The pi transcript lands in
 the driver's context — cheap for one short worker, costly for many or verbose
 ones.
 
-    pi -p --provider headroom-copilot --model claude-opus-4.8:high \
+    pi -p --provider github-copilot --model claude-opus-4.8:high \
        --tools read,grep,find,ls --no-session "<handoff>"
 
 **B. Native Claude subagent.** Ordinary Agent-tool workflow on a Claude model,
@@ -47,10 +56,10 @@ dead launches fall back to a native Claude subagent.
 Wrapper prompt (handoff file already written by the driver, in the handoff
 template below):
 
-    RUN_LEDGER role=launcher wraps=impl slice=a2 requested_model=headroom-copilot/claude-opus-4.8:high worktree=<abs>
+    RUN_LEDGER role=launcher wraps=impl slice=a2 requested_model=github-copilot/claude-opus-4.8:high worktree=<abs>
     You are a thin launcher. Do NOT do the task yourself. Do NOT reason about it.
     Run exactly this, wait for it to finish, return its output:
-      cd <worktree> && /opt/homebrew/bin/pi -p --provider headroom-copilot \
+      cd <worktree> && /opt/homebrew/bin/pi -p --provider github-copilot \
         --model claude-opus-4.8:high --approve "$(cat <abs path to handoff file>)"
     If it has produced no output after ~90s with ~0 CPU, kill it and report
     STATUS: BLOCKED — pi stalled (0 CPU / no output).
@@ -58,15 +67,18 @@ template below):
     STATUS/CHANGED/VERIFY/BLOCKERS block. If pi errors or is unavailable, return:
     STATUS: BLOCKED — <error line>. Do not edit files yourself.
 
-Parallel fan-out: launch several pattern-A `pi -p` (Bash `run_in_background`) or
-several pattern-C wrappers in one turn.
+Parallel fan-out: with `headroom-copilot`, launch several pattern-A `pi -p`
+processes (Bash `run_in_background`) or pattern-C wrappers in one turn. With
+`github-copilot`, sequence startup so the workers do not refresh shared auth at
+the same time. Once each worker passes auth, let them continue concurrently.
 
 ## Launch flags
 
 - Read-only scout: `--tools read,grep,find,ls`
 - Implementer in a worktree: pass abs path, add `--approve` to trust project files
 - One-shot, no saved session: `--no-session`
-- Default flat-rate worker: `gpt-5.6-sol:high`
+- Default provider and worker: `headroom-copilot` with `gpt-5.6-sol:high`
+- Claude-family provider: `github-copilot`
 
 ## Route by context ceiling (working set must fit the worker)
 

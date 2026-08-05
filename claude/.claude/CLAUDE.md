@@ -80,7 +80,9 @@ parallelizable work to the flat-rate enterprise Copilot fleet via the Pi
 harness. Two ways to reach it:
 
 1. Direct — driver shells out (its context absorbs the transcript):
-   `pi -p --provider github-copilot --model <id>:<thinking> "<handoff>"`
+   `pi -p --provider headroom-copilot --model <id>:<thinking> "<handoff>"`
+   Always headroom-copilot; direct github-copilot is fallback-only (proxy
+   down) — parallel direct launches race on Copilot token exchange.
 2. Token-saving via a Claude workflow — when you want the Agent tool's
    parallel/background orchestration but the reasoning cost to land on the
    flat-rate fleet, launch a cheap `sonnet` (low) wrapper subagent that does no
