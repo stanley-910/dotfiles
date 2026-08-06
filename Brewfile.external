@@ -112,6 +112,7 @@ brew "jq"
 
 # System utilities you had installed
 cask "alt-tab"           # Windows-style alt-tab window switcher
+cask "helium-browser"    # Chromium-based privacy browser (Helium by imput)
 cask "betterdisplay"     # Display management tool
 cask "monitorcontrol"    # External monitor brightness/volume control
 cask "mos"               # Smooth scrolling and mouse control
