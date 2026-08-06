@@ -123,7 +123,7 @@ step_casks() {
         mos                 # smooth scrolling for non-Apple mice
         alt-tab             # Windows-style window switcher
         betterdisplay       # external monitor tuning
-        helium-browser      # browser (set as default in the next step)
+        helium-browser      # browser (set as default in the next step; NOT the deprecated `helium` cask, which is an unrelated Android-mirroring app)
         sioyek              # PDF viewer — cask is disabled upstream, expect a warning
     )
     local failed=()
@@ -168,8 +168,10 @@ step_macos_defaults() {
 
     # --- Keyboard ----------------------------------------------------------
     # Fast key repeat is the single most important setting for vim-style editing.
-    defaults write NSGlobalDomain KeyRepeat                              -int 1
-    defaults write NSGlobalDomain InitialKeyRepeat                       -int 10
+    # (2/30 matches the lived-in setting from the 2026 machine; 1/10 proved
+    # faster than actually wanted.)
+    defaults write NSGlobalDomain KeyRepeat                              -int 2
+    defaults write NSGlobalDomain InitialKeyRepeat                       -int 30
     # Disable the press-and-hold accent menu so j/k/l/etc. repeat as expected.
     defaults write -g ApplePressAndHoldEnabled                           -bool false
     # Kill every auto-substitution — they all corrupt code.
@@ -290,11 +292,15 @@ step_mos() {
     # Mos overwrites its plist on quit, so it MUST be quit before we write.
     killall Mos 2>/dev/null || true
     sleep 1
+    # These are seed values only: Mos normalizes them on quit (floats gain
+    # precision, keybindings become binary plist data), so drift audits will
+    # always report mismatches here — that's expected, not drift. Current
+    # settings are documented in docs/mos.md.
     defaults write com.caldis.Mos smooth         -bool true
     defaults write com.caldis.Mos reverse        -bool false
-    defaults write com.caldis.Mos step           -int 35
+    defaults write com.caldis.Mos step           -float 30.70319154281626
     defaults write com.caldis.Mos speed          -float 3.5
-    defaults write com.caldis.Mos duration       -float 3.33
+    defaults write com.caldis.Mos duration       -float 1.414965986394558
     defaults write com.caldis.Mos hideStatusItem -bool true
     # Mos stores its modifier-key bindings as a packed binary blob. The hex
     # below decodes to:

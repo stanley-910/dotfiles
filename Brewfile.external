@@ -16,22 +16,12 @@
 # Node.js - JavaScript runtime (current Homebrew stable)
 brew "node"
 
-# Python versions - You had multiple versions installed
-brew "python@3.12"
-brew "python@3.13"
+# Python - one Homebrew version; project envs are managed by uv
 brew "python@3.14"
+brew "uv"                # Python package/project manager (replaces pipx/pyenv)
 
-# Python package managers
-brew "pipx"              # Install Python applications in isolated environments
-
-# Language package managers
-brew "yarn"              # JavaScript package manager (alternative to npm)
-
-# Other language tooling
-brew "rust-analyzer"     # Rust language server
-
-# Compiled languages
-brew "crystal"           # Crystal programming language
+# Go toolchain
+brew "go"
 
 # ============================================================================
 # Text Editors & Development Tools
@@ -40,50 +30,25 @@ brew "crystal"           # Crystal programming language
 # Neovim - Hyperextensible Vim-based text editor
 brew "neovim"
 
-# Typst - Modern markup-based typesetting system
+# Typst - Modern markup-based typesetting system (nvim/zed configs reference it)
 brew "typst"
 
-# ============================================================================
-# Document & PDF Tools
-# ============================================================================
-
-# Zathura - Lightweight PDF viewer
-brew "zathura"
-brew "zathura-pdf-mupdf"
-brew "zathura-pdf-poppler"
-
-# MuPDF - Lightweight PDF and XPS viewer
-brew "mupdf"
+# Language servers / parsers
+brew "tree-sitter-cli"   # Tree-sitter grammar compiler (nvim)
 
 # ============================================================================
 # Terminal Tools & Utilities
 # ============================================================================
 
-# Terminal multiplexers and session managers
-brew "screen"            # Terminal multiplexer (alternative to tmux)
-
-# Terminal toys and visualizations
-brew "cbonsai"           # Bonsai tree generator for terminal
-brew "cmatrix"           # Matrix screensaver effect
-brew "pipes-sh"          # Animated pipes screensaver
-
-# Keyboard utilities
-brew "showkey"           # Show keys being pressed
-
 # Tree - Directory listing in tree format
 brew "tree"
 
-# ============================================================================
-# System Utilities
-# ============================================================================
+# Terminal viewers & media
+brew "mpv"               # Video player
+brew "httpie"            # Friendly HTTP client
 
-# Network tools
-brew "nmap"              # Network exploration and security auditing
-brew "telnet"            # Telnet client
-brew "rsync"             # Fast incremental file transfer
-
-# Archive tools
-brew "sevenzip"          # 7-Zip file archiver
+# System care
+brew "mole"              # Deep clean and optimize your Mac
 
 # ============================================================================
 # Build Tools & Libraries
@@ -91,19 +56,35 @@ brew "sevenzip"          # 7-Zip file archiver
 
 # Build systems
 brew "cmake"             # Cross-platform build system
-brew "meson"             # Fast build system
 brew "ninja"             # Small build system focused on speed
-
-# Compilers
-brew "gcc"               # GNU Compiler Collection
-brew "llvm"              # LLVM compiler infrastructure
 
 # ============================================================================
 # Version Control & Git Tools
 # ============================================================================
 
+brew "gh"                # GitHub CLI
+brew "glab"              # GitLab CLI
+brew "lazygit"           # Git TUI (config tracked in lazygit package)
+brew "diff-so-fancy"     # Diff pager used by lazygit config
+brew "worktrunk"         # Git worktree CLI for parallel agent workflows (wt)
+tap "modem-dev/tap"
+brew "hunk"              # Terminal diff viewer for agent-authored changesets (modem-dev/tap)
+
 # Git LFS (Large File Storage) - Implied by git config
 # brew "git-lfs"         # Uncomment if you use Git LFS
+
+# ============================================================================
+# Shell & Script Quality
+# ============================================================================
+
+brew "shellcheck"        # Shell script linter
+brew "shfmt"             # Shell script formatter
+
+# ============================================================================
+# Agent Tooling
+# ============================================================================
+
+brew "rtk"               # Rust Token Killer - token-optimized CLI proxy
 
 # ============================================================================
 # Multimedia Tools
