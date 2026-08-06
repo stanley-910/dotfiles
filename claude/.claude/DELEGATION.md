@@ -41,9 +41,17 @@ error — it looks exactly like an auth failure and burned 2×20 min before
 diagnosis (validated fix 2026-07-12: same content via `"$(cat file)"`
 round-tripped in ~7 s). Corollaries: launchers call `/opt/homebrew/bin/pi`
 (bare `pi` is a shell function); macOS has no `timeout` — use
-`perl -e 'alarm N; exec @ARGV' -- <cmd>`; keep a liveness watchdog (CPU +
-network at 30-60 s) since pi emits no error when starved on stdin; after two
-dead launches fall back to a native Claude subagent.
+`perl -e 'alarm N; exec @ARGV' -- <cmd>`; after two dead launches fall back
+to a native Claude subagent.
+
+**Watchdog rule — low CPU alone is NOT a stall.** A healthy pi worker idles
+near 0 CPU for minutes while awaiting model responses; killing on "~0 CPU
+after 90 s" murdered two mid-run workers that had already landed commits
+(2026-08-05). A worker is stalled only if ALL progress signals are dead:
+no stdout growth, no new git commits/dirty-file changes in its worktree, no
+network sockets — sampled over 3+ minutes. Check `git log`/`git status` in
+the worktree before any kill, and prefer reporting BLOCKED-suspected to the
+driver over killing; the driver owns kill decisions.
 
     Agent(
       subagent_type="general-purpose",
