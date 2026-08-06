@@ -42,6 +42,12 @@ replace named markers.
 | fastfetch | portable | keep |
 | cursor | adapt-needed | broken-fix-needed |
 
+**Adjudication complete (Stanley, 2026-08-05):** every remaining draft verdict was
+locked as drafted; the six broken-fix-needed entries carry their agreed fix in an
+*Adjudicated* line in their section. Portability tags confirmed (13 portable,
+9 adapt-needed, 0 work-only) — they scope the personal-substitutes ticket and the
+migration strip list.
+
 ## Sections
 
 ### claude
@@ -83,6 +89,7 @@ replace named markers.
   - `README.md:144` documents obsolete `zathura/` instead of the authoritative `sioyek` package.
   - `SETUP_NOTES.md:22-29` retains the old Stow split, including `zathura` and omitting `herdr`, `nvim`, `sioyek`, `agents`, `claude`, `lazygit`, and `pi`.
 - **Draft verdict**: broken-fix-needed — authoritative conventions are useful, but the README and setup notes give stale package lists.
+  **Adjudicated (Stanley, 2026-08-05):** fix README stow lists in apply-verdicts (add `herdr`, `lazygit`; swap `zathura`→`sioyek`); `SETUP_NOTES.md` is decided once, in the migration-guide ticket.
 
 ### bootstrap
 
@@ -103,6 +110,7 @@ replace named markers.
   - `bootstrap.sh:244` omits documented full-stow package `herdr`; `bootstrap.sh:248` omits documented selective-stow package `lazygit`.
   - `bootstrap.sh:308-339` manually creates Claude/Cursor skill symlinks instead of using the required `agents/.agents/skills/install-skill/scripts/install-skill` workflow and does not establish the documented Pi consumer invariant itself.
 - **Draft verdict**: broken-fix-needed — the bootstrap is otherwise portable, but its package arrays and skill-link setup have drifted from root `CLAUDE.md`.
+  **Adjudicated (Stanley, 2026-08-05):** sync the stow arrays with `CLAUDE.md` (add `herdr`, `lazygit`) and replace the hand-rolled skill-symlink block with a loop over `install-skill`.
 
 ### agents
 
@@ -142,6 +150,7 @@ c87920d feat(agents): add install-skill skill
 - **Conventions**:
   - `nvim/issues.md:1` sits at the full-directory stow package root, so `stow --restow nvim` targets it as `~/issues.md` instead of placing it under the documented `nvim/.config/nvim/` XDG tree.
 - **Draft verdict**: broken-fix-needed — keep the configuration, but move `nvim/issues.md` into the XDG config tree or explicitly exclude it from stow before restowing.
+  **Adjudicated (Stanley, 2026-08-05):** move it to `nvim/.config/nvim/issues.md` — it documents the config and belongs inside it.
 
 ### pi
 
@@ -165,6 +174,7 @@ db43598 feat(pi): add vim prompt editor
   - `pi/.config/pi/agent/models.json:6` tracks a literal `apiKey` value (`headroom-local`) rather than sourcing credentials from `~/.secrets/env`.
     *Driver note: verified — the value is a sentinel the local Headroom proxy ignores, not a real credential; a leak risk of zero, but it normalizes tracked apiKey fields, so still worth adjudicating.*
 - **Draft verdict**: keep — this is the active, documented Pi setup; a personal Mac must run the local Headroom proxy or override the default provider, and the tracked local API-key sentinel should be adjudicated.
+  **Adjudicated (Stanley, 2026-08-05):** keep the `headroom-local` sentinel tracked as-is; add one `pi/README.md` line stating it's a proxy sentinel, not a credential, so nobody "fixes" it into `~/.secrets/env`.
 
 ### herdr
 
@@ -208,6 +218,7 @@ Notable commits:
   - `scripts/prototypes/herdr/README.md:1` (and sibling prototype scripts) lives outside `bin/` and `.config/` and is not ignored, so full-directory Stow creates the undocumented `~/prototypes/herdr/` target.
     *Driver note: verified latent — neither `~/HEADROOM_PI_COPILOT.md` nor `~/prototypes/` exists yet; both would appear on the next `stow --restow scripts`.*
 - **Draft verdict**: broken-fix-needed — retain the useful scripts, but exclude or relocate the top-level Headroom runbook and `prototypes/` tree before restowing the package.
+  **Adjudicated (Stanley, 2026-08-05):** add both `HEADROOM_PI_COPILOT.md` and `prototypes/` to `scripts/.stow-local-ignore`; no relocation.
 
 ### zed
 
@@ -312,6 +323,7 @@ Notable commits:
   - `jetbrains/.config/jetbrains/.ideavimrc:1` is an undocumented duplicate target; `jetbrains/README.md:21` documents only `~/.ideavimrc`.
   - `jetbrains/README.md:27` prescribes built-in Settings Sync, but the tracked IntelliJ/WebStorm settings archives and their restore location are undocumented.
 - **Draft verdict**: broken-fix-needed — retain the IdeaVim config, but reconcile the duplicate target and sanitize/document the settings archives before keeping them.
+  **Adjudicated (Stanley, 2026-08-05):** delete the duplicate `jetbrains/.config/jetbrains/.ideavimrc` (diff against the home-dot one first, merge if diverged); keep the settings archives and document them in the README; leave the `/Users/stanley/.m2` path macro inside the zip — harmless, IntelliJ re-derives it on import.
 
 ### git
 
@@ -391,6 +403,7 @@ Notable commits:
 - **Portability**: portable — no listed work endpoints, Copilot providers, work hostnames, localhost proxy, or hardcoded `/Users/...` paths were found.
 - **Conventions**: OK
 - **Draft verdict**: keep — the config is in the documented selective-stow target; only the numpad rule description should be corrected to say `fn`.
+  **Adjudicated (Stanley, 2026-08-05):** keep; fold the description fix ("hold left_option" → `fn`) into apply-verdicts.
 
 ### ghostty
 
@@ -436,3 +449,4 @@ Notable commits:
 - **Conventions**:
   - `cursor/README.md:16` documents only `.cursorvimrc`, while the tracked 221,623-byte `macos.code-profile` backup and its restore role are undocumented.
 - **Draft verdict**: broken-fix-needed — keep the Vim config, but sanitize or remove the machine-specific profile export before treating the package as portable.
+  **Adjudicated (Stanley, 2026-08-05):** keep `macos.code-profile` as a documented backup (raycast precedent) — README gets an import note plus a "contains stale machine paths, harmless" caveat; no sanitizing.
