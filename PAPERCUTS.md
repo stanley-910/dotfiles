@@ -118,3 +118,5 @@ entries as they're fixed.
 - [ ] 2026-07-23 — A reset verification command used set -e with rg; the expected no-match exit status aborted the check before printing results.
 - [ ] 2026-07-24 — context-mode ctx_execute_file cannot read required skill docs outside the project root, forcing a direct read fallback.
 - [ ] 2026-07-30 — ctx_index include globs unexpectedly indexed only 1 Citadel file and 0 Webstore files even though matching Java/proto files exist under the supplied roots; the include semantics were not obvious.
+- [ ] 2026-08-05 — dotfiles-drift audit flags tap-qualified brew declarations (modem-dev/tap/hunk) as missing even when installed — it compares against short formula names; declaring the short name with a tap line works around it · _fable-5_
+- [ ] 2026-08-05 — DELEGATION.md launcher watchdog ('~0 CPU after 90s = stalled, kill') killed two healthy pi workers mid-run — pi idles near 0 CPU while awaiting model responses; progress signals (git log, output growth, network) must be checked before killing · _fable-5_
