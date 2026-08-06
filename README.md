@@ -75,7 +75,7 @@ source ~/.zshrc
 ### System Tools
 - **Karabiner-Elements** - Keyboard customization
 - **fastfetch** - System information display
-- **Zathura** - Lightweight PDF viewer
+- **Sioyek** - Lightweight PDF viewer
 - **Git** - Version control with custom config
 
 ## Manual Setup (Updating Existing Config)
@@ -91,19 +91,19 @@ git clone https://github.com/yourusername/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
 # For existing config (adopt and restore), use the same package split as bootstrap.sh
-for pkg in cursor fastfetch ghostty git jetbrains nvim scripts starship sioyek zsh; do
+for pkg in cursor fastfetch ghostty git herdr jetbrains nvim scripts starship sioyek zsh; do
   [ -d "$pkg" ] && stow --adopt "$pkg"
 done
-for pkg in agents claude karabiner pi tmux yazi zed; do
+for pkg in agents claude karabiner lazygit pi tmux yazi zed; do
   [ -d "$pkg" ] && stow --adopt --no-folding "$pkg"
 done
 git restore .
 
 # For fresh start (just symlink)
-for pkg in cursor fastfetch ghostty git jetbrains nvim scripts starship sioyek zsh; do
+for pkg in cursor fastfetch ghostty git herdr jetbrains nvim scripts starship sioyek zsh; do
   [ -d "$pkg" ] && stow --restow "$pkg"
 done
-for pkg in agents claude karabiner pi tmux yazi zed; do
+for pkg in agents claude karabiner lazygit pi tmux yazi zed; do
   [ -d "$pkg" ] && stow --restow --no-folding "$pkg"
 done
 ```
@@ -141,7 +141,7 @@ dotfiles/
 ├── ghostty/       # Ghostty terminal config
 ├── cursor/        # Cursor editor settings
 ├── jetbrains/     # IdeaVim configuration
-├── zathura/       # Zathura PDF viewer config
+├── sioyek/        # Sioyek PDF viewer config
 ├── fastfetch/     # Fastfetch system info config
 └── scripts/       # Custom utility scripts
 ```
@@ -182,7 +182,7 @@ Review and customize before installing.
 
 ## Important: Plugin Pollution Prevention
 
-Some tools/packages (agents, claude, karabiner, pi, tmux, yazi, zed) are stowed with `--no-folding` so runtime files, plugins, sessions, package installs, and caches stay in `$HOME` instead of being folded into this repo. This keeps your dotfiles clean - only configuration files are tracked.
+Some tools/packages (agents, claude, karabiner, lazygit, pi, tmux, yazi, zed) are stowed with `--no-folding` so runtime files, plugins, sessions, package installs, and caches stay in `$HOME` instead of being folded into this repo. This keeps your dotfiles clean - only configuration files are tracked.
 
 ## Troubleshooting
 
