@@ -29,6 +29,10 @@ let mapleader = "\<SPACE>"
 set ignorecase smartcase
 set hlsearch
 set mini-ai
+set easymotion
+set quickscope
+set functiontextobj
+set argtextobj
 set dial
 
 " Map Ctrl+A to increment
@@ -205,6 +209,7 @@ nnoremap gs :action GotoSymbol<Cr>
 
 nnoremap <leader>s /
 nnoremap <leader>S ?
+inoremap M> (() => {});<c-c>F{a<CR>
 
 vnoremap ? :action CommentByLineComment<CR>
 
