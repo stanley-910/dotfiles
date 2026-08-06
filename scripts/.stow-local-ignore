@@ -13,6 +13,10 @@
 # versioned source here, but deploy it as a real file in ~/Library/LaunchAgents.
 ^/Library/LaunchAgents/com\.stanwang\.headroom-proxy\.plist$
 
+# Repository-only documentation and prototypes are not home-directory targets.
+^/HEADROOM_PI_COPILOT\.md$
+^/prototypes$
+
 # stow defaults (kept):
 \.git
 \.gitignore
