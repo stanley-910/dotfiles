@@ -113,8 +113,6 @@ brew "jq"
 # System utilities you had installed
 cask "alt-tab"           # Windows-style alt-tab window switcher
 cask "betterdisplay"     # Display management tool
-cask "fluor"             # Function key mode switcher
-cask "keycastr"          # Keystroke visualizer
 cask "monitorcontrol"    # External monitor brightness/volume control
 cask "mos"               # Smooth scrolling and mouse control
 
