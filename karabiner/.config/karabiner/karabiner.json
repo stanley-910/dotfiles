@@ -5,7 +5,7 @@
             "complex_modifications": {
                 "rules": [
                     {
-                        "description": "Numpad layer: hold left_option + u/i/o j/k/l m/,/. n -> numpad keys",
+                        "description": "Numpad layer: hold fn + u/i/o j/k/l m/,/. n -> numpad keys",
                         "manipulators": [
                             {
                                 "from": {
