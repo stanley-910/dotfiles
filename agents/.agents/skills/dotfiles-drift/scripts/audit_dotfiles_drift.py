@@ -663,11 +663,16 @@ def generate_report(
     current = snapshot["current"]
     brew = current["brew"]
 
-    declared_brews = union_brew(repo, "brew")
-    declared_casks = union_brew(repo, "cask")
-    installed_formulae = set(brew.get("formulae", []))
-    installed_leaves = set(brew.get("leaves", []))
-    installed_casks = set(brew.get("casks", []))
+    # brew leaves emits tap-qualified names (modem-dev/tap/hunk) while
+    # declarations and `brew list` use short names — compare short names.
+    def _short(name: str) -> str:
+        return name.rsplit("/", 1)[-1]
+
+    declared_brews = {_short(n) for n in union_brew(repo, "brew")}
+    declared_casks = {_short(n) for n in union_brew(repo, "cask")}
+    installed_formulae = {_short(n) for n in brew.get("formulae", [])}
+    installed_leaves = {_short(n) for n in brew.get("leaves", [])}
+    installed_casks = {_short(n) for n in brew.get("casks", [])}
 
     missing_brews = declared_brews - installed_formulae
     extra_leaves = installed_leaves - declared_brews
