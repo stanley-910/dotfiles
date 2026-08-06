@@ -25,13 +25,13 @@ replace named markers.
 | agents | adapt-needed | keep |
 | nvim | portable | broken-fix-needed |
 | pi | adapt-needed | keep |
-| herdr | portable | drop |
+| herdr | portable | ~~drop~~ **keep** (adjudicated 2026-08-05) |
 | scripts | adapt-needed | broken-fix-needed |
 | zed | portable | keep |
 | zsh | adapt-needed | keep |
 | zathura | portable | drop |
 | sioyek | portable | keep |
-| raycast | portable | drop |
+| raycast | portable | ~~drop~~ **keep** (adjudicated 2026-08-05) |
 | jetbrains | adapt-needed | broken-fix-needed |
 | git | portable | keep |
 | tmux | portable | keep |
@@ -183,6 +183,7 @@ Notable commits:
   - `herdr/README.md:30` tells users to unstow with `--no-folding`, but repo `CLAUDE.md` documents `herdr` as a full-directory stow package.
 - **Draft verdict**: drop — the package declares itself a throwaway evaluation (`config.toml` header: "PROTOTYPE — evaluate Herdr before adopting").
   *Driver note: the scout's README-vs-config `git-menu` contradiction is stale — the binding was documented in the ticket-01 commits; the drop rationale rests on the self-declared prototype status alone.*
+  **Adjudicated (Stanley, 2026-08-05): keep.** Herdr has graduated from trial to adopted package. Apply-verdicts follow-ups: remove the PROTOTYPE disclaimer from `config.toml`, reconcile `herdr/README.md`'s `--no-folding` unstow instruction with CLAUDE.md's full-stow listing, and reframe the trial-scoped removal instructions.
 
 ### scripts
 
@@ -289,6 +290,7 @@ Notable commits:
   - `CLAUDE.md:18-21` omits `raycast` from both documented stow modes.
   - `raycast/Raycast 2026-05-19 09.56.40.rayconfig:1` is a non-dot binary at package root, outside the documented home-dot/XDG target shapes.
 - **Draft verdict**: drop — this is an undocumented backup artifact rather than a stowable configuration package.
+  **Adjudicated (Stanley, 2026-08-05): keep.** The export stays in the repo as a backup. Apply-verdicts follow-ups: add a README documenting export/import (not stowed), and consider refreshing the May snapshot.
 
 ### jetbrains
 
