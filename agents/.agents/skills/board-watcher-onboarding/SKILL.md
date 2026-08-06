@@ -1,14 +1,14 @@
 ---
 name: board-watcher-onboarding
-description: Guides and automates end-to-end hosted Board Watcher onboarding for a new user and GitLab project, from cloning through verified Pi dispatch. Use when provisioning a Board Watcher user, setting up a client machine, adding a project-scoped token, or troubleshooting first-run Fleet and remote dispatch on macOS, Linux, Windows, or WSL.
-compatibility: Pi on macOS, Linux, Windows, or WSL; remote Linux host with Docker; GitLab hosted projects.
+description: Guides and automates end-to-end hosted Board Watcher onboarding for a new user and GitLab project, from cloning through verified Pi dispatch with GitHub Copilot-backed models. Use when provisioning a Board Watcher user, setting up a client machine, adding a project-scoped token, or troubleshooting first-run Fleet and remote dispatch on macOS, Linux, Windows, or WSL.
+compatibility: Pi with GitHub Copilot-backed models on macOS, Linux, Windows, or WSL; remote Linux host with Docker; GitLab hosted projects.
 ---
 
 # Board Watcher onboarding
 
 ## Outcome
 
-Finish only when one persistent workspace serves all of the user's configured projects, every project uses its own scoped bot token through the shared controller, Fleet works from the client, and a real issue reaches `agent::working` with the repository's supported Pi model at `medium` effort.
+Finish only when one persistent workspace serves all of the user's configured projects, every project uses its own scoped bot token through the shared controller, Fleet works from the client, GitHub Copilot authentication is usable through Pi, and a real issue reaches `agent::working` with the repository's supported Pi model at `medium` effort.
 
 ## Operating rules
 
@@ -22,12 +22,12 @@ Finish only when one persistent workspace serves all of the user's configured pr
 
 ## Workflow
 
-1. **Collect non-secrets.** Ask for client OS/shell, repo URL, remote SSH target/alias, server checkout/root paths, GitLab host, username/user ID, workspace ID, project path/ID, editor, and whether the workspace already exists.
+1. **Collect non-secrets.** Ask for client OS/shell, repo URL, remote SSH target/alias, server checkout/root paths and deployment provenance, GitLab host, username/user ID, workspace ID, project path/ID, editor, and whether the workspace already exists.
 2. **Bootstrap the client.** Run `node scripts/client-check.mjs`. Install or direct installation of missing Git, OpenSSH, Node/Pi, and uv using the OS adapter in [REFERENCE.md](REFERENCE.md). Generate or locate the user's public SSH key, have an admin whitelist it, and prove noninteractive SSH. Clone Board Watcher if absent and read its `ONBOARDING.md` plus hosted sections of `RUNBOOK.md`.
-3. **Prepare the shared host.** Resolve the SSH account's actual UID/home, confirm Docker, the Board Watcher checkout, helper venv, shared `bw-controller`, internal network, controller DB, and project-token-capable commit. Update/rebuild only with approval; preserve existing controllers, databases, homes, and worktrees.
+3. **Prepare the shared host.** Resolve the SSH account's actual UID/home, classify the Board Watcher checkout as a Git clone or copied tree, and confirm Docker, helper venv, shared `bw-controller`, internal network, controller DB, and required onboarding capabilities. Update/rebuild only with approval; preserve existing controllers, databases, homes, and worktrees.
 4. **Provision one workspace.** For a new user, run `deploy/host/onboard-workspace.sh` once with every known project and the script's supported Pi default at `medium` effort. For an existing user, reuse the current workspace and durable home.
 5. **Route each project.** Use the stdin-safe `bw-admin add-hosted-project` command from [REFERENCE.md](REFERENCE.md). It validates the project token/bot, ensures an issue board, updates per-project token routing and workspace allowlist, and recreates only containers whose environment changed.
-6. **Finish interactive credentials.** Enter the workspace; complete Pi login, `glab auth login --hostname <host>`, Git identity, project clones, and Forge `glab-board setup`. Run `python -m board_watcher.runner.doctor` until every check is `OK`.
+6. **Finish interactive credentials.** Enter the workspace; verify UID 1000 and persistent config writability before completing Pi login, `glab auth login --hostname <host>`, Git identity, project clones, and Forge `glab-board setup`. Use the location-specific doctor command from [REFERENCE.md](REFERENCE.md) until every check is `OK`.
 7. **Configure the client.** Run `node scripts/write-remote-config.mjs` with the five required values. Use one stable shared `bw-server`, then verify `uv run bw fleet` and `uv run fleet_tui.py` from the cloned repo.
 8. **Prove dispatch.** With explicit approval, use a disposable or user-selected issue. Allow the controller's first poll to adopt state, remove/re-add `agent::ready`, and verify the label becomes `agent::working`, the controller job is leased/running at `medium`, and both Fleet views show it.
 9. **Close out.** Report paths, project/workspace/controller mapping, model, verification evidence, and any manual credential renewal steps. Do not delete rollback files, worktrees, or controllers.

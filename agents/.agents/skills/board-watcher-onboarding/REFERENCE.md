@@ -8,14 +8,42 @@ Collect these without asking for secrets in chat:
 
 - Client OS: macOS, Linux, Windows, or WSL; shell; editor
 - Board Watcher Git URL and local checkout path
-- Remote SSH target and alias
-- Remote Board Watcher checkout, controller root, users root, and controller DB
+- Remote SSH target, alias, and shared Unix login
+- Remote Board Watcher checkout, checkout provenance (Git clone or copied tree), controller root, users root, and controller DB
 - GitLab host, username, numeric user ID
 - Workspace ID (lowercase filesystem-safe slug)
 - Each GitLab project path and numeric project ID
 - Whether the shared controller and user workspace already exist
 
 Secrets stay at the keyboard: project access token, personal GitLab token, Pi/Copilot login, and private SSH keys. Public `.pub` keys are identifiers and may be sent to the server admin.
+
+## Credential ownership
+
+Do not substitute one credential for another:
+
+| Credential | Created by | Stored and used where |
+|---|---|---|
+| SSH private key | User | Client only; never copy it to the server |
+| SSH public key | User/admin | Shared Unix account's `~/.ssh/authorized_keys` |
+| GitLab project access token | Project maintainer | Shared controller `controller.env`; one route per project |
+| GitLab personal access token | User | Workspace glab config; requires `api` and `write_repository` |
+| Runner token | `onboard-workspace.sh` | Auto-minted in workspace `runner.env`, hashed in controller DB; never supplied manually |
+| Pi/Copilot credential | User | Workspace path named by `PI_CODING_AGENT_DIR` |
+
+## Command context
+
+The three doctor entrypoints are not interchangeable:
+
+| Where the operator is | Command |
+|---|---|
+| Client laptop | `bw doctor` |
+| Remote host | `sudo docker exec bw-workspace-<workspace-id> python -m board_watcher.runner.doctor` |
+| Workspace container | `python -m board_watcher.runner.doctor` |
+
+`bw` is the laptop remote-control client. It reads
+`~/.config/board-watcher/remote.yaml`, connects through SSH, and asks
+`bw-server` to run the workspace doctor. Do not create `remote.yaml` inside a
+workspace container; call the runner module directly there.
 
 ## Skill distribution
 
@@ -128,7 +156,34 @@ test -f <controller-root>/controller.env
 test -f <controller-root>/data/controller.db
 ```
 
-Do not replace an existing controller DB or workspace home. Pull/rebuild only after confirming the checkout is a Git clone and getting approval for container recreation.
+Classify the remote checkout before attempting an update:
+
+```sh
+if git -C <remote-checkout> rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  git -C <remote-checkout> rev-parse HEAD
+  printf 'Git checkout\n'
+else
+  printf 'Copied tree — do not run git pull\n'
+fi
+```
+
+Confirm the deployed onboarding script contains the required ownership and
+doctor fixes:
+
+```sh
+grep -F 'install -d -o 1000 -g 1000' \
+  <remote-checkout>/deploy/host/onboard-workspace.sh
+grep -F 'python -m board_watcher.runner.doctor' \
+  <remote-checkout>/deploy/host/onboard-workspace.sh
+bash -n <remote-checkout>/deploy/host/onboard-workspace.sh
+```
+
+For a Git checkout, pull/rebuild only with approval. For a copied tree, never
+run `git pull`; deploy approved files with `scp` or `rsync`, preserve their
+owner/mode, and compare local and remote SHA-256 checksums. Never claim a local
+commit is deployed until the remote capability checks and checksum pass.
+
+Do not replace an existing controller DB or workspace home.
 
 For a fresh remote host, follow the repository's hosted RUNBOOK to install the
 helper venv, build `board-watcher-controller:pilot`, and create the shared
@@ -152,9 +207,37 @@ Create an empty mode-0600 `controller.env`, then run
 provider route required by the repository's current workspace model template is
 running before provisioning users.
 
-## Gate C — shared controller routes the project token
+## Gate C — one user workspace ready
 
-Project token requirements:
+Create the workspace only if absent. Pass every currently known project in one
+single-quoted JSON array and use one `--projects` flag:
+
+```sh
+sudo env BW_CONTROLLER_DB=<controller-db> \
+  bash <remote-checkout>/deploy/host/onboard-workspace.sh \
+  <workspace-id> <gitlab-username> <gitlab-user-id> \
+  --projects '[{"host":"<gitlab-host>","path":"<group/project-one>","id":<project-one-id>},{"host":"<gitlab-host>","path":"<group/project-two>","id":<project-two-id>}]' \
+  --default-spec pi:<supported-model>:medium \
+  --users-root <users-root> \
+  --checkout <remote-checkout>
+```
+
+For an existing workspace, never call `create-workspace` again. Continue to
+Gate D; `add-hosted-project` updates its allowlist safely.
+
+Verify:
+
+```sh
+docker ps --filter name=bw-workspace-<workspace-id>
+grep '^BW_CONTROLLER_URL=' <users-root>/<workspace-id>/runner.env
+grep '^BW_PROJECTS_JSON=' <users-root>/<workspace-id>/runner.env
+```
+
+The URL must point to the shared controller, not a project-specific controller.
+
+## Gate D — shared controller routes each project token
+
+Repeat this gate for every project. Project token requirements:
 
 - GitLab project access token
 - Developer role
@@ -189,32 +272,6 @@ Expected effects:
 - Shared controller/workspace recreated only if needed
 - Exact rerun reports already routed and changes nothing
 
-## Gate D — one user workspace ready
-
-Create it only if absent:
-
-```sh
-sudo env BW_CONTROLLER_DB=<controller-db> \
-  bash <remote-checkout>/deploy/host/onboard-workspace.sh \
-  <workspace-id> <gitlab-username> <gitlab-user-id> \
-  --projects '[{"host":"<gitlab-host>","path":"<group/project>","id":<project-id>}]' \
-  --default-spec pi:<supported-model>:medium \
-  --users-root <users-root> \
-  --checkout <remote-checkout>
-```
-
-For an existing workspace, never call `create-workspace` again. Use Gate C to append projects to its allowlist.
-
-Verify:
-
-```sh
-docker ps --filter name=bw-workspace-<workspace-id>
-grep '^BW_CONTROLLER_URL=' <users-root>/<workspace-id>/runner.env
-grep '^BW_PROJECTS_JSON=' <users-root>/<workspace-id>/runner.env
-```
-
-The URL must point to the shared controller, not a project-specific controller.
-
 ## Gate E — user credentials, checkout, board, doctor
 
 Enter the workspace:
@@ -223,12 +280,22 @@ Enter the workspace:
 sudo docker exec -it bw-workspace-<workspace-id> zsh -l
 ```
 
-Inside it:
+Inside it, prove the persistent home is writable before opening either
+interactive login:
 
 ```sh
+test "$(id -u)" = 1000
+test "$(id -g)" = 1000
+test "$PI_CODING_AGENT_DIR" = /home/bw/.config/pi/agent
+test -w "$HOME"
+test -w "$HOME/.config"
+mkdir -p "$PI_CODING_AGENT_DIR/sessions" "$HOME/.config/glab-cli"
+
 pi
 # Complete /login, then exit Pi.
 
+# Use the user's personal access token, not the project token.
+# Required scopes: api and write_repository.
 glab auth login --hostname <gitlab-host>
 git config --global user.name '<name>'
 git config --global user.email '<email>'
@@ -294,7 +361,7 @@ Do not declare success from `doctor` alone. Success requires a real leased/runni
 
 | Symptom | Check first | Fix |
 |---|---|---|
-| `agent::ready` stays unchanged | Controller project token | Re-run Gate C; confirm project bot and token env |
+| `agent::ready` stays unchanged | Controller project token | Re-run Gate D; confirm project bot and token env |
 | First ready label is ignored | Project bootstrap state | Remove and re-add the label after first poll |
 | `agent::failed`, model unsupported | Effort spelling | Set workspace default/allowlist to `pi:gpt-5.6-sol:medium` |
 | Doctor controller failure | Runner URL/network | Use shared `bw-controller-internal`; recreate workspace container |
@@ -303,8 +370,11 @@ Do not declare success from `doctor` alone. Success requires a real leased/runni
 | Token/config command names a file permission denial | Remote ownership/sudo path | Use `sudo bw-admin`; do not write controller env directly or use mode 0777 |
 | Config permission denied inside controller logs | Config mode/group | Run controller deploy script; config must be root:gid-1000 mode 0640 |
 | glab authenticated but API/push fails | Wrong GitLab host | Re-run `glab auth login --hostname <host>` |
+| Pi reports `EACCES` creating `agent/sessions` | Persistent `.config` ownership | On the host run `sudo chown -R 1000:1000 <users-root>/<workspace-id>/home/.config`, then rerun the Gate E probes |
+| glab reports permission denied creating `.config/glab-cli` | Persistent `.config` ownership | Apply the same targeted `.config` ownership repair; never chmod 0777 |
+| `bw doctor` inside the container asks for `remote.yaml` | Wrong command context | Run `python -m board_watcher.runner.doctor`; `bw doctor` is the laptop client command |
 | Pi doctor green but worker auth fails | Wrong credential directory | Log in with `PI_CODING_AGENT_DIR=/home/bw/.config/pi/agent` |
-| Board setup says no default board | Missing board | Re-run Gate C; it creates `Agent Board` before Forge setup |
+| Board setup says no default board | Missing board | Re-run Gate D; it creates `Agent Board` before Forge setup |
 | Existing workspace would be overwritten | Wrong command | Stop; use `add-hosted-project`, never `create-workspace` |
 
 ## Final handoff checklist

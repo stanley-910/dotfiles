@@ -10,11 +10,11 @@ Agent flow:
 
 1. Collect Jamie's GitLab numeric user ID, workspace slug, SSH alias, editor, project ID, and remote paths.
 2. Run the client check, whitelist only Jamie's public SSH key on the resolved server account, verify `BatchMode` SSH, and clone Board Watcher.
-3. Confirm the shared controller is on a commit containing per-project token routing.
-4. Read the checkout's supported default and run `onboard-workspace.sh` once for `jamie` with that Pi model at `medium` effort.
-5. Pause while the operator enters the project token invisibly on the remote host; run `bw-admin add-hosted-project` through stdin.
-6. Pause for Jamie's Pi and GitLab interactive logins inside `bw-workspace-jamie`.
-7. Clone `team/app`, run Forge board setup, and run the runner doctor to all-OK.
+3. Classify the remote checkout as a Git clone or copied tree, then verify the project-routing, config-ownership, and runner-doctor capabilities from Gate B.
+4. Complete Gate C: read the checkout's supported default and run `onboard-workspace.sh` once for `jamie` with every known project and that Pi model at `medium` effort.
+5. Complete Gate D: pause while the operator enters each project token invisibly on the remote host; run `bw-admin add-hosted-project` through stdin.
+6. Enter `bw-workspace-jamie`, prove UID/GID 1000 and persistent `.config` writability, then pause for Jamie's Pi login and personal GitLab PAT (`api` + `write_repository`).
+7. Clone `team/app`, run Forge board setup, and run `python -m board_watcher.runner.doctor` to all-OK.
 8. Write Jamie's client `remote.yaml`; verify Fleet CLI/TUI connectivity.
 9. Ask approval to use a test issue, retrigger `agent::ready` after bootstrap, and verify a medium-effort running job.
 
@@ -38,9 +38,9 @@ Agent flow:
 
 1. Confirm `bw-workspace-jamie` and its durable home already exist.
 2. Do not run `onboard-workspace.sh` or create another controller.
-3. Run `bw-admin add-hosted-project jamie gitlab.example.com team/docs <id> --token-stdin ...`.
-4. Clone the docs repo into Jamie's existing workspace.
-5. Run Forge board setup and the runner doctor.
+3. Complete Gate D with `bw-admin add-hosted-project jamie gitlab.example.com team/docs <id> --token-stdin ...`.
+4. Re-enter Jamie's existing workspace, rerun the persistent-home writability probes, and clone the docs repo.
+5. Run Forge board setup and `python -m board_watcher.runner.doctor`.
 6. Keep Jamie's existing client `remote.yaml`; verify both projects appear through the same Fleet endpoint.
 7. With approval, dispatch one docs issue and verify it runs in `bw-workspace-jamie` at medium effort.
 
