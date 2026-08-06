@@ -241,11 +241,11 @@ echo ""
 
 # Directories that should be fully stowed (entire directory symlinked)
 # These should NOT use --no-folding to create directory-level symlinks
-FULL_STOW_DIRS=(cursor fastfetch ghostty git jetbrains nvim scripts starship sioyek zsh)
+FULL_STOW_DIRS=(cursor fastfetch ghostty git herdr jetbrains nvim scripts starship sioyek zsh)
 
 # Directories that need selective file stowing (to avoid plugin/runtime pollution)
 # These SHOULD use --no-folding to symlink individual files only
-SELECTIVE_STOW_DIRS=(agents claude karabiner pi tmux yazi zed)
+SELECTIVE_STOW_DIRS=(agents claude karabiner lazygit pi tmux yazi zed)
 
 # Pre-emptively back up any real files at stow target paths. Necessary
 # because brew bundle (step 2) may install apps (Karabiner-Elements, Zed,
@@ -305,39 +305,18 @@ done
 success "Dotfiles symlinked successfully!"
 
 # ============================================================================
-# Step 7b: Create skill symlinks from model-specific dirs to ~/.agents/skills/
+# Step 7b: Install shared skills for all supported agents
 # ============================================================================
 
-info "Setting up skill symlinks..."
+info "Installing shared skills..."
 
-SKILLS_DIR="$HOME/.agents/skills"
-if [ -d "$SKILLS_DIR" ]; then
-    # Claude Code skills
-    mkdir -p "$HOME/.claude/skills"
-    for skill_dir in "$SKILLS_DIR"/*/; do
-        skill_name=$(basename "$skill_dir")
-        target="$HOME/.claude/skills/$skill_name"
-        if [ ! -e "$target" ]; then
-            ln -s "../../.agents/skills/$skill_name" "$target"
-            info "Linked skill to Claude: $skill_name"
-        fi
-    done
+INSTALL_SKILL="agents/.agents/skills/install-skill/scripts/install-skill"
+for skill_dir in agents/.agents/skills/*/; do
+    [ -d "$skill_dir" ] || continue
+    "$INSTALL_SKILL" "$(basename "$skill_dir")"
+done
 
-    # Cursor skills
-    mkdir -p "$HOME/.cursor/skills"
-    for skill_dir in "$SKILLS_DIR"/*/; do
-        skill_name=$(basename "$skill_dir")
-        target="$HOME/.cursor/skills/$skill_name"
-        if [ ! -e "$target" ]; then
-            ln -s "$SKILLS_DIR/$skill_name" "$target"
-            info "Linked skill to Cursor: $skill_name"
-        fi
-    done
-
-    success "Skill symlinks created!"
-else
-    warn "~/.agents/skills/ not found, skipping skill symlinks"
-fi
+success "Shared skills installed and verified!"
 
 # Install yazi plugins if yazi is installed
 if command -v yazi &> /dev/null; then
