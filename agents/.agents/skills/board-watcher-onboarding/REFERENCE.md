@@ -1,0 +1,323 @@
+# Board Watcher onboarding reference
+
+Use this checklist as session state. Never advance a gate with a failed check.
+
+## Required facts
+
+Collect these without asking for secrets in chat:
+
+- Client OS: macOS, Linux, Windows, or WSL; shell; editor
+- Board Watcher Git URL and local checkout path
+- Remote SSH target and alias
+- Remote Board Watcher checkout, controller root, users root, and controller DB
+- GitLab host, username, numeric user ID
+- Workspace ID (lowercase filesystem-safe slug)
+- Each GitLab project path and numeric project ID
+- Whether the shared controller and user workspace already exist
+
+Secrets stay at the keyboard: project access token, personal GitLab token, Pi/Copilot login, and private SSH keys. Public `.pub` keys are identifiers and may be sent to the server admin.
+
+## Skill distribution
+
+This skill supports both kickoff modes:
+
+- **Operator-driven:** invoke the globally installed skill on the operator's Pi and drive the user's client through a shared terminal or remote session.
+- **New-user Pi:** copy this entire skill directory to
+  `~/.agents/skills/board-watcher-onboarding/` on the new machine, restart Pi,
+  then invoke `/skill:board-watcher-onboarding`. On native Windows the same
+  path is `$HOME/.agents/skills/board-watcher-onboarding/` in PowerShell.
+
+Use `scp`, `rsync`, a reviewed archive, or managed device software to transfer
+the directory. Never bundle user tokens, SSH private keys, generated
+`remote.yaml`, or deployment env files with it.
+
+## Gate A — client ready
+
+Run from the skill directory:
+
+```sh
+node scripts/client-check.mjs
+```
+
+Required:
+
+- Git
+- OpenSSH client
+- Node and Pi
+- uv
+- Board Watcher checkout
+- An SSH alias that reaches the remote host
+
+### SSH public-key whitelist
+
+Use an existing dedicated key or generate one on the user's client:
+
+```sh
+ssh-keygen -t ed25519 -C '<gitlab-username>@board-watcher'
+```
+
+Never copy or display the private key. Send only the matching `.pub` file to a
+server admin. Before editing `authorized_keys`, the admin must resolve the
+account rather than assuming its login name matches its Unix identity:
+
+```sh
+id <ssh-login>
+getent passwd <ssh-login>
+```
+
+Copy the public key to a temporary server path, then install it idempotently
+under the resolved account home:
+
+```sh
+resolved_user=$(id -un <ssh-login>)
+home=$(getent passwd "$resolved_user" | cut -d: -f6)
+group=$(id -gn "$resolved_user")
+sudo install -d -m 0700 -o "$resolved_user" -g "$group" "$home/.ssh"
+sudo touch "$home/.ssh/authorized_keys"
+sudo chown "$resolved_user":"$group" "$home/.ssh/authorized_keys"
+sudo chmod 0600 "$home/.ssh/authorized_keys"
+sudo grep -qxF -f /tmp/board-watcher-user.pub "$home/.ssh/authorized_keys" \
+  || sudo tee -a "$home/.ssh/authorized_keys" </tmp/board-watcher-user.pub >/dev/null
+rm -f /tmp/board-watcher-user.pub
+```
+
+Verify from the client before any controller work:
+
+```sh
+ssh -o BatchMode=yes <ssh-alias> 'id; printf "SSH_OK\\n"'
+```
+
+`Permission denied (publickey,...)` is an SSH key/account/host problem. A later
+`Permission denied` naming `controller.env` or `config.yaml` is a remote file
+ownership problem; do not conflate them or weaken directories to mode 0777.
+
+### OS adapters
+
+- **macOS:** Homebrew is preferred. Config path is `~/.config/board-watcher/remote.yaml`.
+- **Linux:** use the distribution package manager for Git/OpenSSH; install uv from its official installer. Config path is the same.
+- **WSL:** perform the complete client setup inside one WSL distribution. Use its home directory and OpenSSH. `editor: code` expects WSL Remote support.
+- **Native Windows:** use PowerShell, Windows OpenSSH, Git for Windows, Node, and uv. `$HOME/.config/board-watcher/remote.yaml` remains the config path. Do not use `sed`, POSIX-only quoting, or Unix socket assumptions on the client.
+
+The remote host commands remain Linux shell commands executed through SSH.
+
+## Gate B — repository and remote host ready
+
+Clone when absent:
+
+```sh
+git clone <board-watcher-git-url> <checkout>
+cd <checkout>
+```
+
+Read `ONBOARDING.md` and the hosted sections of `RUNBOOK.md`. Confirm the checkout includes:
+
+```text
+bw-admin add-hosted-project
+src/board_watcher/controller/tokens.py
+deploy/host/onboard-workspace.sh
+```
+
+On the remote host, verify:
+
+```sh
+docker version
+docker ps --format '{{.Names}}\t{{.Status}}'
+test -x <remote-checkout>/.venv/bin/bw-admin
+test -f <controller-root>/config.yaml
+test -f <controller-root>/controller.env
+test -f <controller-root>/data/controller.db
+```
+
+Do not replace an existing controller DB or workspace home. Pull/rebuild only after confirming the checkout is a Git clone and getting approval for container recreation.
+
+For a fresh remote host, follow the repository's hosted RUNBOOK to install the
+helper venv, build `board-watcher-controller:pilot`, and create the shared
+controller root. Seed it without project secrets:
+
+```yaml
+execution:
+  mode: hosted
+  controller:
+    database: /var/lib/board-watcher/controller.db
+    listen_host: bw-controller-internal
+    listen_port: 8765
+    admins: [<admin-gitlab-username>]
+    approved_bots: []
+projects: []
+```
+
+Create an empty mode-0600 `controller.env`, then run
+`BW_CONTROLLER_ROOT=<controller-root> deploy/controller/run.sh`. Confirm
+`bw-controller`, `bw-internal`, and the controller DB exist. Confirm the Pi
+provider route required by the repository's current workspace model template is
+running before provisioning users.
+
+## Gate C — shared controller routes the project token
+
+Project token requirements:
+
+- GitLab project access token
+- Developer role
+- `api` scope
+- Bot identity owned by the same numeric project
+
+Read it invisibly and pipe only through stdin:
+
+```sh
+read -rsp 'Project access token: ' PROJECT_TOKEN; echo
+printf '%s' "$PROJECT_TOKEN" | sudo \
+  <remote-checkout>/.venv/bin/bw-admin add-hosted-project \
+  <workspace-id> <gitlab-host> <group/project> <project-id> \
+  --token-stdin \
+  --controller-root <controller-root> \
+  --users-root <users-root> \
+  --controller-run-script <remote-checkout>/deploy/controller/run.sh \
+  --workspace-run-script <remote-checkout>/deploy/workspace/run.sh
+unset PROJECT_TOKEN
+```
+
+When controlling the host over SSH, run `read` on the remote interactive terminal. Do not interpolate the token into an `ssh "..."` command.
+
+Expected effects:
+
+- Token validated against `/user` and `/projects/<id>`
+- Default `Agent Board` created if none exists
+- `projects[].bot_token_env` written to controller YAML
+- Token written only to mode-0600 `controller.env`
+- Bot username added to approved bots
+- Project added to workspace `BW_PROJECTS_JSON`
+- Shared controller/workspace recreated only if needed
+- Exact rerun reports already routed and changes nothing
+
+## Gate D — one user workspace ready
+
+Create it only if absent:
+
+```sh
+sudo env BW_CONTROLLER_DB=<controller-db> \
+  bash <remote-checkout>/deploy/host/onboard-workspace.sh \
+  <workspace-id> <gitlab-username> <gitlab-user-id> \
+  --projects '[{"host":"<gitlab-host>","path":"<group/project>","id":<project-id>}]' \
+  --default-spec pi:<supported-model>:medium \
+  --users-root <users-root> \
+  --checkout <remote-checkout>
+```
+
+For an existing workspace, never call `create-workspace` again. Use Gate C to append projects to its allowlist.
+
+Verify:
+
+```sh
+docker ps --filter name=bw-workspace-<workspace-id>
+grep '^BW_CONTROLLER_URL=' <users-root>/<workspace-id>/runner.env
+grep '^BW_PROJECTS_JSON=' <users-root>/<workspace-id>/runner.env
+```
+
+The URL must point to the shared controller, not a project-specific controller.
+
+## Gate E — user credentials, checkout, board, doctor
+
+Enter the workspace:
+
+```sh
+sudo docker exec -it bw-workspace-<workspace-id> zsh -l
+```
+
+Inside it:
+
+```sh
+pi
+# Complete /login, then exit Pi.
+
+glab auth login --hostname <gitlab-host>
+git config --global user.name '<name>'
+git config --global user.email '<email>'
+
+git clone https://<gitlab-host>/<group/project>.git \
+  ~/repos/<gitlab-host>/<group/project>
+cd ~/repos/<gitlab-host>/<group/project>
+/opt/board-watcher/skills/forge/scripts/glab-board setup
+python -m board_watcher.runner.doctor
+```
+
+Doctor must show `OK` for Git, glab, Pi, Forge, identity, GitLab auth, repositories, home write, controller, and dispatch readiness. Pi credentials must live under `PI_CODING_AGENT_DIR=/home/bw/.config/pi/agent`.
+
+Read the supported model ID from the repository's current
+`deploy/host/onboard-workspace.sh` default. Use `medium`, never `med`, as the
+effort name.
+
+## Gate F — client Fleet ready
+
+Write the client config from the skill directory:
+
+```sh
+node scripts/write-remote-config.mjs \
+  --ssh-target '<user@host-or-alias>' \
+  --ssh-alias '<ssh-config-alias>' \
+  --owner '<gitlab-username>' \
+  --server-command '<remote-checkout>/deploy/host/bw-server' \
+  --editor 'code'
+```
+
+Then, from the Board Watcher checkout:
+
+```sh
+uv run bw fleet
+uv run fleet_tui.py
+```
+
+An empty Fleet is valid before the first run. A connection error, permission error, or stale project-specific `server_command` is not.
+
+## Gate G — live dispatch proven
+
+Get explicit approval for the GitLab issue and label mutation. Prefer an existing disposable issue owned by the user.
+
+1. Record it when available: `agent-link issue <url>`.
+2. Wait for the controller's first project poll to set `bootstrapped=1`.
+3. Remove any existing trigger label, then re-add `agent::ready`.
+4. Confirm exactly one assignee, or leave it unassigned so the promoting user owns dispatch.
+5. Verify within the polling window:
+
+```text
+GitLab label: agent::working
+job state: leased or running
+workspace: expected workspace ID
+model: the workspace's configured Pi model
+effort: medium
+bw fleet: row for host/group/project#issue
+fleet TUI: same row
+```
+
+Do not declare success from `doctor` alone. Success requires a real leased/running job and visibility from the client.
+
+## Symptom table
+
+| Symptom | Check first | Fix |
+|---|---|---|
+| `agent::ready` stays unchanged | Controller project token | Re-run Gate C; confirm project bot and token env |
+| First ready label is ignored | Project bootstrap state | Remove and re-add the label after first poll |
+| `agent::failed`, model unsupported | Effort spelling | Set workspace default/allowlist to `pi:gpt-5.6-sol:medium` |
+| Doctor controller failure | Runner URL/network | Use shared `bw-controller-internal`; recreate workspace container |
+| Fleet empty during active run | Client `server_command`/owner | Rewrite `remote.yaml`; close stale SSH multiplex connections |
+| SSH says `Permission denied (publickey,...)` | Public-key whitelist/account | Re-run Gate A; verify resolved home, ownership, modes, alias user, and key selected with `ssh -v` |
+| Token/config command names a file permission denial | Remote ownership/sudo path | Use `sudo bw-admin`; do not write controller env directly or use mode 0777 |
+| Config permission denied inside controller logs | Config mode/group | Run controller deploy script; config must be root:gid-1000 mode 0640 |
+| glab authenticated but API/push fails | Wrong GitLab host | Re-run `glab auth login --hostname <host>` |
+| Pi doctor green but worker auth fails | Wrong credential directory | Log in with `PI_CODING_AGENT_DIR=/home/bw/.config/pi/agent` |
+| Board setup says no default board | Missing board | Re-run Gate C; it creates `Agent Board` before Forge setup |
+| Existing workspace would be overwritten | Wrong command | Stop; use `add-hosted-project`, never `create-workspace` |
+
+## Final handoff checklist
+
+Report all of these:
+
+- Client OS, Board Watcher checkout, SSH alias, and whitelisted public-key fingerprint
+- Remote host, resolved SSH account/home, and shared controller name/root
+- Workspace ID, durable home, and runner controller URL
+- GitLab projects and bot usernames, never token values
+- Allowed/default model spec
+- Doctor result
+- Fleet CLI and TUI result
+- Test issue URL, job ID/state, and current label
+- Credential renewal commands
+- Rollback or backup paths still present
