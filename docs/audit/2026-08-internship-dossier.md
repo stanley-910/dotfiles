@@ -29,7 +29,7 @@ replace named markers.
 | scripts | adapt-needed | broken-fix-needed |
 | zed | portable | keep |
 | zsh | adapt-needed | keep |
-| zathura | portable | drop |
+| zathura | portable | **drop** (adjudicated 2026-08-05) |
 | sioyek | portable | keep |
 | raycast | portable | ~~drop~~ **keep** (adjudicated 2026-08-05) |
 | jetbrains | adapt-needed | broken-fix-needed |
@@ -260,6 +260,7 @@ Notable commits:
 - **Portability**: portable — the package has no files at HEAD, so none of the listed work or machine-specific markers remain.
 - **Conventions**: OK
 - **Draft verdict**: drop — the package was intentionally removed and has no HEAD state to preserve.
+  **Adjudicated (Stanley, 2026-08-05): drop confirmed.** Superseded by sioyek; the old `zathurarc` stays recoverable from history at `f3b2c2e~1`.
 
 ### sioyek
 
