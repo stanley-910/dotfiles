@@ -1,8 +1,6 @@
-# Herdr prototype
+# Herdr
 
-**Throwaway evaluation package.** Delete or absorb it after deciding whether Herdr should replace tmux for the core multiplexer workflow.
-
-Question being tested: can Herdr replace core tmux navigation, persistence, mouse/copy behavior, and agent visibility without first porting the tmux-dependent scripts?
+Configuration for the Herdr terminal workspace multiplexer.
 
 ## Run
 
@@ -10,7 +8,7 @@ Question being tested: can Herdr replace core tmux navigation, persistence, mous
 herdr
 ```
 
-The prototype intentionally does not modify or bind:
+The configuration does not modify or bind:
 
 - `tmux-sessionizer`
 - `git-menu`
@@ -19,14 +17,14 @@ The prototype intentionally does not modify or bind:
 - `fzf-tab`'s tmux popup
 - Pi extensions
 
-The official installer placed the prototype binary at `~/.local/bin/herdr`.
+The official installer places the binary at `~/.local/bin/herdr`.
 
-## Remove
+## Uninstall
 
-Stop any running prototype session, unstow the package, and remove the standalone binary:
+Stop any running session, unstow the package, and remove the standalone binary:
 
 ```sh
 herdr server stop
-stow -D --no-folding herdr
+stow -D herdr
 rm ~/.local/bin/herdr
 ```

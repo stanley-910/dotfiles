@@ -1,9 +1,4 @@
 onboarding = false
-# PROTOTYPE — evaluate Herdr before adopting it as the primary multiplexer.
-# Delete or absorb this package after the trial.
-#
-# Scope: core tmux muscle memory only. Existing tmux-dependent scripts and
-# Neovim integration remain untouched and are intentionally not bound here.
 
 [terminal]
 new_cwd = "follow"
