@@ -14,6 +14,9 @@ Configs: `~/.config/cursor/` (symlinked via stow)
 
 Includes:
 - `.cursorvimrc` - Vim keybindings
+- `macos.code-profile` - backup export of the macOS Cursor profile
+
+Import `macos.code-profile` through Cursor's profile import command. The export embeds stale `/Users/stanley` machine paths; they are harmless.
 
 ## Setup
 
