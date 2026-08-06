@@ -27,6 +27,8 @@ stow to `~/.config/pi/agent/`. Sessions are kept in
 }
 ```
 
+The `apiKey: "headroom-local"` in `.config/pi/agent/models.json` is a sentinel that the local Headroom proxy ignores, not a credential; do not move it to `~/.secrets/env`.
+
 Use no-folding because `~/.config/pi/agent` also contains runtime state such as
 auth, package installs, generated extension config, package caches, and locally
 installed skills/agents:
