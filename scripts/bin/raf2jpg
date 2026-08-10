@@ -43,7 +43,12 @@ usage: raf2jpg [-o OUTDIR] [-q QUALITY] [-s MAXEDGE] [-n SUFFIX] [-f] FILE [FILE
 
 Renders each RAF to a neutral JPEG named <base>_<suffix>.jpg.
 
-  -o OUTDIR   write JPEGs here (default: next to each source file)
+Outputs never land beside the RAFs. By default each JPEG goes to a folder
+named after the suffix, a sibling of the RAF's own directory (one parent up):
+shoot/RAW/X.RAF -> shoot/neutral/X_neutral.jpg, and -n share lands in
+shoot/share/.
+
+  -o OUTDIR   write JPEGs here instead of the default above
   -q QUALITY  JPEG quality 1-100, only applied when -s forces a re-encode
   -s MAXEDGE  shrink so the long edge is at most MAXEDGE px (never enlarges)
   -n SUFFIX   output name suffix (default "neutral"). Give size variants their
@@ -59,7 +64,7 @@ wiring into FastRawViewer:
   generate the droplet wrappers, then point FRV at those.
 
 examples:
-  raf2jpg IMG.RAF                      full size, alongside the RAF
+  raf2jpg IMG.RAF                      full size, into ../neutral/
   raf2jpg -s 2048 -q 85 IMG.RAF        downsized for upload
   raf2jpg -o ~/Desktop/share *.RAF     a batch into one folder
 EOF
@@ -114,7 +119,10 @@ for src in "$@"; do
 		continue
 	fi
 
-	dest_dir="${outdir:-$(dirname "$src")}"
+	# Default output is a suffix-named sibling of the RAF's directory (one
+	# parent up), so exports never mix into the folder being culled:
+	#   shoot/RAW/X.RAF -> shoot/neutral/X_neutral.jpg
+	dest_dir="${outdir:-$(dirname "$src")/../${suffix}}"
 	base="$(basename "$src")"
 
 	# The suffix is load-bearing, not decoration, and it guards two collisions.
