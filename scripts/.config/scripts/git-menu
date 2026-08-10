@@ -43,6 +43,7 @@ P  :  Search Pull Requests By Current Ticket
 j  :  Open Jira Ticket URL
 J  :  Open Jira Board URL
 b  :  Open Pipeline Build
+B  :  Open Project Board
 m  :  Open Agent MR / PR
 i  :  Open Agent Issue
 y  :  Copy Agent Worktree Path
@@ -86,6 +87,9 @@ J)
   ;;
 b)
   ~/.config/scripts/open_remote.sh b
+  ;;
+B)
+  ~/.config/scripts/open_remote.sh B
   ;;
 # agent-link lives in scripts/bin (on PATH via .zshenv, but tmux popups may not
 # have it), so reference it directly.

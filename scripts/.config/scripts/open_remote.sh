@@ -37,6 +37,14 @@ function main () {
       else
         url="$url/-/merge_requests/$number"
       fi
+    elif [[ $1 == "B" ]]; then
+      # project board is branch-independent; GitHub's /projects tab links to
+      # the canonical user-level board, GitLab's is /-/boards
+      if [[ $url == *"github.com"* ]]; then
+        url="$url/projects"
+      else
+        url="$url/-/boards"
+      fi
     elif [[ -n $url_branch ]]; then
       if [[ $url_branch != "master" && $url_branch != "main" ]]; then
         if [[ $1 == "h" ]]; then
