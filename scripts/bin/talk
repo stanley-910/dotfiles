@@ -27,6 +27,7 @@ set -u
 prog=${0##*/}
 state_dir="$HOME/.claude/cc-talk"
 on_dir="$state_dir/on"
+pane_dir="$state_dir/panes"
 pid_file="$state_dir/speaker.pid"
 state_file="$state_dir/state"
 speed_file="$state_dir/speed"
@@ -73,6 +74,8 @@ Usage:
   $prog speed reset
                    forget the setting and fall back to \$PI_TALK_SPEED or $speed_default
   $prog status     show what is enabled and whether a speaker is live
+  $prog cycle --pane ID
+                   cycle the session living in tmux pane ID — what C-S-Space runs
   $prog -h         this help
 
 Speed changes take effect on the next chunk, so nudging the speed mid-reply
@@ -81,14 +84,40 @@ is heard within a sentence or so rather than at the next turn.
 Enabling is per-session: other Claude Code sessions stay silent until you
 run $prog in them too. Turn it off with \`gag\` (\`gag --all\` for every session).
 
+The tmux key knows which session you are looking at because each session
+claims its pane — on its first completed turn, or the first time you run
+\`$prog\` in it. Until one of those happens the key has nothing to act on and
+says so. Moving a pane (break-pane, join-pane) leaves the claim on the old
+pane id until the next turn re-claims it.
+
 EOF
 	disclosure
 }
 
 # Flag files are named after the session id, so strip anything that would make
-# a surprising filename. The Stop hook applies the identical transform.
+# a surprising filename. Pane files get the same treatment — a tmux pane id is
+# `%12`, and a bare `%` in a filename invites trouble. The Stop hook applies
+# the identical transform to both.
 session_key() {
 	printf '%s' "$1" | sed 's/[^A-Za-z0-9._-]/_/g'
+}
+
+# Which session lives in this tmux pane? The Stop hook writes the map; this
+# only reads it, and prints nothing when the pane has never been claimed.
+pane_session() {
+	[ -n "$1" ] || return 1
+	claimed=$(sed -n '1p' "$pane_dir/$(session_key "$1")" 2>/dev/null)
+	[ -n "$claimed" ] || return 1
+	printf '%s\n' "$claimed"
+}
+
+# Claim the pane we were run from, so the tmux key can reach this session
+# before it has ever finished a turn. Best-effort: no pane, no claim, no fuss.
+record_pane() {
+	[ -n "${TMUX_PANE:-}" ] || return 0
+	mkdir -p "$pane_dir" 2>/dev/null || return 0
+	printf '%s\n' "$1" >"$pane_dir/$(session_key "$TMUX_PANE")" 2>/dev/null || true
+	return 0
 }
 
 # Dead sessions never clean up after themselves, so every run sweeps flags
@@ -106,12 +135,18 @@ drop_legacy() {
 	return 0
 }
 
+# Is this session id switched on? The machine-wide flag speaks for every
+# session, so it counts for all of them.
+id_enabled() {
+	[ -e "$on_dir/global" ] || [ -e "$on_dir/$(session_key "$1")" ]
+}
+
 # Will replies in the shell we were invoked from be spoken? Global counts:
 # it speaks for this session too.
 session_enabled() {
 	[ -e "$on_dir/global" ] && return 0
 	[ -n "${CLAUDE_CODE_SESSION_ID:-}" ] || return 1
-	[ -e "$on_dir/$(session_key "$CLAUDE_CODE_SESSION_ID")" ]
+	id_enabled "$CLAUDE_CODE_SESSION_ID"
 }
 
 # Print the pid of a live speaker, if there is one. The daemon writes a JSON
@@ -191,7 +226,7 @@ speed_effective() {
 # a tmux run-shell keybind opens the fullscreen report view — so under tmux the
 # confirmation goes to the status line, the same split `cycle` makes. Queries
 # are always stdout: they are asked for, and their answer is the point.
-speed_confirm() {
+confirm() {
 	if [ -n "${TMUX:-}" ]; then
 		tmux display-message "cc-talk: $1"
 	else
@@ -206,6 +241,13 @@ speak_control() {
 	printf 'cc-talk: %sd\n' "$1"
 }
 
+# Switch a session on, silently: the callers disagree about where the
+# confirmation belongs (stdout from a shell, status line from a tmux key).
+enable_id() {
+	mkdir -p "$on_dir" || exit 1
+	: >"$on_dir/$(session_key "$1")" || exit 1
+}
+
 enable_session() {
 	scope=$1
 	mkdir -p "$on_dir" || exit 1
@@ -214,7 +256,10 @@ enable_session() {
 		printf 'cc-talk: on for every session on this machine.\n\n'
 		return 0
 	fi
-	: >"$on_dir/$(session_key "$CLAUDE_CODE_SESSION_ID")" || exit 1
+	enable_id "$CLAUDE_CODE_SESSION_ID"
+	# Claim the pane now rather than making the user finish a turn first: this
+	# is the earliest moment both halves of the map are in one process.
+	record_pane "$CLAUDE_CODE_SESSION_ID"
 	printf 'cc-talk: on for this session — replies will be spoken at the end of each turn.\n\n'
 }
 
@@ -232,25 +277,53 @@ case "${1:-}" in
 	cycle)
 		# One key, three meanings. Invoked from tmux as well as from a shell,
 		# and tmux's run-shell does not inherit the focused pane's environment,
-		# so the session id is often unknown here. When it is, the key still has
-		# an obvious job: freeze or continue whatever is speaking.
-		if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ] || [ -e "$on_dir/global" ]; then
-			if ! session_enabled; then
-				enable_session session
-				disclosure
-				exit 0
-			fi
-		elif [ -z "$(live_speaker 2>/dev/null)" ]; then
-			# From the tmux keybind a non-zero exit throws a fullscreen
-			# run-shell report; a status-line message is the right volume.
-			msg="$prog: nothing is speaking, and no CLAUDE_CODE_SESSION_ID here to enable — run \`$prog\` inside the session you want spoken."
-			if [ -n "${TMUX:-}" ]; then
-				tmux display-message "$msg"
-				exit 0
-			fi
-			printf '%s\n' "$msg" >&2
-			exit 1
-		fi
+		# so the session id is never in scope there. `--pane` is how the key
+		# names the session anyway: tmux knows which pane is focused, and the
+		# Stop hook knows which session lives in it.
+		case "${2:-}" in
+			--pane)
+				# From the tmux keybind a non-zero exit throws a fullscreen
+				# run-shell report; a status-line message is the right volume.
+				if ! target=$(pane_session "${3:-}"); then
+					msg="$prog: no cc-talk session in this pane yet — run \`$prog\` in it once, or let it finish a turn."
+					if [ -n "${TMUX:-}" ]; then
+						tmux display-message "$msg"
+						exit 0
+					fi
+					printf '%s\n' "$msg" >&2
+					exit 1
+				fi
+				if ! id_enabled "$target"; then
+					enable_id "$target"
+					# The disclosure is a page of text and this caller has
+					# nowhere to put it — stdout here opens tmux's fullscreen
+					# report view. The first spoken turn carries the reminder.
+					confirm "on for this session — the first spoken turn shows the disclosure"
+					exit 0
+				fi
+				;;
+			"")
+				if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ] || [ -e "$on_dir/global" ]; then
+					if ! session_enabled; then
+						enable_session session
+						disclosure
+						exit 0
+					fi
+				elif [ -z "$(live_speaker 2>/dev/null)" ]; then
+					msg="$prog: nothing is speaking, and no CLAUDE_CODE_SESSION_ID here to enable — run \`$prog\` inside the session you want spoken."
+					if [ -n "${TMUX:-}" ]; then
+						tmux display-message "$msg"
+						exit 0
+					fi
+					printf '%s\n' "$msg" >&2
+					exit 1
+				fi
+				;;
+			*)
+				printf '%s: unknown argument: %s (try --help)\n' "$prog" "$2" >&2
+				exit 1
+				;;
+		esac
 
 		# Idle folds in with playing: pausing silence is a harmless no-op, and
 		# it keeps the next press on the same footing as the contract's states.
@@ -260,11 +333,7 @@ case "${1:-}" in
 			paused) did=unpaused; speak_control unpause >/dev/null ;;
 			*) did=paused; speak_control pause >/dev/null ;;
 		esac
-		if [ -n "${TMUX:-}" ]; then
-			tmux display-message "cc-talk: $did"
-		else
-			printf 'cc-talk: %s\n' "$did"
-		fi
+		confirm "$did"
 		exit 0
 		;;
 	pause|unpause)
@@ -287,7 +356,7 @@ case "${1:-}" in
 			reset)
 				rm -f "$speed_file" 2>/dev/null
 				set -- $(speed_effective)
-				speed_confirm "speed reset to $1× ($2)"
+				confirm "speed reset to $1× ($2)"
 				exit 0
 				;;
 		esac
@@ -311,7 +380,7 @@ case "${1:-}" in
 		new=$(speed_clamp "$target")
 		mkdir -p "$state_dir" || exit 1
 		printf '%s\n' "$new" >"$speed_file" || exit 1
-		speed_confirm "speed ${new}×"
+		confirm "speed ${new}×"
 		exit 0
 		;;
 	status)
