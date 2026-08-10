@@ -2,6 +2,8 @@
 # talk — speak Claude Code replies out loud (turn it on, and say what that costs).
 #
 #   talk           enable, and print the full privacy disclosure
+#   talk pause     freeze the speaker where it is
+#   talk unpause   continue from where it froze
 #   talk status    is it on? is a speaker actually playing right now?
 #   talk --help    usage plus the same disclosure
 #
@@ -44,6 +46,8 @@ $prog — speak Claude Code replies out loud
 
 Usage:
   $prog            enable and print the disclosure below
+  $prog pause      freeze playback at its exact position
+  $prog unpause    continue from the paused position
   $prog status     show flag state and whether a speaker is live
   $prog -h         this help
 
@@ -67,6 +71,18 @@ live_speaker() {
 }
 
 case "${1:-}" in
+	pause|unpause)
+		# The engine freezes mpv in place rather than killing it, so unpause
+		# continues mid-sentence. Tolerate a missing engine the way `gag` does:
+		# the shim exits 0 when pi-talk isn't installed, and so does the speaker
+		# when nothing is playing.
+		cc-talk-speak "--$1" >/dev/null 2>&1 || true
+		case "$1" in
+			pause) printf 'cc-talk: paused\n' ;;
+			*) printf 'cc-talk: unpaused\n' ;;
+		esac
+		exit 0
+		;;
 	status)
 		if [ -f "$flag" ]; then
 			printf 'cc-talk: on\n'
