@@ -46,3 +46,10 @@ shell-integration-features = no-cursor
 # tmux (extended-keys on) decodes it as C-S-Space. Space keycode 32, mod 6 =
 # shift+ctrl.
 keybind = ctrl+shift+space=text:\x1b[32;6u
+
+# Ctrl+Shift+. and Ctrl+Shift+, (talk speed ±0.10) have no legacy encoding at
+# all — Ctrl with punctuation sends nothing a terminal can tell apart — so the
+# tmux root binds C-S-. and C-S-, only ever see these CSI-u sequences. Period
+# keycode 46, comma 44, mod 6 = shift+ctrl.
+keybind = ctrl+shift+period=text:\x1b[46;6u
+keybind = ctrl+shift+comma=text:\x1b[44;6u
