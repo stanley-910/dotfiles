@@ -160,14 +160,24 @@ for src in "$@"; do
 		continue
 	fi
 
+	# The extracted preview is landscape pixels with NO Orientation tag — the
+	# camera's rotation lives only in the RAF's EXIF, so portrait frames would
+	# display sideways. Copy the tag over before anything else sees the file.
+	prev="$work/prev.jpg"
+	"$EXIFTOOL" -b -JpgFromRaw "$dng" >"$prev" 2>/dev/null || true
+	if [ -s "$prev" ]; then
+		"$EXIFTOOL" -q -overwrite_original -tagsFromFile "$src" -Orientation "$prev" 2>/dev/null || true
+	fi
+
 	if [ "$maxedge" -gt 0 ]; then
-		# Re-encode only when resizing. The trailing '>' means shrink-only, so a
-		# -s larger than the frame is a no-op rather than an upscale.
-		"$EXIFTOOL" -b -JpgFromRaw "$dng" 2>/dev/null |
-			"$MAGICK" jpg:- -resize "${maxedge}x${maxedge}>" -quality "$quality" "jpg:$tmp" 2>/dev/null || true
+		# Re-encode only when resizing. -auto-orient bakes the rotation into the
+		# pixels, so the small file stays upright even where EXIF gets stripped.
+		# The trailing '>' means shrink-only, so a -s larger than the frame is a
+		# no-op rather than an upscale.
+		"$MAGICK" "$prev" -auto-orient -resize "${maxedge}x${maxedge}>" -quality "$quality" "jpg:$tmp" 2>/dev/null || true
 	else
-		# Full size: copy the preview out byte for byte, no recompression.
-		"$EXIFTOOL" -b -JpgFromRaw "$dng" >"$tmp" 2>/dev/null || true
+		# Full size: the preview verbatim — image bytes untouched, tag corrected.
+		mv "$prev" "$tmp" 2>/dev/null || true
 	fi
 
 	if [ -s "$tmp" ]; then
