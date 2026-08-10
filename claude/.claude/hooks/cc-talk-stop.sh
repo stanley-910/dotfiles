@@ -77,6 +77,32 @@ key=$(printf '%s' "$session_id" | sed 's/[^A-Za-z0-9._-]/_/g')
 [ -e "$on_dir/$key" ] || [ -e "$on_dir/global" ] || exit 0
 
 message=$(printf '%s' "$payload" | jq -r '.last_assistant_message // empty' 2>/dev/null)
+
+# `last_assistant_message` is only the turn's *final* text, so anything said
+# before a tool call is missing from it. cc-talk-message.sh banks each message
+# as one JSON record per line while the turn runs; this drains that buffer and
+# speaks the whole turn. The buffer goes away either way — a turn that is not
+# spoken must not leak into the next one.
+buf="$state_dir/turns/$key"
+banked=""
+last_banked=""
+if [ -s "$buf" ]; then
+	# -j so each record contributes its own paragraph break; the trailing pair
+	# is eaten by the command substitution.
+	banked=$(jq -rj '.t + "\n\n"' "$buf" 2>/dev/null)
+	last_banked=$(tail -n 1 "$buf" 2>/dev/null | jq -r '.t // empty' 2>/dev/null)
+fi
+rm -f "$buf" 2>/dev/null || true
+
+if [ -n "$banked" ]; then
+	# The final message is normally also the buffer's last entry — speak it once.
+	if [ -z "$message" ] || [ "$last_banked" = "$message" ]; then
+		message=$banked
+	else
+		message=$(printf '%s\n\n%s' "$banked" "$message")
+	fi
+fi
+
 [ -n "$message" ] || exit 0
 
 mkdir -p "$state_dir/disclosed" 2>/dev/null || exit 0
