@@ -1,7 +1,7 @@
 {
   "env": {
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:8787",
-    "PATH": "/Users/stanwang/dotfiles/scripts/bin:/Users/stanwang/.headroom/bin:/Users/stanwang/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Applications/Obsidian.app/Contents/MacOS:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+    "PATH": "/Users/stanley/dotfiles/scripts/bin:/Users/stanley/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Applications/Obsidian.app/Contents/MacOS:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
   },
   "permissions": {
     "allow": [
@@ -67,19 +67,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/stanwang/.claude/hooks/herdr-agent-state.sh' session",
+            "command": "bash \"$HOME/.claude/hooks/herdr-agent-state.sh\" session",
             "timeout": 10
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "matcher": "tldraw-offline",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh \"$HOME/.agents/skills/tldraw-offline/inject-server-context.sh\" SubagentStart"
           }
         ]
       }
