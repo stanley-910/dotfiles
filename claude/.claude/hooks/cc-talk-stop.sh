@@ -11,6 +11,10 @@
 # `on/global` is the explicit machine-wide opt-in. The legacy machine-wide
 # ~/.claude/talk-on is ignored here; `talk`/`gag` delete it when they see it.
 #
+# It also records which tmux pane each session lives in, under
+# ~/.claude/cc-talk/panes/, so the C-S-Space key can act on the session in the
+# pane you are standing in. That map is written on every turn, enabled or not.
+#
 # Hooks run under `sh -c` with only Claude Code's launch env — nothing from
 # .zshrc/.zshenv exists here. `jq` (/opt/homebrew/bin) and `cc-talk-speak`
 # (~/dotfiles/scripts/bin) are reachable via settings.json "env.PATH".
@@ -18,9 +22,35 @@ set -u
 
 state_dir="$HOME/.claude/cc-talk"
 on_dir="$state_dir/on"
+pane_dir="$state_dir/panes"
+
+payload=""
+
+# Which tmux pane is this session living in? Only this hook can answer that:
+# the claude process inherits TMUX_PANE from its launch pane and passes it
+# down, while its session id exists only in this payload. `talk cycle --pane`
+# reads the map back, which is how one tmux key can act on the session in the
+# pane you are standing in rather than on whatever happens to be speaking.
+#
+# It runs before the enabled check because a session has to be mappable
+# *before* it is on — enabling from the key is the whole point.
+if [ -n "${TMUX_PANE:-}" ] && command -v jq >/dev/null 2>&1; then
+	payload=$(cat 2>/dev/null)
+	pane_session=$(printf '%s' "$payload" | jq -r '.session_id // empty' 2>/dev/null)
+	pane_key=$(printf '%s' "$TMUX_PANE" | sed 's/[^A-Za-z0-9._-]/_/g')
+	if [ -n "$pane_session" ] && mkdir -p "$pane_dir" 2>/dev/null; then
+		# Panes are recycled and sessions die unannounced, so entries go stale.
+		# Sweeping only when a pane is first seen keeps the common turn down to
+		# the one write, and a new pane is exactly when the old ones are worth
+		# doubting.
+		[ -e "$pane_dir/$pane_key" ] ||
+			find "$pane_dir" -type f -mtime +2 -exec rm -f {} + 2>/dev/null || true
+		printf '%s\n' "$pane_session" >"$pane_dir/$pane_key" 2>/dev/null || true
+	fi
+fi
 
 # Fast path, and the common one: nothing is enabled anywhere, so exit before
-# spawning anything or touching stdin. Globbing costs no processes.
+# spawning anything more. Globbing costs no processes.
 enabled=0
 for f in "$on_dir"/*; do
 	[ -e "$f" ] && { enabled=1; break; }
@@ -31,12 +61,15 @@ done
 command -v jq >/dev/null 2>&1 || exit 0
 command -v cc-talk-speak >/dev/null 2>&1 || exit 0
 
-payload=$(cat 2>/dev/null) || exit 0
+# Under tmux the pane map already drained stdin; stdin is a one-shot pipe, so
+# reading it twice would come back empty.
+[ -n "$payload" ] || payload=$(cat 2>/dev/null)
 [ -n "$payload" ] || exit 0
 
 # Which session just finished a turn? `talk` names its flag file after this
 # same id, applying the same transform.
-session_id=$(printf '%s' "$payload" | jq -r '.session_id // empty' 2>/dev/null)
+session_id=${pane_session:-}
+[ -n "$session_id" ] || session_id=$(printf '%s' "$payload" | jq -r '.session_id // empty' 2>/dev/null)
 [ -n "$session_id" ] || exit 0
 key=$(printf '%s' "$session_id" | sed 's/[^A-Za-z0-9._-]/_/g')
 
