@@ -1,8 +1,7 @@
 git:
-  pagers:
-    - pager: diff-so-fancy
+  diffRenderers:
+    - command: diff-so-fancy
   autoStageResolvedConflicts: true
-
 os:
   # Conflict/merge editor: your full nvim config (theme, treesitter, options,
   # keymaps) + diffview-plus merge tool. Sessions don't auto-restore on launch
