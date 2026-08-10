@@ -39,3 +39,10 @@ font-family = "Berkeley Mono Def"
 # by .zshrc (zle-keymap-select) wins. Other integration features stay enabled.
 shell-integration-features = no-cursor
 
+
+# Ctrl+Shift+Space collapses to plain Ctrl+Space in legacy encoding (shift is
+# consumed on space), so the tmux root bind C-S-Space (talk cycle, cc-talk)
+# never matches. Force the CSI-u extended sequence for exactly this chord;
+# tmux (extended-keys on) decodes it as C-S-Space. Space keycode 32, mod 6 =
+# shift+ctrl.
+keybind = ctrl+shift+space=text:\x1b[32;6u
