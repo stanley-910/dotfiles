@@ -38,6 +38,31 @@
   one code snippet above the fold, ≤5 lines, illustrative only. One diagram
   allowed and encouraged. Everything else: fold it or cut it.
 
+## Personal photos — never view without explicit approval
+
+Never open, render, or otherwise look at Stanley's photographs without asking
+first and getting an explicit yes. This covers camera originals (`.RAF`, `.JPG`,
+`.DNG`, and any other raw or image format off his Fujifilm), anything derived
+from them (extracted embedded previews, thumbnails, conversions, crops,
+screenshots of them), and personal images anywhere on the machine — `~/Pictures`,
+`~/Documents/camera`, Photos libraries, scratch dirs.
+
+The rule is about *viewing*, not touching. These are all fine unasked: reading
+metadata (`exiftool`, `mdls`, EXIF, headers), counting and listing files, moving
+or converting or batch-processing them, checking dimensions and file sizes.
+What needs approval is any step that puts actual pixels in front of the model —
+the Read tool on an image file, a screenshot of one, an image-capable subagent
+pointed at one.
+
+Why it matters: viewing is not local. The Read tool on an image uploads that
+image to Anthropic as part of the conversation. "Let me just check the render
+looks right" is exactly the reasoning that leads to an unrequested upload of a
+private photo — verify with metadata and pixel statistics instead, or ask.
+
+If verifying visually is genuinely the only way, say so, say which specific file
+and why, and wait for a yes. Do not batch the request ("can I look at a few") —
+name the file.
+
 ## Commits
 
 - Never add `Co-Authored-By: Claude ...` trailers to commit messages. No Claude attribution in git history, in any project. The commit message should end with the body — no attribution footer.
