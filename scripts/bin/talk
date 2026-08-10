@@ -65,6 +65,7 @@ $prog — speak Claude Code replies out loud
 Usage:
   $prog            enable for this session, print the disclosure below
   $prog --global   enable for every session on this machine
+  $prog on         enable only — never pauses; what the C-S-T key runs
   $prog cycle      one key: off -> on, playing -> paused, paused -> playing
   $prog pause      freeze playback at its exact position
   $prog unpause    continue from the paused position
@@ -274,6 +275,46 @@ prune_stale
 drop_legacy
 
 case "${1:-}" in
+	on)
+		# Dedicated start verb for a tmux key: enable and nothing else — never
+		# pauses or resumes, so it is safe to mash. `--pane <id>` names the
+		# session the way the keybind must; bare `on` is `talk` for this shell
+		# minus the disclosure page (the enable confirmation is the point).
+		case "${2:-}" in
+			--pane)
+				if ! target=$(pane_session "${3:-}"); then
+					msg="$prog: no cc-talk session in this pane yet — run \`$prog\` in it once, or let it finish a turn."
+					if [ -n "${TMUX:-}" ]; then
+						tmux display-message "$msg"
+						exit 0
+					fi
+					printf '%s\n' "$msg" >&2
+					exit 1
+				fi
+				if id_enabled "$target"; then
+					confirm "already on for this session"
+				else
+					enable_id "$target"
+					confirm "on for this session — the first spoken turn shows the disclosure"
+				fi
+				exit 0
+				;;
+			"")
+				require_session
+				if session_enabled; then
+					printf 'cc-talk: already on for this session.\n'
+				else
+					enable_session session
+					disclosure
+				fi
+				exit 0
+				;;
+			*)
+				printf '%s: unknown argument: %s (try --help)\n' "$prog" "$2" >&2
+				exit 1
+				;;
+		esac
+		;;
 	cycle)
 		# One key, three meanings. Invoked from tmux as well as from a shell,
 		# and tmux's run-shell does not inherit the focused pane's environment,
