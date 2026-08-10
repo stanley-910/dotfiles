@@ -168,8 +168,14 @@ case "${1:-}" in
 				exit 0
 			fi
 		elif [ -z "$(live_speaker 2>/dev/null)" ]; then
-			printf '%s: nothing is speaking, and no CLAUDE_CODE_SESSION_ID here to enable — run `%s` inside the session you want spoken.\n' \
-				"$prog" "$prog" >&2
+			# From the tmux keybind a non-zero exit throws a fullscreen
+			# run-shell report; a status-line message is the right volume.
+			msg="$prog: nothing is speaking, and no CLAUDE_CODE_SESSION_ID here to enable — run \`$prog\` inside the session you want spoken."
+			if [ -n "${TMUX:-}" ]; then
+				tmux display-message "$msg"
+				exit 0
+			fi
+			printf '%s\n' "$msg" >&2
 			exit 1
 		fi
 
