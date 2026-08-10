@@ -181,10 +181,17 @@ case "${1:-}" in
 
 		# Idle folds in with playing: pausing silence is a harmless no-op, and
 		# it keeps the next press on the same footing as the contract's states.
+		# Stdout from a tmux run-shell keybind opens the fullscreen report
+		# view, so under tmux the confirmation goes to the status line.
 		case $(speaker_state) in
-			paused) speak_control unpause ;;
-			*) speak_control pause ;;
+			paused) did=unpaused; speak_control unpause >/dev/null ;;
+			*) did=paused; speak_control pause >/dev/null ;;
 		esac
+		if [ -n "${TMUX:-}" ]; then
+			tmux display-message "cc-talk: $did"
+		else
+			printf 'cc-talk: %s\n' "$did"
+		fi
 		exit 0
 		;;
 	pause|unpause)
