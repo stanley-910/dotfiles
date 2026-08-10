@@ -1,20 +1,64 @@
 #!/bin/sh
 # gag — stop speaking Claude Code replies (the off switch for `talk`).
 #
-#   gag        silence THIS Claude Code session
-#   gag --all  silence every session on this machine
+#   gag              silence THIS Claude Code session
+#   gag --all        silence every session on this machine
+#   gag --pane ID    silence the session living in tmux pane ID — what C-S-G runs
 #
 # Clears the flag the Stop hook reads, then tells the speaker to stop so
 # anything mid-playback is cut instead of finishing the sentence.
 #
 # Plain `gag` is per-session on purpose: other sessions you enabled keep
 # talking. Use `gag --all` to clear the lot, including `talk --global`.
+#
+# `--pane` exists because typing `gag` into Claude Code's `!` mode costs a model
+# turn: shell output is fed back to the model by default. The tmux key never
+# touches the session, so silencing is free.
 set -u
 
 prog=${0##*/}
 state_dir="$HOME/.claude/cc-talk"
 on_dir="$state_dir/on"
+pane_dir="$state_dir/panes"
 legacy_flag="$HOME/.claude/talk-on"
+
+# The next three helpers are the pane-map half of `talk`, copied verbatim rather
+# than sourced: this script is run by absolute path from a tmux keybind and
+# scripts/bin is a bare PATH directory with no stow symlinks, so there is no
+# stable place to put a library. `talk` is the source of truth — change both.
+
+# Flag files are named after the session id, so strip anything that would make
+# a surprising filename. Pane files get the same treatment — a tmux pane id is
+# `%12`, and a bare `%` in a filename invites trouble. The Stop hook applies
+# the identical transform to both.
+session_key() {
+	printf '%s' "$1" | sed 's/[^A-Za-z0-9._-]/_/g'
+}
+
+# Which session lives in this tmux pane? The Stop hook writes the map; this
+# only reads it, and prints nothing when the pane has never been claimed.
+pane_session() {
+	[ -n "$1" ] || return 1
+	claimed=$(sed -n '1p' "$pane_dir/$(session_key "$1")" 2>/dev/null)
+	[ -n "$claimed" ] || return 1
+	printf '%s\n' "$claimed"
+}
+
+# Stdout from a tmux run-shell keybind opens the fullscreen report view, so
+# under tmux the confirmation goes to the status line instead. Only `--pane`
+# uses this: plain `gag` is typed at a shell, and its answer is the point.
+confirm() {
+	if [ -n "${TMUX:-}" ]; then
+		tmux display-message "cc-talk: $1"
+	else
+		printf 'cc-talk: %s\n' "$1"
+	fi
+}
+
+# Tolerate a missing engine: the shim exits 0 when pi-talk isn't installed.
+stop_speaker() {
+	cc-talk-speak --stop >/dev/null 2>&1 || true
+}
 
 # The machine-wide flag this replaced; the hook ignores it, so remove it on
 # sight rather than leaving something that looks like a live setting.
@@ -31,19 +75,37 @@ case "${1:-}" in
 		rm -rf "$on_dir" 2>/dev/null
 		scope="every session"
 		;;
+	--pane)
+		# tmux's run-shell does not inherit the focused pane's environment, so
+		# CLAUDE_CODE_SESSION_ID is never in scope here. The pane id names the
+		# session instead: tmux knows which pane is focused, and the Stop hook
+		# records which session lives in it.
+		if target=$(pane_session "${2:-}"); then
+			rm -f "$on_dir/$(session_key "$target")" 2>/dev/null
+			msg="off — the session in this pane"
+		else
+			# An unclaimed pane is not a failure worth an error exit: the stop
+			# below is the part that matters, and it always lands. Say what was
+			# and wasn't done, and leave it at that.
+			msg="off — playback only (no cc-talk session has claimed this pane; run \`talk\` in it once, or \`$prog --all\`)"
+		fi
+		stop_speaker
+		confirm "$msg"
+		exit 0
+		;;
 	"")
 		# No session id (a plain terminal, or tmux run-shell) means there is no
 		# flag of "ours" to clear — but the stop below is still the point.
 		if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then
-			rm -f "$on_dir/$(printf '%s' "$CLAUDE_CODE_SESSION_ID" | sed 's/[^A-Za-z0-9._-]/_/g')" 2>/dev/null
+			rm -f "$on_dir/$(session_key "$CLAUDE_CODE_SESSION_ID")" 2>/dev/null
 			scope="this session"
 		else
 			scope="playback only (no CLAUDE_CODE_SESSION_ID here; \`$prog --all\` clears every session)"
 		fi
 		;;
 	-h|--help|help)
-		printf '%s — stop speaking Claude Code replies\n\nUsage:\n  %s        silence this session\n  %s --all  silence every session on this machine\n' \
-			"$prog" "$prog" "$prog"
+		printf '%s — stop speaking Claude Code replies\n\nUsage:\n  %s              silence this session\n  %s --all        silence every session on this machine\n  %s --pane ID    silence the session in tmux pane ID (what C-S-G runs)\n' \
+			"$prog" "$prog" "$prog" "$prog"
 		exit 0
 		;;
 	*)
@@ -52,7 +114,6 @@ case "${1:-}" in
 		;;
 esac
 
-# Tolerate a missing engine: the shim exits 0 when pi-talk isn't installed.
-cc-talk-speak --stop >/dev/null 2>&1 || true
+stop_speaker
 
 printf 'cc-talk: off — %s\n' "$scope"
