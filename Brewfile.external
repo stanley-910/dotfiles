@@ -18,7 +18,7 @@ brew "node"
 
 # Python - one Homebrew version; project envs are managed by uv
 brew "python@3.14"
-brew "uv"                # Python package/project manager (replaces pipx/pyenv)
+# uv is deliberately NOT brew-managed: installed standalone at ~/.local/bin/uv
 
 # Go toolchain
 brew "go"
@@ -44,11 +44,10 @@ brew "tree-sitter-cli"   # Tree-sitter grammar compiler (nvim)
 brew "tree"
 
 # Terminal viewers & media
-brew "mpv"               # Video player
-brew "httpie"            # Friendly HTTP client
+brew "mpv"               # Video player — TODO(stanley): review how this fits current workflow
 
 # System care
-brew "mole"              # Deep clean and optimize your Mac
+brew "mole"              # Deep clean and optimize your Mac — TODO(stanley): review how this fits current workflow
 
 # ============================================================================
 # Build Tools & Libraries
@@ -63,12 +62,11 @@ brew "ninja"             # Small build system focused on speed
 # ============================================================================
 
 brew "gh"                # GitHub CLI
-brew "glab"              # GitLab CLI
 brew "lazygit"           # Git TUI (config tracked in lazygit package)
 brew "diff-so-fancy"     # Diff pager used by lazygit config
-brew "worktrunk"         # Git worktree CLI for parallel agent workflows (wt)
+brew "worktrunk"         # Git worktree CLI for parallel agent workflows (wt) — TODO(stanley): review how this fits current workflow
 tap "modem-dev/tap"
-brew "hunk"              # Terminal diff viewer for agent-authored changesets (modem-dev/tap)
+brew "hunk"              # Terminal diff viewer for agent-authored changesets (modem-dev/tap) — TODO(stanley): review how this fits current workflow
 
 # Git LFS (Large File Storage) - Implied by git config
 # brew "git-lfs"         # Uncomment if you use Git LFS
