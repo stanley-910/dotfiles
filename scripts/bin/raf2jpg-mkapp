@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# raf2jpg-mkapp — generate the .app wrappers FastRawViewer needs to call raf2jpg.
+#
+# FastRawViewer's "Run program" slots will not accept a bare executable: point
+# one at a shell script and it reports "Some external programs are missing" and
+# offers to disable the entry. It wants an application bundle, and it launches
+# it the LaunchServices way (open -a), delivering files as an odoc Apple Event
+# rather than as argv.
+#
+# That rules out a shell script inside a bundle — a script cannot receive an
+# Apple Event. An AppleScript droplet can, via its `on open` handler, so that is
+# what this builds: a thin bundle whose only job is to receive the dropped paths
+# and shell out to raf2jpg. Verified: `open -a` delivers files and produces
+# output; invoking Contents/MacOS/droplet directly with argv does NOT (droplets
+# ignore raw argv), so do not point FastRawViewer at the inner binary.
+#
+# The bundles are generated rather than committed so the repo stays text-only —
+# osacompile emits a compiled binary. Re-run this on a new machine.
+
+set -euo pipefail
+
+RAF2JPG="$HOME/dotfiles/scripts/bin/raf2jpg"
+DEST="${1:-/Applications}"
+
+[ -x "$RAF2JPG" ] || {
+	echo "raf2jpg-mkapp: raf2jpg not found or not executable at $RAF2JPG" >&2
+	exit 1
+}
+
+if [ ! -w "$DEST" ]; then
+	echo "raf2jpg-mkapp: $DEST is not writable, falling back to ~/Applications" >&2
+	DEST="$HOME/Applications"
+	mkdir -p "$DEST"
+fi
+
+build() {
+	local name="$1" flags="$2" desc="$3"
+	local src app
+	src="$(mktemp -t "$name").applescript"
+	app="$DEST/$name.app"
+
+	# `quoted form of` is what keeps paths with spaces from splitting. The loop
+	# matters because FastRawViewer's "Supports batch processing" checkbox sends
+	# the whole selection in one event.
+	cat >"$src" <<EOS
+on open theFiles
+	repeat with f in theFiles
+		do shell script "$RAF2JPG $flags " & quoted form of POSIX path of f
+	end repeat
+end open
+EOS
+
+	rm -rf "$app"
+	osacompile -o "$app" "$src"
+	rm -f "$src"
+	echo "built: $app   ($desc)"
+}
+
+# The two variants MUST use different -n suffixes. Sharing one would make the
+# second run skip the frame as "already exists" and produce nothing.
+build "raf2jpg" "" "full size, q90 -> <base>_neutral.jpg"
+build "raf2jpg-share" "-s 2048 -q 85 -n share" "2048px, q85 -> <base>_share.jpg"
+
+cat <<EOS
+
+Point FastRawViewer at these:
+  Preferences > External Editors (or right-click > Run program > Setup)
+  $DEST/raf2jpg.app
+  $DEST/raf2jpg-share.app
+
+Leave "Supports batch processing" checked — the droplets loop over a selection.
+EOS

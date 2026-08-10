@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+# raf2jpg — render a Fujifilm RAF to a neutral, shareable JPEG.
+#
+# Built to hang off FastRawViewer's "Run program" menu: cull on the RAFs
+# themselves, and when a frame is worth keeping, fire this at it. Nothing is
+# written during culling, so rejects cost nothing. No camera needs to be
+# attached — unlike Fujifilm X RAW STUDIO, which processes on the camera.
+#
+# "Neutral" is the point. The JPEG the camera embeds in every RAF (and any
+# companion .JPG) carries the film simulation baked in — Nostalgic Neg, Velvia,
+# whatever was set at capture. Adobe demosaics the sensor mosaic itself under
+# its "Adobe Standard" profile, so no film simulation survives.
+#
+# How it works: Adobe DNG Converter rewraps the RAF as a DNG and, with -p2,
+# embeds a full-size JPEG preview it rendered via the Camera Raw engine. We
+# extract that preview and throw the DNG away. The DNG is a means to an end —
+# the only supported way to get Camera Raw's render from a command line.
+#
+# Why not LibRaw (dcraw_emu), which is smaller and needs no intermediate: it
+# applies a global brightness scale and a plain sRGB gamma, with no tone curve.
+# Measured against a night frame at ISO 12800, its output lifted shadows badly
+# (16 percentage points fewer shadow pixels than FastRawViewer's render) and
+# looked visibly washed out. Disabling its auto-brighten (-W) overcorrected to a
+# near-black frame — mean luminance 5.2 of 255. It has one blunt knob where a
+# real raw engine has a curve. Adobe's render is the point of this script; do
+# not "simplify" it back to dcraw_emu.
+
+set -euo pipefail
+
+DNG_APP="/Applications/Adobe DNG Converter.app/Contents/MacOS/Adobe DNG Converter"
+EXIFTOOL="/opt/homebrew/bin/exiftool"
+MAGICK="/opt/homebrew/bin/magick"
+
+outdir=""
+quality=90
+maxedge=0
+force=0
+suffix="neutral"
+
+usage() {
+	cat <<'EOF'
+usage: raf2jpg [-o OUTDIR] [-q QUALITY] [-s MAXEDGE] [-n SUFFIX] [-f] FILE [FILE...]
+
+Renders each RAF to a neutral JPEG named <base>_<suffix>.jpg.
+
+  -o OUTDIR   write JPEGs here (default: next to each source file)
+  -q QUALITY  JPEG quality 1-100, only applied when -s forces a re-encode
+  -s MAXEDGE  shrink so the long edge is at most MAXEDGE px (never enlarges)
+  -n SUFFIX   output name suffix (default "neutral"). Give size variants their
+              own suffix, or the second one skips as "already exists".
+  -f          overwrite an existing output (default: skip)
+  -h          this help
+
+At full size the embedded preview is copied out verbatim — no re-encode, so no
+generation loss and -q does not apply. Passing -s re-encodes at -q.
+
+wiring into FastRawViewer:
+  FRV will not accept a bare script; it wants an .app. Run raf2jpg-mkapp to
+  generate the droplet wrappers, then point FRV at those.
+
+examples:
+  raf2jpg IMG.RAF                      full size, alongside the RAF
+  raf2jpg -s 2048 -q 85 IMG.RAF        downsized for upload
+  raf2jpg -o ~/Desktop/share *.RAF     a batch into one folder
+EOF
+}
+
+while getopts ":o:q:s:n:fh" opt; do
+	case "$opt" in
+	o) outdir="$OPTARG" ;;
+	q) quality="$OPTARG" ;;
+	s) maxedge="$OPTARG" ;;
+	n) suffix="$OPTARG" ;;
+	f) force=1 ;;
+	h)
+		usage
+		exit 0
+		;;
+	*)
+		usage >&2
+		exit 2
+		;;
+	esac
+done
+shift $((OPTIND - 1))
+
+[ $# -eq 0 ] && {
+	usage >&2
+	exit 2
+}
+
+[ -x "$DNG_APP" ] || {
+	echo "raf2jpg: Adobe DNG Converter not found at:" >&2
+	echo "  $DNG_APP" >&2
+	echo "install it with: brew install --cask adobe-dng-converter" >&2
+	exit 1
+}
+for bin in "$EXIFTOOL" "$MAGICK"; do
+	[ -x "$bin" ] || {
+		echo "raf2jpg: missing $bin" >&2
+		echo "install with: brew install exiftool imagemagick" >&2
+		exit 1
+	}
+done
+
+done_n=0
+skipped=0
+failed=0
+
+for src in "$@"; do
+	if [ ! -f "$src" ]; then
+		echo "raf2jpg: no such file: $src" >&2
+		failed=$((failed + 1))
+		continue
+	fi
+
+	dest_dir="${outdir:-$(dirname "$src")}"
+	base="$(basename "$src")"
+
+	# The suffix is load-bearing, not decoration, and it guards two collisions.
+	# Shooting RAW+JPEG leaves XT300001.RAF beside XT300001.JPG, and macOS is
+	# case-insensitive by default — so a plain "${base%.*}.jpg" target collides
+	# with the camera's own film-sim JPEG, and the skip-if-exists check below
+	# reads that as "already converted", leaving the baked render in place under
+	# a name claiming to be a neutral export. Separately, two size variants run
+	# over the same frame must not share a suffix, or the second one skips.
+	target="$dest_dir/${base%.*}_${suffix}.jpg"
+
+	if [ -f "$target" ] && [ "$force" -eq 0 ]; then
+		echo "skip (exists): $target"
+		skipped=$((skipped + 1))
+		continue
+	fi
+
+	mkdir -p "$dest_dir"
+
+	# The DNG is scratch. Building it in a private temp dir keeps a ~39MB file
+	# from ever appearing beside the photos, even if this exits early.
+	work="$(mktemp -d "${TMPDIR:-/tmp}/raf2jpg.XXXXXX")"
+	trap 'rm -rf "$work"' EXIT
+
+	dng="$work/${base%.*}.dng"
+	tmp="$work/out.jpg"
+
+	# -c lossless compressed, -p2 full-size embedded preview (the thing we want).
+	# The GPU warning on stderr is benign and constant.
+	if ! "$DNG_APP" -c -p2 -d "$work" "$src" >/dev/null 2>&1 || [ ! -f "$dng" ]; then
+		echo "raf2jpg: DNG conversion FAILED: $src" >&2
+		failed=$((failed + 1))
+		rm -rf "$work"
+		trap - EXIT
+		continue
+	fi
+
+	if [ "$maxedge" -gt 0 ]; then
+		# Re-encode only when resizing. The trailing '>' means shrink-only, so a
+		# -s larger than the frame is a no-op rather than an upscale.
+		"$EXIFTOOL" -b -JpgFromRaw "$dng" 2>/dev/null |
+			"$MAGICK" jpg:- -resize "${maxedge}x${maxedge}>" -quality "$quality" "jpg:$tmp" 2>/dev/null || true
+	else
+		# Full size: copy the preview out byte for byte, no recompression.
+		"$EXIFTOOL" -b -JpgFromRaw "$dng" >"$tmp" 2>/dev/null || true
+	fi
+
+	if [ -s "$tmp" ]; then
+		mv "$tmp" "$target"
+		echo "wrote: $target"
+		done_n=$((done_n + 1))
+	else
+		echo "raf2jpg: preview extraction FAILED: $src" >&2
+		failed=$((failed + 1))
+	fi
+
+	rm -rf "$work"
+	trap - EXIT
+done
+
+echo "raf2jpg: wrote $done_n, skipped $skipped, failed $failed"
+[ "$failed" -eq 0 ]
