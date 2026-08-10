@@ -120,7 +120,7 @@ and the installed implementation references at the end of this guide.
 | File | Role |
 | --- | --- |
 | [`bin/headroom-pi-copilot`](bin/headroom-pi-copilot) | Reads Pi's stored Copilot credential, resolves the upstream, exports Headroom auth/routing variables, and starts `headroom proxy`. |
-| [`Library/LaunchAgents/com.stanwang.headroom-proxy.plist`](Library/LaunchAgents/com.stanwang.headroom-proxy.plist) | Versioned launchd job source. Runs the helper persistently on port 8787. |
+| [`Library/LaunchAgents/com.stanwang.headroom-proxy.plist`](Library/LaunchAgents/com.stanwang.headroom-proxy.plist) | Versioned launchd job source. Currently the Claude-only variant: runs `headroom proxy` directly on port 8787 (see below). |
 | [`.stow-local-ignore`](.stow-local-ignore) | Excludes the plist because its deployed target must be a real file, not a Stow symlink. |
 | [`../pi/.config/pi/agent/models.json`](../pi/.config/pi/agent/models.json) | Defines the separate `headroom-copilot` provider and its 11 manually mirrored aliases. |
 | [`../pi/.config/pi/agent/settings.json`](../pi/.config/pi/agent/settings.json) | Holds the bare `pi` default. It should remain direct `github-copilot/gpt-5.6-sol`. |
@@ -130,9 +130,43 @@ and the installed implementation references at the end of this guide.
 | `~/.headroom/logs/launchd.out.log` | Service stdout. |
 | `~/.headroom/logs/launchd.err.log` | Service stderr. |
 
-The tracked plist currently contains absolute paths for
-`/Users/stanwang/dotfiles` and `/Users/stanwang`. If this checkout or account is
-moved, update the tracked plist before deploying it.
+The tracked plist contains account-specific absolute paths (currently
+`/Users/stanley`). If this checkout or account is moved, update the tracked
+plist before deploying it.
+
+## Claude Code-only variant (personal Mac, 2026-08)
+
+The tracked plist currently runs Headroom directly, without the
+`headroom-pi-copilot` helper:
+
+```text
+headroom proxy --host 127.0.0.1 --port 8787 --mode token \
+  --no-rate-limit --lossless --no-subscription-tracking
+```
+
+Claude Code reaches it through `ANTHROPIC_BASE_URL=http://127.0.0.1:8787` in
+`claude/.claude/settings.json`. Anthropic-format requests pass through to the
+Anthropic API with the client's own auth, compressed on the way. One shared
+service handles every concurrent Claude Code session; never start a second
+proxy on 8787.
+
+Differences from the helper-based Copilot variant:
+
+- No dependency on Pi's `auth.json`. The helper hard-exits when the
+  `github-copilot` credential is missing, which under `KeepAlive` becomes a
+  silent 10-second crash-respawn loop; the bare proxy cannot enter that state.
+- No Copilot environment variables, so Copilot credential discovery — and its
+  macOS Keychain internet-password probe — never runs. The Keychain section
+  below claims "this machine has no matching `github.com` internet-password
+  item"; that was true of the work machine only. The personal Mac has one, so
+  the helper variant re-opens the prompt risk that the sentinel service name
+  only half-covers.
+- `hpi` and the `headroom-copilot` aliases stay dormant: OpenAI-format
+  requests have no configured Copilot upstream in this variant.
+
+To revive the Copilot leg, restore `ProgramArguments` to the helper form
+(`headroom-pi-copilot --refresh --port 8787 -- --no-rate-limit --lossless`)
+and redeploy per this runbook.
 
 ## Prerequisites
 
