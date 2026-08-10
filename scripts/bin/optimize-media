@@ -27,6 +27,8 @@
 #   - file modification time restored after replacement (Clop's preserveDates);
 #     on APFS this also pulls the birth time back to the original mtime
 #   - RAW files (raf/dng/cr2/...) are never matched, never touched
+#   - locked files (uchg flag, e.g. camera-protected shots) are skipped loudly;
+#     any other replace failure is reported per-file, never aborts the run
 #
 # New machine? Run `optimize-media-setup` (same dir): installs all Homebrew
 # tools and builds cjpegli from pinned source. Missing tools also fall back to
@@ -41,6 +43,9 @@
 #     --dry-run             show what would run, change nothing
 #     --strip-metadata      strip EXIF like Clop's "strip metadata" setting (default: keep)
 #     --skip-videos         don't touch video files
+#     --proxy               videos: write a shareable <name>_proxy.mp4 next to each
+#                           master (HEVC, ≤3840px wide, 10-bit kept) instead of
+#                           replacing it — masters are never modified in this mode
 #     --pdf-dpi N           downsample PDF images to N dpi (default 300 = lossless pass)
 #
 set -euo pipefail
@@ -53,6 +58,7 @@ BACKUP=false
 DRY_RUN=false
 STRIP_METADATA=false
 SKIP_VIDEOS=false
+PROXY=false
 FACTOR=""
 PDF_DPI=300
 
@@ -66,6 +72,8 @@ Usage:
     --dry-run, -n         show what would run, change nothing
     --strip-metadata      strip EXIF like Clop's "strip metadata" setting (default: keep)
     --skip-videos         don't touch video files
+    --proxy               videos: write shareable <name>_proxy.mp4 next to each master
+                          (HEVC, ≤3840px wide, 10-bit kept); masters never modified
     --pdf-dpi N           downsample PDF images to N dpi (default 300 = lossless pass)
 EOF
   exit "${1:-0}"
@@ -80,6 +88,7 @@ while [[ $# -gt 0 ]]; do
     --dry-run|-n)      DRY_RUN=true ;;
     --strip-metadata)  STRIP_METADATA=true ;;
     --skip-videos)     SKIP_VIDEOS=true ;;
+    --proxy)           PROXY=true ;;
     --pdf-dpi)         PDF_DPI="$2"; shift ;;
     --pdf-dpi=*)       PDF_DPI="${1#*=}" ;;
     -h|--help)         usage ;;
@@ -172,11 +181,11 @@ else X264_PRESET=slower; fi
 # software encode, used directly on Intel/aggressive and as the fallback when
 # VideoToolbox can't take the input (e.g. >4K resolutions exceed H.264 hw limits)
 VIDEO_ARGS_SW=(-vcodec h264 -tag:v avc1 -preset "$X264_PRESET" -crf "$X264_CRF")
+VT_Q=$(calc "70 - ($VF - 5) / 95 * 45" 25 75)   # videotoolbox 1-100 quality, also used by --proxy
 if $AGGRESSIVE && [[ -z "$FACTOR" ]]; then
   VIDEO_ARGS=(-vcodec h264 -tag:v avc1 -preset veryslow -crf 28)
   VIDEO_ARGS_SW=("${VIDEO_ARGS[@]}")
 elif [[ $ARCH == arm64 ]]; then
-  VT_Q=$(calc "70 - ($VF - 5) / 95 * 45" 25 75)
   VIDEO_ARGS=(-vcodec h264_videotoolbox -q:v "$VT_Q" -tag:v avc1)
 else
   VIDEO_ARGS=(-vcodec h264 -tag:v avc1 -preset veryfast -crf "$X264_CRF")
@@ -203,7 +212,7 @@ human() { awk -v b="$1" 'BEGIN { s = "B KB MB GB"; split(s, u); i = 1;
           while (b >= 1024 && i < 4) { b /= 1024; i++ }
           printf (i == 1) ? "%d%s" : "%.1f%s", b, u[i] }'; }
 
-count=0; replaced=0; total_before=0; total_after=0
+count=0; replaced=0; proxied=0; total_before=0; total_after=0
 
 # copy EXIF/XMP/quicktime tags from $1 onto $2 (Clop's copyExif for video/heic)
 copy_metadata() {
@@ -293,6 +302,27 @@ optimize_video() {
   $STRIP_METADATA || copy_metadata "$1" "$2"
 }
 
+# --proxy: shareable HEVC export next to the master, which is never modified.
+# hevc_videotoolbox takes >4K input (unlike h264) and p010le keeps 10-bit;
+# 4:2:2 sources downconvert to 4:2:0 in hardware. Width capped at 3840, never
+# upscaled. Audio always re-encodes to AAC: cameras write PCM, and copying
+# PCM into mp4 breaks playback in most non-Apple players. Fallback is
+# software x265 (10-bit kept) for non-arm64 or hardware failures.
+make_proxy() {
+  ff() { "$FFMPEG" -y -nostdin -hide_banner -loglevel error -i "$1" "${@:3}" "$2" 2>/dev/null && [[ -s "$2" ]]; }
+  local scale="scale=w='min(3840,iw)':h=-2"
+  # drop the camera's tmcd timecode track — useless in a share file and a trip
+  # hazard for non-QuickTime players. -dn alone is not enough: the mp4 muxer
+  # re-creates the track from copied timecode metadata unless -write_tmcd 0
+  local audio=(-c:a aac -b:a 192k -dn -write_tmcd 0)
+  if [[ $ARCH == arm64 ]]; then
+    ff "$1" "$2" -vf "$scale" -vcodec hevc_videotoolbox -q:v "$VT_Q" -tag:v hvc1 \
+      -pix_fmt p010le "${audio[@]}" -movflags +faststart && return 0
+  fi
+  ff "$1" "$2" -vf "$scale" -vcodec libx265 -preset medium -crf 26 -tag:v hvc1 \
+    -pix_fmt yuv420p10le "${audio[@]}" -movflags +faststart
+}
+
 optimize_pdf() {
   local lossy
   if (( PDF_DPI < 300 )); then lossy=true; else lossy=false; fi
@@ -360,6 +390,8 @@ optimize_pdf() {
 process_file() {
   local f=$1 ext base size_before size_after candidate optimizer missing=""
   base=$(basename "$f")
+  # our own proxy exports are outputs, never inputs
+  case "$base" in *_proxy.*) return 0 ;; esac
   ext=$(echo "${f##*.}" | lower)
   candidate="$WORK/candidate.$ext"
   rm -f "$candidate"
@@ -372,6 +404,12 @@ process_file() {
     heic|heif)     optimizer=optimize_heif;  [[ -n "$HEIFENC" ]]   || missing=heif-enc ;;
     avif)          optimizer="optimize_heif_avif"; [[ -n "$HEIFENC" ]] || missing=heif-enc ;;
     mp4|mov|m4v)   $SKIP_VIDEOS && return 0
+                   [[ -n "$FFMPEG" ]] || missing=ffmpeg
+                   if $PROXY; then
+                     # proxy mode: masters are read-only inputs, so the xattr and
+                     # pro-format gates below don't apply — big masters are the point
+                     optimizer=make_proxy
+                   else
                    # video re-encodes are always lossy with no quality gate, so
                    # honor the optimised xattr (ours or Clop's) to stay idempotent
                    if xattr -p clop.optimisation.status "$f" >/dev/null 2>&1; then
@@ -389,7 +427,8 @@ process_file() {
                        "$base" "$(human "$(fsize "$f")")" "$w" "$h"
                      return 0
                    fi
-                   optimizer=optimize_video; [[ -n "$FFMPEG" ]]    || missing=ffmpeg ;;
+                   optimizer=optimize_video
+                   fi ;;
     pdf)           optimizer=optimize_pdf;   [[ -n "$GS" ]]        || missing="gs (ghostscript)" ;;
     *)             return 0 ;;
   esac
@@ -399,7 +438,46 @@ process_file() {
     return 0
   fi
 
+  # uchg = Finder "Locked" / camera-protected image imported with its lock.
+  # mv can't replace it, and a deliberately protected shot shouldn't be
+  # re-encoded anyway — skip it loudly instead of dying mid-run
+  if [[ ",$(stat -f%Sf "$f")," == *,uchg,* ]]; then
+    printf "  %-42s %9s  skipped (locked file — uchg flag; unlock with: chflags nouchg)\n" \
+      "$base" "$(human "$(fsize "$f")")"
+    return 0
+  fi
+
   size_before=$(fsize "$f")
+
+  # proxy mode never touches the master: build in $WORK, land as <stem>_proxy.mp4
+  if [[ "$optimizer" == make_proxy ]]; then
+    local proxy="${f%.*}_proxy.mp4" pcand="$WORK/proxy.mp4"
+    if [[ -e "$proxy" ]]; then
+      printf "  %-42s %9s  proxy exists, skipped\n" "$base" "$(human "$size_before")"
+      return 0
+    fi
+    if $DRY_RUN; then
+      printf "  %-42s %9s  would create proxy (%s)\n" "$base" "$(human "$size_before")" "$(basename "$proxy")"
+      return 0
+    fi
+    rm -f "$pcand"
+    if ! make_proxy "$f" "$pcand" </dev/null || [[ ! -s "$pcand" ]]; then
+      printf "  %-42s %9s  proxy encode failed, master untouched\n" "$base" "$(human "$size_before")"
+      return 0
+    fi
+    $STRIP_METADATA || copy_metadata "$f" "$pcand"
+    if ! mv -f "$pcand" "$proxy"; then
+      printf "  %-42s %9s  could not write proxy (permissions?) — skipped\n" "$base" "$(human "$size_before")"
+      return 0
+    fi
+    mark_clop_optimised "$proxy"
+    touch -r "$f" "$proxy"   # proxy sorts next to its master
+    proxied=$((proxied + 1))
+    printf "  %-42s %9s -> %9s  proxy created (%s%% smaller)\n" "$base" \
+      "$(human "$size_before")" "$(human "$(fsize "$proxy")")" \
+      "$(awk -v a="$size_before" -v b="$(fsize "$proxy")" 'BEGIN { printf "%.0f", (1 - b/a) * 100 }')"
+    return 0
+  fi
 
   if $DRY_RUN; then
     printf "  %-42s %9s  would optimize (%s)\n" "$base" "$(human "$size_before")" "${optimizer#optimize_}"
@@ -432,7 +510,15 @@ process_file() {
 
   if $BACKUP; then
     mkdir -p "$(dirname "$f")/_originals"
-    cp -p "$f" "$(dirname "$f")/_originals/$base"
+    # a prior backup made with cp -p may carry the source's uchg lock and
+    # block overwrite — clear it; cp -f can't unlink an immutable file either
+    chflags nouchg "$(dirname "$f")/_originals/$base" 2>/dev/null || true
+    if ! cp -p "$f" "$(dirname "$f")/_originals/$base"; then
+      printf "  %-42s %9s  backup failed — skipped, original untouched\n" \
+        "$base" "$(human "$size_before")"
+      total_after=$((total_after + size_before))
+      return 0
+    fi
     # backups land pre-optimization with no xattr; stamp them so Clop's
     # watched-folder feature doesn't re-encode (destroy) them
     mark_clop_optimised "$(dirname "$f")/_originals/$base"
@@ -441,7 +527,13 @@ process_file() {
   # preserve dates like Clop's copyCreationModificationDates: carry the original
   # mtime on a stamp file, restore it after the swap (APFS pulls birth time down too)
   touch -r "$f" "$WORK/stamp"
-  mv -f "$candidate" "$f"
+  if ! mv -f "$candidate" "$f"; then
+    # never let one unreplaceable file abort the whole run (set -e)
+    printf "  %-42s %9s  could not replace original (locked? permissions?) — skipped\n" \
+      "$base" "$(human "$size_before")"
+    total_after=$((total_after + size_before))
+    return 0
+  fi
   touch -r "$WORK/stamp" "$f"
   mark_clop_optimised "$f"
 
@@ -465,7 +557,12 @@ echo "  png    pngquant --quality=0-$PNG_MAX --speed=$PNG_SPEED"
 echo "  gif    gifsicle -O$GIF_O --lossy=$GIF_LOSSY $GIF_COLORS_ARG"
 echo "  webp   cwebp -q $CONV_Q -sharp_yuv"
 echo "  heic   heif-enc -q $CONV_Q"
-$SKIP_VIDEOS || echo "  video  ffmpeg ${VIDEO_ARGS[*]}"
+if $SKIP_VIDEOS; then :
+elif $PROXY; then
+  echo "  video  proxy mode: hevc_videotoolbox -q:v $VT_Q, ≤3840px, 10-bit — masters untouched"
+else
+  echo "  video  ffmpeg ${VIDEO_ARGS[*]}"
+fi
 PDF_MODE='(lossless pass)'; (( PDF_DPI < 300 )) && PDF_MODE='(lossy, downsampled)'
 echo "  pdf    gs @ ${PDF_DPI}dpi $PDF_MODE"
 echo
@@ -476,7 +573,7 @@ for path in "${PATHS[@]}"; do
   elif [[ -d "$path" ]]; then
     while IFS= read -r -d '' file; do
       process_file "$file"
-    done < <(find "$path" -type f -not -path "*/_originals/*" \( \
+    done < <(find "$path" -type f -not -path "*/_originals/*" -not -iname '*_proxy.*' \( \
         -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' \
         -o -iname '*.webp' -o -iname '*.heic' -o -iname '*.heif' -o -iname '*.avif' \
         -o -iname '*.mp4' -o -iname '*.mov' -o -iname '*.m4v' -o -iname '*.pdf' \) -print0)
@@ -488,11 +585,12 @@ done
 echo
 if $DRY_RUN; then
   echo "Dry run — nothing was modified."
-elif (( count > 0 )); then
-  echo "Done. $replaced of $count files replaced."
+elif (( count > 0 || proxied > 0 )); then
+  if (( count > 0 )); then echo "Done. $replaced of $count files replaced."; fi
   if (( total_before > 0 )); then
     echo "Total: $(human "$total_before") -> $(human "$total_after") ($(awk -v a="$total_before" -v b="$total_after" 'BEGIN { printf "%.1f", (1 - b/a) * 100 }')% saved)"
   fi
+  if (( proxied > 0 )); then echo "Proxies: $proxied created (masters untouched)."; fi
   if $BACKUP; then echo "Originals backed up to _originals/ next to each file."; fi
 else
   echo "No optimizable media found."
