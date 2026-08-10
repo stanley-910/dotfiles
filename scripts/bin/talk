@@ -6,6 +6,7 @@
 #   talk cycle      one key: off -> on, playing -> paused, paused -> playing
 #   talk pause      freeze the speaker where it is
 #   talk unpause    continue from where it froze
+#   talk speed      how fast it talks, and where that number came from
 #   talk status     what is enabled, and is a speaker actually playing right now?
 #   talk --help     usage plus the same disclosure
 #
@@ -28,7 +29,12 @@ state_dir="$HOME/.claude/cc-talk"
 on_dir="$state_dir/on"
 pid_file="$state_dir/speaker.pid"
 state_file="$state_dir/state"
+speed_file="$state_dir/speed"
 legacy_flag="$HOME/.claude/talk-on"
+
+speed_min=0.50
+speed_max=3.00
+speed_default=1.25
 
 disclosure() {
 	cat <<'EOF'
@@ -61,8 +67,16 @@ Usage:
   $prog cycle      one key: off -> on, playing -> paused, paused -> playing
   $prog pause      freeze playback at its exact position
   $prog unpause    continue from the paused position
+  $prog speed      print the speed in force and where it came from
+  $prog speed N    set the speed, e.g. \`$prog speed 1.50\` ($speed_min-$speed_max)
+  $prog speed +N   nudge it, e.g. \`$prog speed +0.10\` or \`$prog speed -0.10\`
+  $prog speed reset
+                   forget the setting and fall back to \$PI_TALK_SPEED or $speed_default
   $prog status     show what is enabled and whether a speaker is live
   $prog -h         this help
+
+Speed changes take effect on the next chunk, so nudging the speed mid-reply
+is heard within a sentence or so rather than at the next turn.
 
 Enabling is per-session: other Claude Code sessions stay silent until you
 run $prog in them too. Turn it off with \`gag\` (\`gag --all\` for every session).
@@ -124,6 +138,65 @@ speaker_state() {
 		paused) printf 'paused\n' ;;
 		*) printf 'playing\n' ;;
 	esac
+}
+
+# POSIX sh has no float math, so every speed calculation is one awk call.
+#
+# Does this look like a number at all? A typo (`talk speed fast`) must be an
+# error rather than a silent clamp to the floor, and awk would happily coerce
+# it to 0. Deltas carry their sign; absolute values do not.
+speed_is_number() {
+	[ -n "$1" ] || return 1
+	awk -v raw="$1" 'BEGIN { exit (raw ~ /^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)$/) ? 0 : 1 }'
+}
+
+# Print a numeric speed pulled into range, at the two decimals the file uses.
+# Setting is forgiving: `talk speed 9` means "as fast as it goes".
+speed_clamp() {
+	awk -v raw="$1" -v lo="$speed_min" -v hi="$speed_max" 'BEGIN {
+		v = raw + 0
+		if (v < lo) v = lo
+		if (v > hi) v = hi
+		printf "%.2f\n", v
+	}'
+}
+
+# Print a numeric speed at two decimals only when it already sits inside the
+# range; fail otherwise. Reading is strict where setting is forgiving — a
+# hand-edited out-of-range file is ignored here exactly as the daemon ignores
+# it, so this never reports a speed nothing will actually play.
+speed_in_range() {
+	speed_is_number "$1" || return 1
+	awk -v raw="$1" -v lo="$speed_min" -v hi="$speed_max" 'BEGIN {
+		v = raw + 0
+		if (v < lo || v > hi) exit 1
+		printf "%.2f\n", v
+	}'
+}
+
+# Print "<speed> <source>" for the speed a daemon spawned right now would use:
+# the file wins, $PI_TALK_SPEED seeds a daemon when there is no file, and the
+# built-in default backs both.
+speed_effective() {
+	if value=$(speed_in_range "$(cat "$speed_file" 2>/dev/null)"); then
+		printf '%s file\n' "$value"
+	elif value=$(speed_in_range "${PI_TALK_SPEED:-}"); then
+		printf '%s PI_TALK_SPEED\n' "$value"
+	else
+		printf '%.2f default\n' "$speed_default"
+	fi
+}
+
+# Mutations are driven from tmux keys as well as from a shell, and stdout from
+# a tmux run-shell keybind opens the fullscreen report view — so under tmux the
+# confirmation goes to the status line, the same split `cycle` makes. Queries
+# are always stdout: they are asked for, and their answer is the point.
+speed_confirm() {
+	if [ -n "${TMUX:-}" ]; then
+		tmux display-message "cc-talk: $1"
+	else
+		printf 'cc-talk: %s\n' "$1"
+	fi
 }
 
 # Tolerate a missing engine the way `gag` does: the shim exits 0 when pi-talk
@@ -198,6 +271,47 @@ case "${1:-}" in
 		# The engine freezes mpv in place rather than killing it, so unpause
 		# continues mid-sentence.
 		speak_control "$1"
+		exit 0
+		;;
+	speed)
+		# There is no way to talk to a daemon that is already speaking — the
+		# speed rides no signal — so the file is the channel. The daemon
+		# re-reads it before every chunk, which is why a nudge from the tmux
+		# key is heard within a sentence instead of at the next turn.
+		case "${2:-}" in
+			"")
+				set -- $(speed_effective)
+				printf 'cc-talk: speed %s× (%s)\n' "$1" "$2"
+				exit 0
+				;;
+			reset)
+				rm -f "$speed_file" 2>/dev/null
+				set -- $(speed_effective)
+				speed_confirm "speed reset to $1× ($2)"
+				exit 0
+				;;
+		esac
+
+		if ! speed_is_number "$2"; then
+			printf '%s: not a speed: %s (try `%s speed 1.50`, `%s speed +0.10`, or `%s speed reset`)\n' \
+				"$prog" "$2" "$prog" "$prog" "$prog" >&2
+			exit 1
+		fi
+
+		# A leading sign means "relative to whatever is in force now"; anything
+		# else is the speed itself.
+		case "$2" in
+			[+-]*)
+				current=$(speed_effective | awk '{ print $1 }')
+				target=$(awk -v a="$current" -v d="$2" 'BEGIN { printf "%.4f\n", a + d }')
+				;;
+			*) target=$2 ;;
+		esac
+
+		new=$(speed_clamp "$target")
+		mkdir -p "$state_dir" || exit 1
+		printf '%s\n' "$new" >"$speed_file" || exit 1
+		speed_confirm "speed ${new}×"
 		exit 0
 		;;
 	status)
