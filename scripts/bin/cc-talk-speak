@@ -1,0 +1,23 @@
+#!/bin/sh
+# cc-talk-speak — PATH shim to the pi-talk speaker CLI.
+#
+# The speaker engine lives in the pi-talk repo. This shim gives the Stop hook
+# and the talk/gag toggles one stable name that is always on $PATH (this
+# directory is added from .zshenv and is also in Claude Code's hook PATH),
+# regardless of whether pi-talk happens to be checked out.
+#
+# A missing target is a normal state — before the engine ships, or on a
+# machine without the repo — so exit quietly rather than spraying "no such
+# file" into a hook that runs at the end of every turn.
+
+target="$HOME/Developer/pi-talk/bin/cc-talk-speak"
+
+if [ ! -x "$target" ]; then
+	# No engine. Still honour the half of the --file contract we can: the
+	# speaker consumes and unlinks the file it is handed, so a silent shim
+	# must too, or the Stop hook leaves a message behind on every turn.
+	[ "${1:-}" = "--file" ] && [ -n "${2:-}" ] && rm -f "$2"
+	exit 0
+fi
+
+exec "$target" "$@"

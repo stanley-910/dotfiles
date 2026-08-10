@@ -1,0 +1,13 @@
+#!/bin/sh
+# gag — stop speaking Claude Code replies (the off switch for `talk`).
+#
+# Clears the flag the Stop hook reads, then tells the speaker to stop so
+# anything mid-playback is cut instead of finishing the sentence.
+set -u
+
+rm -f "$HOME/.claude/talk-on"
+
+# Tolerate a missing engine: the shim exits 0 when pi-talk isn't installed.
+cc-talk-speak --stop >/dev/null 2>&1 || true
+
+printf 'cc-talk: off\n'
