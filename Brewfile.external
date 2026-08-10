@@ -85,6 +85,7 @@ brew "shfmt"             # Shell script formatter
 # ============================================================================
 
 brew "rtk"               # Rust Token Killer - token-optimized CLI proxy
+brew "herdr"             # terminal workspace / agent multiplexer
 
 # ============================================================================
 # Multimedia Tools
