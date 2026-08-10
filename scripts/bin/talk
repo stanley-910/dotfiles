@@ -1,23 +1,34 @@
 #!/bin/sh
 # talk — speak Claude Code replies out loud (turn it on, and say what that costs).
 #
-#   talk           enable, and print the full privacy disclosure
-#   talk pause     freeze the speaker where it is
-#   talk unpause   continue from where it froze
-#   talk status    is it on? is a speaker actually playing right now?
-#   talk --help    usage plus the same disclosure
+#   talk            enable for THIS session, and print the full privacy disclosure
+#   talk --global   enable for every session on this machine
+#   talk cycle      one key: off -> on, playing -> paused, paused -> playing
+#   talk pause      freeze the speaker where it is
+#   talk unpause    continue from where it froze
+#   talk status     what is enabled, and is a speaker actually playing right now?
+#   talk --help     usage plus the same disclosure
 #
 # There is deliberately no skill and no shell alias: this is a plain PATH
 # executable so it can be driven from Claude Code's `!` mode. Enabling only
 # writes a flag file — the Stop hook (~/.claude/hooks/cc-talk-stop.sh) checks
 # it after every turn and hands the reply to cc-talk-speak.
 #
+# The flag is per-session: one file per Claude Code session under
+# ~/.claude/cc-talk/on/, named for $CLAUDE_CODE_SESSION_ID (the same id the
+# hook reads off its stdin payload). Turning it on in one session leaves every
+# other session silent. `talk --global` is the explicit opt-in to the old
+# machine-wide behaviour.
+#
 # Turn it off with `gag`.
 set -u
 
 prog=${0##*/}
 state_dir="$HOME/.claude/cc-talk"
-flag="$HOME/.claude/talk-on"
+on_dir="$state_dir/on"
+pid_file="$state_dir/speaker.pid"
+state_file="$state_dir/state"
+legacy_flag="$HOME/.claude/talk-on"
 
 disclosure() {
 	cat <<'EOF'
@@ -45,54 +56,170 @@ usage() {
 $prog — speak Claude Code replies out loud
 
 Usage:
-  $prog            enable and print the disclosure below
+  $prog            enable for this session, print the disclosure below
+  $prog --global   enable for every session on this machine
+  $prog cycle      one key: off -> on, playing -> paused, paused -> playing
   $prog pause      freeze playback at its exact position
   $prog unpause    continue from the paused position
-  $prog status     show flag state and whether a speaker is live
+  $prog status     show what is enabled and whether a speaker is live
   $prog -h         this help
+
+Enabling is per-session: other Claude Code sessions stay silent until you
+run $prog in them too. Turn it off with \`gag\` (\`gag --all\` for every session).
 
 EOF
 	disclosure
 }
 
-# Print the pid of a live speaker, if there is one. The speaker writes a
-# pidfile into the state dir; a stale file (process gone) reads as silence.
-live_speaker() {
-	for f in "$state_dir"/*.pid; do
-		[ -f "$f" ] || continue
-		pid=$(head -n 1 "$f" 2>/dev/null | tr -dc '0-9')
-		[ -n "$pid" ] || continue
-		if kill -0 "$pid" 2>/dev/null; then
-			printf '%s\n' "$pid"
-			return 0
-		fi
-	done
-	return 1
+# Flag files are named after the session id, so strip anything that would make
+# a surprising filename. The Stop hook applies the identical transform.
+session_key() {
+	printf '%s' "$1" | sed 's/[^A-Za-z0-9._-]/_/g'
 }
 
+# Dead sessions never clean up after themselves, so every run sweeps flags
+# nobody has touched in a week. `global` is an explicit standing choice rather
+# than a session, so it is never swept.
+prune_stale() {
+	[ -d "$on_dir" ] || return 0
+	find "$on_dir" -type f -mtime +7 ! -name global -exec rm -f {} + 2>/dev/null || true
+}
+
+# The machine-wide flag this replaced. Remove it on sight so it cannot be
+# mistaken for a live setting; the hook already ignores it.
+drop_legacy() {
+	[ -e "$legacy_flag" ] && rm -f "$legacy_flag" 2>/dev/null
+	return 0
+}
+
+# Will replies in the shell we were invoked from be spoken? Global counts:
+# it speaks for this session too.
+session_enabled() {
+	[ -e "$on_dir/global" ] && return 0
+	[ -n "${CLAUDE_CODE_SESSION_ID:-}" ] || return 1
+	[ -e "$on_dir/$(session_key "$CLAUDE_CODE_SESSION_ID")" ]
+}
+
+# Print the pid of a live speaker, if there is one. The daemon writes a JSON
+# pidfile; a stale file — process gone, or its pid recycled onto something that
+# is not the speaker — reads as silence, the same trust rule the engine applies.
+live_speaker() {
+	[ -f "$pid_file" ] || return 1
+	pid=$(sed -n 's/.*"pid"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$pid_file" 2>/dev/null | head -n 1)
+	[ -n "$pid" ] || return 1
+	kill -0 "$pid" 2>/dev/null || return 1
+	ps -o command= -p "$pid" 2>/dev/null | grep -q cc-talk-speak || return 1
+	printf '%s\n' "$pid"
+}
+
+# playing | paused | idle. The state file only means something while a live
+# pidfile backs it, and a live speaker with no readable state is mid-sentence:
+# the daemon writes `playing` before it can ever be frozen.
+speaker_state() {
+	if ! live_speaker >/dev/null 2>&1; then
+		printf 'idle\n'
+		return 0
+	fi
+	case $(cat "$state_file" 2>/dev/null) in
+		paused) printf 'paused\n' ;;
+		*) printf 'playing\n' ;;
+	esac
+}
+
+# Tolerate a missing engine the way `gag` does: the shim exits 0 when pi-talk
+# isn't installed, and so does the speaker when nothing is playing.
+speak_control() {
+	cc-talk-speak "--$1" >/dev/null 2>&1 || true
+	printf 'cc-talk: %sd\n' "$1"
+}
+
+enable_session() {
+	scope=$1
+	mkdir -p "$on_dir" || exit 1
+	if [ "$scope" = global ]; then
+		: >"$on_dir/global" || exit 1
+		printf 'cc-talk: on for every session on this machine.\n\n'
+		return 0
+	fi
+	: >"$on_dir/$(session_key "$CLAUDE_CODE_SESSION_ID")" || exit 1
+	printf 'cc-talk: on for this session — replies will be spoken at the end of each turn.\n\n'
+}
+
+require_session() {
+	[ -n "${CLAUDE_CODE_SESSION_ID:-}" ] && return 0
+	printf '%s: no CLAUDE_CODE_SESSION_ID here — run %s inside a Claude Code session, or `%s --global` to enable every session.\n' \
+		"$prog" "$prog" "$prog" >&2
+	exit 1
+}
+
+prune_stale
+drop_legacy
+
 case "${1:-}" in
-	pause|unpause)
-		# The engine freezes mpv in place rather than killing it, so unpause
-		# continues mid-sentence. Tolerate a missing engine the way `gag` does:
-		# the shim exits 0 when pi-talk isn't installed, and so does the speaker
-		# when nothing is playing.
-		cc-talk-speak "--$1" >/dev/null 2>&1 || true
-		case "$1" in
-			pause) printf 'cc-talk: paused\n' ;;
-			*) printf 'cc-talk: unpaused\n' ;;
+	cycle)
+		# One key, three meanings. Invoked from tmux as well as from a shell,
+		# and tmux's run-shell does not inherit the focused pane's environment,
+		# so the session id is often unknown here. When it is, the key still has
+		# an obvious job: freeze or continue whatever is speaking.
+		if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ] || [ -e "$on_dir/global" ]; then
+			if ! session_enabled; then
+				enable_session session
+				disclosure
+				exit 0
+			fi
+		elif [ -z "$(live_speaker 2>/dev/null)" ]; then
+			printf '%s: nothing is speaking, and no CLAUDE_CODE_SESSION_ID here to enable — run `%s` inside the session you want spoken.\n' \
+				"$prog" "$prog" >&2
+			exit 1
+		fi
+
+		# Idle folds in with playing: pausing silence is a harmless no-op, and
+		# it keeps the next press on the same footing as the contract's states.
+		case $(speaker_state) in
+			paused) speak_control unpause ;;
+			*) speak_control pause ;;
 		esac
 		exit 0
 		;;
+	pause|unpause)
+		# The engine freezes mpv in place rather than killing it, so unpause
+		# continues mid-sentence.
+		speak_control "$1"
+		exit 0
+		;;
 	status)
-		if [ -f "$flag" ]; then
-			printf 'cc-talk: on\n'
+		if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ] && [ -e "$on_dir/$(session_key "$CLAUDE_CODE_SESSION_ID")" ]; then
+			printf 'this session:   on\n'
+		elif [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then
+			printf 'this session:   off\n'
 		else
-			printf 'cc-talk: off\n'
+			printf 'this session:   unknown (no CLAUDE_CODE_SESSION_ID here)\n'
 		fi
-		if pid=$(live_speaker); then
-			printf 'speaker:  playing (pid %s)\n' "$pid"
+
+		if [ -e "$on_dir/global" ]; then
+			printf 'global:         on\n'
 		else
-			printf 'speaker:  idle\n'
+			printf 'global:         off\n'
+		fi
+
+		others=0
+		own=""
+		[ -n "${CLAUDE_CODE_SESSION_ID:-}" ] && own=$(session_key "$CLAUDE_CODE_SESSION_ID")
+		if [ -d "$on_dir" ]; then
+			for f in "$on_dir"/*; do
+				[ -f "$f" ] || continue
+				name=${f##*/}
+				[ "$name" = global ] && continue
+				[ -n "$own" ] && [ "$name" = "$own" ] && continue
+				others=$((others + 1))
+			done
+		fi
+		printf 'other sessions: %s enabled\n' "$others"
+
+		if pid=$(live_speaker); then
+			printf 'speaker:        %s (pid %s)\n' "$(speaker_state)" "$pid"
+		else
+			printf 'speaker:        idle\n'
 		fi
 		exit 0
 		;;
@@ -100,16 +227,19 @@ case "${1:-}" in
 		usage
 		exit 0
 		;;
+	--global)
+		enable_session global
+		disclosure
+		exit 0
+		;;
 	"")
+		require_session
+		enable_session session
+		disclosure
+		exit 0
 		;;
 	*)
 		printf '%s: unknown argument: %s (try --help)\n' "$prog" "$1" >&2
 		exit 1
 		;;
 esac
-
-mkdir -p "$state_dir" || exit 1
-: >"$flag" || exit 1
-
-printf 'cc-talk: on — replies will be spoken at the end of each turn.\n\n'
-disclosure

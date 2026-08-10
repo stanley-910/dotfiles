@@ -1,13 +1,58 @@
 #!/bin/sh
 # gag — stop speaking Claude Code replies (the off switch for `talk`).
 #
+#   gag        silence THIS Claude Code session
+#   gag --all  silence every session on this machine
+#
 # Clears the flag the Stop hook reads, then tells the speaker to stop so
 # anything mid-playback is cut instead of finishing the sentence.
+#
+# Plain `gag` is per-session on purpose: other sessions you enabled keep
+# talking. Use `gag --all` to clear the lot, including `talk --global`.
 set -u
 
-rm -f "$HOME/.claude/talk-on"
+prog=${0##*/}
+state_dir="$HOME/.claude/cc-talk"
+on_dir="$state_dir/on"
+legacy_flag="$HOME/.claude/talk-on"
+
+# The machine-wide flag this replaced; the hook ignores it, so remove it on
+# sight rather than leaving something that looks like a live setting.
+rm -f "$legacy_flag" 2>/dev/null
+
+# Dead sessions never clean up after themselves. `global` is a standing choice
+# rather than a session, so it is only ever cleared deliberately.
+if [ -d "$on_dir" ]; then
+	find "$on_dir" -type f -mtime +7 ! -name global -exec rm -f {} + 2>/dev/null || true
+fi
+
+case "${1:-}" in
+	--all)
+		rm -rf "$on_dir" 2>/dev/null
+		scope="every session"
+		;;
+	"")
+		# No session id (a plain terminal, or tmux run-shell) means there is no
+		# flag of "ours" to clear — but the stop below is still the point.
+		if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then
+			rm -f "$on_dir/$(printf '%s' "$CLAUDE_CODE_SESSION_ID" | sed 's/[^A-Za-z0-9._-]/_/g')" 2>/dev/null
+			scope="this session"
+		else
+			scope="playback only (no CLAUDE_CODE_SESSION_ID here; \`$prog --all\` clears every session)"
+		fi
+		;;
+	-h|--help|help)
+		printf '%s — stop speaking Claude Code replies\n\nUsage:\n  %s        silence this session\n  %s --all  silence every session on this machine\n' \
+			"$prog" "$prog" "$prog"
+		exit 0
+		;;
+	*)
+		printf '%s: unknown argument: %s (try --help)\n' "$prog" "$1" >&2
+		exit 1
+		;;
+esac
 
 # Tolerate a missing engine: the shim exits 0 when pi-talk isn't installed.
 cc-talk-speak --stop >/dev/null 2>&1 || true
 
-printf 'cc-talk: off\n'
+printf 'cc-talk: off — %s\n' "$scope"
