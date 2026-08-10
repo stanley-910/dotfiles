@@ -38,10 +38,18 @@ function main () {
         url="$url/-/merge_requests/$number"
       fi
     elif [[ $1 == "B" ]]; then
-      # project board is branch-independent; GitHub's /projects tab links to
-      # the canonical user-level board, GitLab's is /-/boards
+      # project board is branch-independent. On GitHub the board is a
+      # user-level Project v2 linked to the repo (e.g. users/<owner>/projects/N);
+      # resolving it needs gh with the read:project scope
+      # (grant once: gh auth refresh -s read:project -h github.com).
+      # Falls back to the repo's /projects tab when the lookup fails.
       if [[ $url == *"github.com"* ]]; then
-        url="$url/projects"
+        owner_repo=${url#*github.com/}
+        board=$(gh api graphql \
+          -f query="query{repository(owner:\"${owner_repo%%/*}\",name:\"${owner_repo##*/}\"){projectsV2(first:1){nodes{url}}}}" \
+          --jq '.data.repository.projectsV2.nodes[0].url' 2>/dev/null)
+        [[ $board == https://* ]] || board=""
+        url=${board:-$url/projects}
       else
         url="$url/-/boards"
       fi
