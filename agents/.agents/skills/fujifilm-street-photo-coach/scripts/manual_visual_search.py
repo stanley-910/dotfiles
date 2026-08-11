@@ -18,9 +18,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-DEFAULT_PDF = Path(
-    "/Users/stanwang/Library/Mobile Documents/iCloud~md~obsidian/Documents/"
-    "codex-cloud/sources/fujifilm/x-t30-iii_manual_en_s_f.pdf"
+DEFAULT_PDF = (
+    Path.home()
+    / "Library/Mobile Documents/iCloud~md~obsidian/Documents"
+    / "codex-cloud/sources/fujifilm/x-t30-iii_manual_en_s_f.pdf"
 )
 
 STOPWORDS = {

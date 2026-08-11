@@ -22,11 +22,11 @@ Use this skill to find packages tagged `pi-package`, inspect their metadata, and
    - `--audit never`: only show metadata; still ask before install.
 2. Search npm packages:
    ```bash
-   python3 /Users/stanwang/dotfiles/agents/.agents/skills/pi-package-discovery/scripts/search-npm-pi-packages.py "<query>" --limit 15
+   python3 ~/.agents/skills/pi-package-discovery/scripts/search-npm-pi-packages.py "<query>" --limit 15
    ```
 3. Pick the most relevant candidates and inspect metadata:
    ```bash
-   python3 /Users/stanwang/dotfiles/agents/.agents/skills/pi-package-discovery/scripts/inspect-npm-pi-package.py <package-name>
+   python3 ~/.agents/skills/pi-package-discovery/scripts/inspect-npm-pi-package.py <package-name>
    ```
 4. Summarize:
    - What capability it appears to add.

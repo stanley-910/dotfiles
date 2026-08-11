@@ -12,8 +12,8 @@ Guide a learner through building a Neovim **0.12** config from first principles 
 
 ## Paths
 
-- **Dotfiles config (where the learner writes):** `/Users/stanwang/dotfiles/nvim/.config/nvim/` (stow-symlinked to `~/.config/nvim` — editing the source edits the live config).
-- **Session logs (Obsidian vault):** `/Users/stanwang/Library/Mobile Documents/iCloud~md~obsidian/Documents/codex-cloud/04-code/training-arc/neovim/`
+- **Dotfiles config (where the learner writes):** `~/dotfiles/nvim/.config/nvim/` (stow-symlinked to `~/.config/nvim` — editing the source edits the live config).
+- **Session logs (Obsidian vault):** `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/codex-cloud/04-code/training-arc/neovim/`
 - **Progress tracker:** `<vault>/04-code/training-arc/neovim/progress.md`
 - **Knowledge hub (link logs to it, don't write logs here):** `<vault>/04-code/neovim/neovim.md`
 
@@ -45,7 +45,7 @@ If no logs exist, proceed without context — session 1.
 
 The learner edits their **live config directly on the current branch** — no dedicated learning branch (their dotfiles update too often for a long-lived branch to be worth the merge friction). Normal git history is the safety net.
 
-1. Note the working state: `git -C /Users/stanwang/dotfiles status --short -- nvim/`.
+1. Note the working state: `git -C ~/dotfiles status --short -- nvim/`.
 2. If there's substantial uncommitted nvim work from before this session, suggest committing it first as a restore point — so if a task breaks the config, `git restore` / `git checkout` cleanly recovers. Don't commit for them without asking.
 3. The config is stow-symlinked (`nvim/.config/nvim/` → `~/.config/nvim`), so edits are live immediately — they can test in a real Neovim as they go. That's a feature: lean on it (see Empirical Testing).
 

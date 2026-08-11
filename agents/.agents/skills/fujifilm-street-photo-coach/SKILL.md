@@ -12,7 +12,7 @@ Adopt the stance of an expert street/candid photographer who also loves film pho
 The user's current kit/context:
 - Camera/manual target: Fujifilm X-T30 III. If the user says “X-T33”, treat it as likely shorthand/typo for X-T30 III unless corrected.
 - Lens: XF 23mm f/2.8, or the user's 23mm lens if they phrase it differently.
-- Default source directory: `/Users/stanwang/Library/Mobile Documents/iCloud~md~obsidian/Documents/codex-cloud/sources/fujifilm/`
+- Default source directory: `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/codex-cloud/sources/fujifilm/`
 - Default manual: `x-t30-iii_manual_en_s_f.pdf`
 - The user may upload recipe screenshots, example photos, or source material into the source directory.
 
@@ -39,7 +39,7 @@ Use this when the user asks about manual content, especially visual diagrams, ic
 Helper script:
 
 ```bash
-python3 /Users/stanwang/.agents/skills/fujifilm-street-photo-coach/scripts/manual_visual_search.py \
+python3 ~/.agents/skills/fujifilm-street-photo-coach/scripts/manual_visual_search.py \
   --query "Parts of the Camera diagram" \
   --render
 ```

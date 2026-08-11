@@ -15,7 +15,7 @@ Before calling any Chrome DevTools MCP tool, ensure Chrome is reachable at the M
    ```
 2. If that fails, launch Chrome with remote debugging:
    ```bash
-   /Users/stanwang/.agents/skills/chrome-devtools-mcp/scripts/launch-chrome-debug.sh
+   ~/.agents/skills/chrome-devtools-mcp/scripts/launch-chrome-debug.sh
    ```
 3. Only then connect/list/search MCP tools:
    ```js
@@ -31,20 +31,20 @@ If `chrome-devtools` is missing from `mcp({})`, Pi has not reloaded MCP config. 
 Default is a visible, isolated Chrome profile so the user can open DevTools, inspect live, edit styles, and watch agent actions:
 
 ```bash
-/Users/stanwang/.agents/skills/chrome-devtools-mcp/scripts/launch-chrome-debug.sh
+~/.agents/skills/chrome-devtools-mcp/scripts/launch-chrome-debug.sh
 ```
 
 Headless mode is for CI or unattended screenshots only; do **not** use it when the user wants live inspector access:
 
 ```bash
-HEADLESS=1 /Users/stanwang/.agents/skills/chrome-devtools-mcp/scripts/launch-chrome-debug.sh
+HEADLESS=1 ~/.agents/skills/chrome-devtools-mcp/scripts/launch-chrome-debug.sh
 ```
 
 Useful overrides:
 
 ```bash
 PORT=9223 CHROME_DEBUG_PROFILE="$HOME/.chrome-devtools-mcp-store-madden" \
-  /Users/stanwang/.agents/skills/chrome-devtools-mcp/scripts/launch-chrome-debug.sh
+  ~/.agents/skills/chrome-devtools-mcp/scripts/launch-chrome-debug.sh
 ```
 
 If changing the port, the MCP config must also use the matching `--browserUrl http://127.0.0.1:<port>`.
