@@ -20,9 +20,6 @@ fi
 # Node.js is provided by Homebrew's unversioned /opt/homebrew/bin/node.
 # Avoid prepending versioned node@XX formula paths here; they can shadow upgrades.
 
-# Python
-export PATH="/usr/local/opt/python/libexec/bin:$PATH"
-
 # pipx / user local binaries
 export PATH="$HOME/.local/bin:$PATH"
 
@@ -30,9 +27,6 @@ export PATH="$HOME/.local/bin:$PATH"
 # scripts/.stow-local-ignore). Drop an executable in dotfiles/scripts/bin and
 # it's globally runnable immediately, no restow needed.
 export PATH="$HOME/dotfiles/scripts/bin:$PATH"
-
-# LM Studio CLI
-export PATH="$PATH:$HOME/.lmstudio/bin"
 
 # Bun
 export BUN_INSTALL="$HOME/.bun"

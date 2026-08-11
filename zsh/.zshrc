@@ -327,7 +327,6 @@ alias fastfetch='fastfetch --color-keys "38;5;230" --color-output "38;5;230"'
 
 # IDE aliases
 alias c="open -a 'Cursor.app' ."
-alias ws="open -a 'WebStorm.app' ."
 
 # Claude Code — model tiers (update these when new flagships drop)
 CLAUDE_MODEL_LOW="haiku"
