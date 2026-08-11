@@ -51,6 +51,12 @@ brew "thefuck"
 # tmux - Terminal multiplexer for managing multiple terminal sessions
 brew "tmux"
 
+# tmux-fingers CLI — required by the fingers bindings in tmux.conf; the TPM
+# plugin only wires keybinds to this binary. Without the tap declared, a fresh
+# `brew bundle` leaves the bindings silently dead (see PAPERCUTS.md dylib entry).
+tap "morantron/tmux-fingers"
+brew "morantron/tmux-fingers/tmux-fingers"
+
 # ============================================================================
 # System Utilities
 # ============================================================================
