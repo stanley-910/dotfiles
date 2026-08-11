@@ -9,7 +9,7 @@ metadata:
 
 The user solves LeetCode in Neovim via **leetcode.nvim**, which **persists** solution files (not a cache — they survive across days) at:
 
-`/Users/stanwang/.local/share/nvim/leetcode/`
+`~/.local/share/nvim/leetcode/`
 
 - Files are named `<id>.<slug>.py` — e.g. `53.maximum-subarray.py`. Locate a problem by its number.
 - Only the code between the `# @leet start` and `# @leet end` markers is the user's; the long import block, `ruff.toml`, `pyrightconfig.json`, and `.ruff_cache/` are scaffolding to ignore.
