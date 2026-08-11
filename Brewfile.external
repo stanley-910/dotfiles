@@ -99,9 +99,6 @@ brew "imagemagick"       # Image manipulation tools
 # Database & Data Tools
 # ============================================================================
 
-# SQLite - Embedded database
-brew "sqlite"
-
 # JQ - JSON processor
 brew "jq"
 
@@ -118,7 +115,8 @@ cask "mos"               # Smooth scrolling and mouse control
 
 # Nerd Fonts - Fonts with icons for terminal
 # Note: Fonts are now part of homebrew-cask (no separate tap needed)
-cask "font-hack-nerd-font"
+# symbols-only is kept as the implicit glyph fallback for starship/eza icons
+# (no config names it — Ghostty falls back to it for icon codepoints).
 cask "font-symbols-only-nerd-font"
 
 # ============================================================================
