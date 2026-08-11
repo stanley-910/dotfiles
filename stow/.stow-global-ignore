@@ -1,0 +1,20 @@
+# Global stow ignore list (~/.stow-global-ignore), applied to every package
+# that does NOT have its own .stow-local-ignore (a local file replaces this
+# one entirely for its package — keep the two in sync for shared patterns).
+#
+# NOTE: providing this file REPLACES stow's built-in default ignore list,
+# so the defaults worth keeping are re-declared below.
+
+# Finder litter — gitignored, but stow doesn't read gitignore; without this
+# a restow symlinks stray .DS_Store files into $HOME.
+\.DS_Store
+
+# stow defaults (kept):
+\.git
+\.gitignore
+\.gitmodules
+.+~
+\#.*\#
+^/README.*
+^/LICENSE.*
+^/COPYING

@@ -15,7 +15,11 @@ Stagger commits by stow package (the "tool") — one package per commit, never m
 ## Stow conventions
 
 **Full directory stow** (`stow --restow -v <pkg>`):
-cursor, fastfetch, ghostty, git, jetbrains, nvim, scripts, starship, sioyek, zsh
+cursor, fastfetch, ghostty, git, jetbrains, nvim, scripts, starship, sioyek, stow, zsh
+
+The `stow` package ships `~/.stow-global-ignore` (keeps `.DS_Store` and other
+litter out of `$HOME`). A package's own `.stow-local-ignore` REPLACES the
+global file for that package — re-declare shared patterns there.
 
 **Selective file stow** (`stow --restow --no-folding -v <pkg>`):
 agents, claude, herdr, karabiner, lazygit, pi, tmux, yazi, zed
