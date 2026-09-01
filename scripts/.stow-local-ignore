@@ -9,9 +9,10 @@
 # the VCS/README/LICENSE patterns below are re-declared to keep them ignored.
 ^/bin$
 
-# launchd rejects this plist when Stow installs it as a symlink. Keep the
-# versioned source here, but deploy it as a real file in ~/Library/LaunchAgents.
+# launchd rejects these plists when Stow installs them as symlinks. Keep the
+# versioned sources here, but deploy them as real files in ~/Library/LaunchAgents.
 ^/Library/LaunchAgents/com\.stanwang\.headroom-proxy\.plist$
+^/Library/LaunchAgents/com\.stanwang\.ipad-attach\.plist$
 
 # Repository-only documentation, prototypes, and retired scripts are not
 # home-directory targets.

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.stanwang.ipad-attach</string>
+
+	<!-- The shim consumes the XPC launch event; without it launchd relaunches
+	     the job every ThrottleInterval while the iPad stays attached. -->
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/stanley/dotfiles/scripts/bin/consume-launch-event</string>
+		<string>/Users/stanley/dotfiles/scripts/bin/ipad</string>
+		<string>-c</string>
+	</array>
+
+	<!-- Fire when the iPad appears on USB (idVendor 0x05ac, idProduct 0x12ab,
+	     verified via ioreg: class IOUSBHostDevice). -->
+	<key>LaunchEvents</key>
+	<dict>
+		<key>com.apple.iokit.matching</key>
+		<dict>
+			<key>ipad-usb-attach</key>
+			<dict>
+				<key>IOProviderClass</key>
+				<string>IOUSBHostDevice</string>
+				<key>idVendor</key>
+				<integer>1452</integer>
+				<key>idProduct</key>
+				<integer>4779</integer>
+				<key>IOMatchLaunchStream</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+
+	<key>ThrottleInterval</key>
+	<integer>30</integer>
+
+	<key>StandardOutPath</key>
+	<string>/Users/stanley/Library/Logs/ipad-connect.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/stanley/Library/Logs/ipad-connect.log</string>
+</dict>
+</plist>

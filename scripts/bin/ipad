@@ -1,0 +1,252 @@
+#!/usr/bin/env bash
+# iPad sidecar control in one command: Sidecar session, BetterDisplay virtual
+# screen stream, orientation, and display arrangement.
+#
+#   ipad -c [-v|-h] [-l|-r]      connect; optionally force vertical (portrait)
+#                                or horizontal (landscape) orientation and the
+#                                side of the built-in display the virtual
+#                                screen sits on (defaults: last orientation,
+#                                current side)
+#   ipad -v | -h | -t [-l|-r]    rotate the live session (-t toggles)
+#   ipad -b [-v|-h] [-l|-r]      rebuild: disconnect, settle, fresh connect —
+#                                the only reliable repair when the stream
+#                                comes up wrong (rotation/fit cannot be fixed
+#                                in place)
+#   ipad -d                      disconnect
+#
+# Long forms: --connect, --disconnect, --rebuild, --vertical, --horizontal,
+# --toggle, --left, --right. Short flags may be clustered (-cvl, -bv). Sides
+# and orientations are invalid with -d.
+#
+# portrait  = Rotated Orientation on  + stream rotated 270°
+# landscape = Rotated Orientation off + stream rotation 0°
+# The virtual screen sits flush against the built-in display on the given
+# side; the physical iPad (s-ipad) is parked on the opposite top corner,
+# touching only at the corner.
+#
+# Idempotent — safe to re-run. Connect is invoked manually or by the
+# com.stanwang.ipad-attach launch agent on iPad USB attach.
+set -euo pipefail
+
+# launchd agents start with a bare PATH; betterdisplaycli lives in Homebrew.
+export PATH="/opt/homebrew/bin:$PATH"
+
+SIDECAR="s-ipad"               # physical iPad display name
+VSCREEN="vertical ipad"        # BetterDisplay virtual screen name
+BUILTIN="Built-in Display"
+STREAM_PORTRAIT_ROT=270        # matches the manual Stream Virtual Screen step
+RES_LANDSCAPE=1373x954         # HiDPI mode; flipping resets the mode, so we
+RES_PORTRAIT=954x1373          # re-pin it on every switch
+
+bd() { betterdisplaycli "$@"; }
+
+# rotate <portrait|landscape|toggle> [left|right] — switch the virtual screen
+# orientation and keep the display arrangement anchored.
+rotate() {
+  local mode="$1" side="${2:-}"
+  local flipped placement cur_x rot res vs_w builtin_res bi_w
+  local sidecar_res sc_w sc_h sc_x
+
+  flipped="$(bd get -name="$VSCREEN" -flipped)"
+  if [[ "$mode" == "toggle" ]]; then
+    if [[ "$flipped" == "on" ]]; then mode=landscape; else mode=portrait; fi
+  fi
+
+  if [[ -z "$side" ]]; then
+    placement="$(bd get -name="$VSCREEN" -placement)"
+    cur_x="${placement%x*}"
+    if (( cur_x < 0 )); then side=left; else side=right; fi
+  fi
+
+  if [[ "$mode" == "portrait" ]]; then
+    [[ "$flipped" == "on" ]] || bd set -name="$VSCREEN" -flipped=on
+    rot=$STREAM_PORTRAIT_ROT
+    res=$RES_PORTRAIT
+  else
+    [[ "$flipped" == "off" ]] || bd set -name="$VSCREEN" -flipped=off
+    rot=0
+    res=$RES_LANDSCAPE
+  fi
+
+  # The flip reconfigures the framebuffer; give macOS a moment before touching
+  # the mode, the stream and the arrangement.
+  sleep 3
+
+  # Setting the mode it is already in returns an error, so only set on change.
+  [[ "$(bd get -name="$VSCREEN" -resolution)" == "$res" ]] || \
+    bd set -name="$VSCREEN" -resolution=$res -hiDPI=on
+
+  # The stream only recomputes its fit reliably when the rotation value
+  # actually changes; setting the value it already holds can leave a fresh
+  # stream letterboxed at the unrotated fit (racy). Always pass through a
+  # different value first so the recompute fires — reading the current value
+  # back is itself unreliable during connect settle, so don't condition on it.
+  bd set -name="$VSCREEN" -stream -rotateBy=$(( (rot + 90) % 360 ))
+  sleep 1
+  bd set -name="$VSCREEN" -stream -rotateBy=$rot
+
+  # Placement uses logical points, i.e. the mode we just set.
+  vs_w="${res%x*}"
+  builtin_res="$(bd get -name="$BUILTIN" -resolution)"
+  bi_w="${builtin_res%x*}"
+
+  if [[ "$side" == "left" ]]; then
+    bd set -name="$VSCREEN" -placement="$(( -vs_w ))x0"
+  else
+    bd set -name="$VSCREEN" -placement="${bi_w}x0"
+  fi
+
+  # Park the physical iPad on the opposite top corner (skip if not connected).
+  if sidecar_res="$(bd get -name="$SIDECAR" -resolution 2>/dev/null)"; then
+    sc_w="${sidecar_res%x*}"
+    sc_h="${sidecar_res#*x}"
+    if [[ "$side" == "left" ]]; then sc_x=$bi_w; else sc_x=$(( -sc_w )); fi
+    bd set -name="$SIDECAR" -placement="${sc_x}x$(( -sc_h ))"
+  fi
+
+  echo "iPad virtual screen: $mode, $side of built-in display"
+}
+
+usage() {
+  echo "usage: ipad -c|-b [-v|-h] [-l|-r] | -v|-h|-t [-l|-r] | -d" >&2
+  echo "  long: --connect --disconnect --rebuild --vertical --horizontal --toggle --left --right" >&2
+  exit 2
+}
+
+action=""
+side=""
+orient=""
+
+set_action() {
+  [[ -z "$action" || "$action" == "$1" ]] || usage
+  action="$1"
+}
+set_side() {
+  [[ -z "$side" || "$side" == "$1" ]] || usage
+  side="$1"
+}
+set_orient() {
+  [[ -z "$orient" || "$orient" == "$1" ]] || usage
+  orient="$1"
+}
+
+[[ $# -gt 0 ]] || usage
+for arg in "$@"; do
+  case "$arg" in
+    --connect)    set_action connect ;;
+    --disconnect) set_action disconnect ;;
+    --rebuild)    set_action rebuild ;;
+    --vertical)   set_orient portrait ;;
+    --horizontal) set_orient landscape ;;
+    --toggle)     set_orient toggle ;;
+    --left)       set_side left ;;
+    --right)      set_side right ;;
+    --*) usage ;;
+    -?*)
+      flags="${arg#-}"
+      while [[ -n "$flags" ]]; do
+        case "${flags:0:1}" in
+          c) set_action connect ;;
+          d) set_action disconnect ;;
+          b) set_action rebuild ;;
+          v) set_orient portrait ;;
+          h) set_orient landscape ;;
+          t) set_orient toggle ;;
+          l) set_side left ;;
+          r) set_side right ;;
+          *) usage ;;
+        esac
+        flags="${flags:1}"
+      done ;;
+    *) usage ;;
+  esac
+done
+
+[[ -n "$action" || -n "$orient" ]] || usage
+if [[ "$action" == "disconnect" ]]; then
+  [[ -z "$side" && -z "$orient" ]] || usage   # -d takes nothing else
+fi
+
+echo "[$(date '+%F %T')] ipad ${action:-rotate} ${orient:+$orient }${side:+($side)}"
+
+# Bare orientation flags rotate the live session.
+if [[ -z "$action" ]]; then
+  if [[ "$(bd get -name="$VSCREEN" -connected 2>/dev/null)" != on* ]]; then
+    echo "ipad: not connected — use ipad -c${orient:+ with your orientation flag}" >&2
+    exit 1
+  fi
+  rotate "$orient" "$side"
+  exit 0
+fi
+
+disconnect_all() {
+  # Virtual screen first, so windows migrate back to the built-in display
+  # instead of lingering on a phantom screen; then end Sidecar.
+  [[ "$(bd get -name="$VSCREEN" -connected 2>/dev/null)" == on* ]] && \
+    bd set -name="$VSCREEN" -connected=off
+  sleep 1
+  # Do NOT gate this on a state read: reads fail transiently during the
+  # vscreen teardown churn, and a skipped set leaves the Sidecar session
+  # alive (observed as "disconnected but reconnected"). Fire unconditionally;
+  # already-off just returns a harmless error.
+  bd set -sidecarConnected=off -specifier="$SIDECAR" 2>/dev/null || true
+  echo "iPad sidecar and virtual screen disconnected"
+}
+
+if [[ "$action" == "disconnect" ]]; then
+  disconnect_all
+  exit 0
+fi
+
+if [[ "$action" == "rebuild" ]]; then
+  disconnect_all
+  sleep 6
+fi
+
+# Every CLI call times out if the BetterDisplay app isn't running (fresh
+# login, or it was quit) — launch it and wait until it answers.
+if ! pgrep -xq BetterDisplay; then
+  echo "  BetterDisplay not running, launching..."
+  open -a BetterDisplay
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    bd get -sidecarList >/dev/null 2>&1 && break
+    sleep 2
+  done
+fi
+
+if [[ "$(bd get -name="$SIDECAR" -connected 2>/dev/null)" != on* ]]; then
+  # After a USB attach, Sidecar can take a moment to accept the device.
+  for _ in 1 2 3 4 5; do
+    if bd set -sidecarConnected=on -specifier="$SIDECAR"; then break; fi
+    echo "  sidecar connect failed, retrying..."
+    sleep 3
+  done
+  sleep 3
+fi
+
+# These sets fail transiently ("Failed.") while displays settle right after
+# a fresh sidecar connect or app launch — retry instead of dying, since the
+# launch agent only gets one shot per USB attach.
+for _ in 1 2 3 4 5; do
+  [[ "$(bd get -name="$VSCREEN" -connected 2>/dev/null)" == on* ]] && break
+  bd set -name="$VSCREEN" -connected=on && break
+  echo "  virtual screen connect failed, retrying..."
+  sleep 2
+done
+for _ in 1 2 3 4 5; do
+  [[ "$(bd get -name="$VSCREEN" -stream 2>/dev/null)" == on* ]] && break
+  bd set -name="$VSCREEN" -stream=on -targetName="$SIDECAR" && break
+  echo "  stream start failed, retrying..."
+  sleep 2
+done
+
+# Re-pin mode, stream rotation and arrangement — forced by -v/-h if given,
+# otherwise whichever orientation the virtual screen was left in.
+if [[ -z "$orient" ]]; then
+  if [[ "$(bd get -name="$VSCREEN" -flipped)" == "on" ]]; then
+    orient=portrait
+  else
+    orient=landscape
+  fi
+fi
+rotate "$orient" "$side"
