@@ -31,6 +31,28 @@ set -euo pipefail
 # launchd agents start with a bare PATH; betterdisplaycli lives in Homebrew.
 export PATH="/opt/homebrew/bin:$PATH"
 
+# Internal plumbing for the Karabiner caps+` chord layer: while the layer is
+# held, each mapped key runs `ipad chord-add <k>`; releasing the layer runs
+# `ipad chord-fire`, which reassembles the keys into clustered flags and
+# re-invokes ipad ("cvl" -> ipad -cvl). Invalid combos die on the usage check
+# below, so a nonsense chord is a logged no-op.
+CHORD_FILE="${TMPDIR:-/tmp}/ipad-chord-$(id -u)"
+case "${1:-}" in
+  chord-add)
+    # A leftover file from an aborted chord is stale, not part of this one.
+    if [[ -f "$CHORD_FILE" ]] && \
+       (( $(date +%s) - $(stat -f %m "$CHORD_FILE") > 5 )); then
+      rm -f "$CHORD_FILE"
+    fi
+    printf '%s' "${2:?}" >> "$CHORD_FILE"
+    exit 0 ;;
+  chord-fire)
+    keys="$(cat "$CHORD_FILE" 2>/dev/null || true)"
+    rm -f "$CHORD_FILE"
+    [[ -n "$keys" ]] || exit 0   # bare tap of the layer key
+    exec "$0" "-$keys" >> "$HOME/Library/Logs/ipad-connect.log" 2>&1 ;;
+esac
+
 SIDECAR="s-ipad"               # physical iPad display name
 VSCREEN="vertical ipad"        # BetterDisplay virtual screen name
 BUILTIN="Built-in Display"
