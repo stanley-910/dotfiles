@@ -778,6 +778,23 @@
                         ]
                     },
                     {
+                        "description": "Caps+I (caps-lock layer) -> toggle iPad virtual screen orientation (ipad -t)",
+                        "manipulators": [
+                            {
+                                "from": {
+                                    "key_code": "i",
+                                    "modifiers": { "mandatory": ["left_option"] }
+                                },
+                                "to": [
+                                    {
+                                        "shell_command": "/Users/stanley/dotfiles/scripts/bin/ipad -t >>/Users/stanley/Library/Logs/ipad-connect.log 2>&1"
+                                    }
+                                ],
+                                "type": "basic"
+                            }
+                        ]
+                    },
+                    {
                         "description": "Double left_command to activate combo mode: left_cmd + left_opt + [next key]",
                         "enabled": false,
                         "manipulators": [
