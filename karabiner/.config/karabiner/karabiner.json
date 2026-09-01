@@ -5,6 +5,70 @@
             "complex_modifications": {
                 "rules": [
                     {
+                        "description": "Caps+` iPad chord layer: hold, press t/d/c/v/h/l/r, release to run ipad -<keys> (must stay first: overrides caps+h/l/d rules below while held)",
+                        "manipulators": [
+                            {
+                                "from": {
+                                    "key_code": "grave_accent_and_tilde",
+                                    "modifiers": {
+                                        "mandatory": ["left_option"],
+                                        "optional": ["any"]
+                                    }
+                                },
+                                "to": [
+                                    { "set_variable": { "name": "ipad_chord", "value": 1 } }
+                                ],
+                                "to_after_key_up": [
+                                    { "set_variable": { "name": "ipad_chord", "value": 0 } },
+                                    { "shell_command": "/Users/stanley/dotfiles/scripts/bin/ipad chord-fire" }
+                                ],
+                                "type": "basic"
+                            },
+                            {
+                                "conditions": [{ "name": "ipad_chord", "type": "variable_if", "value": 1 }],
+                                "from": { "key_code": "t", "modifiers": { "optional": ["any"] } },
+                                "to": [{ "shell_command": "/Users/stanley/dotfiles/scripts/bin/ipad chord-add t" }],
+                                "type": "basic"
+                            },
+                            {
+                                "conditions": [{ "name": "ipad_chord", "type": "variable_if", "value": 1 }],
+                                "from": { "key_code": "d", "modifiers": { "optional": ["any"] } },
+                                "to": [{ "shell_command": "/Users/stanley/dotfiles/scripts/bin/ipad chord-add d" }],
+                                "type": "basic"
+                            },
+                            {
+                                "conditions": [{ "name": "ipad_chord", "type": "variable_if", "value": 1 }],
+                                "from": { "key_code": "c", "modifiers": { "optional": ["any"] } },
+                                "to": [{ "shell_command": "/Users/stanley/dotfiles/scripts/bin/ipad chord-add c" }],
+                                "type": "basic"
+                            },
+                            {
+                                "conditions": [{ "name": "ipad_chord", "type": "variable_if", "value": 1 }],
+                                "from": { "key_code": "v", "modifiers": { "optional": ["any"] } },
+                                "to": [{ "shell_command": "/Users/stanley/dotfiles/scripts/bin/ipad chord-add v" }],
+                                "type": "basic"
+                            },
+                            {
+                                "conditions": [{ "name": "ipad_chord", "type": "variable_if", "value": 1 }],
+                                "from": { "key_code": "h", "modifiers": { "optional": ["any"] } },
+                                "to": [{ "shell_command": "/Users/stanley/dotfiles/scripts/bin/ipad chord-add h" }],
+                                "type": "basic"
+                            },
+                            {
+                                "conditions": [{ "name": "ipad_chord", "type": "variable_if", "value": 1 }],
+                                "from": { "key_code": "l", "modifiers": { "optional": ["any"] } },
+                                "to": [{ "shell_command": "/Users/stanley/dotfiles/scripts/bin/ipad chord-add l" }],
+                                "type": "basic"
+                            },
+                            {
+                                "conditions": [{ "name": "ipad_chord", "type": "variable_if", "value": 1 }],
+                                "from": { "key_code": "r", "modifiers": { "optional": ["any"] } },
+                                "to": [{ "shell_command": "/Users/stanley/dotfiles/scripts/bin/ipad chord-add r" }],
+                                "type": "basic"
+                            }
+                        ]
+                    },
+                    {
                         "description": "Numpad layer: hold fn + u/i/o j/k/l m/,/. n -> numpad keys",
                         "manipulators": [
                             {
