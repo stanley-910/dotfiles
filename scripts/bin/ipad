@@ -31,11 +31,11 @@ set -euo pipefail
 # launchd agents start with a bare PATH; betterdisplaycli lives in Homebrew.
 export PATH="/opt/homebrew/bin:$PATH"
 
-# Internal plumbing for the Karabiner caps+` chord layer: while the layer is
-# held, each mapped key runs `ipad chord-add <k>`; releasing the layer runs
-# `ipad chord-fire`, which reassembles the keys into clustered flags and
-# re-invokes ipad ("cvl" -> ipad -cvl). Invalid combos die on the usage check
-# below, so a nonsense chord is a logged no-op.
+# Internal plumbing for the Karabiner ctrl+cmd+i chord layer: while the layer
+# is held, each mapped key runs `ipad chord-add <k>`; releasing the layer runs
+# `ipad chord-fire`, which maps the collected keys to an invocation —
+# release alone: -c · h: -cl · l: -cr (vim-like sides) · r: -t · d: -d.
+# Anything else is a no-op.
 CHORD_FILE="${TMPDIR:-/tmp}/ipad-chord-$(id -u)"
 
 # notify <title> <message> — chord feedback via Notification Center. argv
@@ -58,16 +58,23 @@ case "${1:-}" in
   chord-fire)
     keys="$(cat "$CHORD_FILE" 2>/dev/null || true)"
     rm -f "$CHORD_FILE"
-    [[ -n "$keys" ]] || exit 0   # bare tap of the layer key
-    notify "ipad -$keys" "running..."
+    case "$keys" in
+      "") flags="-c" ;;    # bare press-and-release: plain connect
+      h)  flags="-cl" ;;   # connect, screen on the left
+      l)  flags="-cr" ;;   # connect, screen on the right
+      r)  flags="-t" ;;    # rotate (toggle orientation)
+      d)  flags="-d" ;;    # disconnect
+      *)  exit 0 ;;        # anything else: no-op
+    esac
+    notify "ipad $flags" "running..."
     rc=0
-    out="$("$0" "-$keys" 2>&1)" || rc=$?
+    out="$("$0" "$flags" 2>&1)" || rc=$?
     printf '%s\n' "$out" >> "$HOME/Library/Logs/ipad-connect.log"
     last="$(printf '%s\n' "$out" | tail -1)"
     if (( rc == 0 )); then
-      notify "ipad -$keys ✓" "$last"
+      notify "ipad $flags ✓" "$last"
     else
-      notify "ipad -$keys ✗ exit $rc" "$last"
+      notify "ipad $flags ✗ exit $rc" "$last"
     fi
     exit "$rc" ;;
 esac
