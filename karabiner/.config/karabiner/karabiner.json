@@ -16,10 +16,12 @@
                                     }
                                 },
                                 "to": [
-                                    { "set_variable": { "name": "ipad_chord", "value": 1 } }
+                                    { "set_variable": { "name": "ipad_chord", "value": 1 } },
+                                    { "set_notification_message": { "id": "ipad_chord", "text": "iPad chord — t toggle · d disconnect · b rebuild · c[v|h][l|r] connect" } }
                                 ],
                                 "to_after_key_up": [
                                     { "set_variable": { "name": "ipad_chord", "value": 0 } },
+                                    { "set_notification_message": { "id": "ipad_chord", "text": "" } },
                                     { "shell_command": "/Users/stanley/dotfiles/scripts/bin/ipad chord-fire" }
                                 ],
                                 "type": "basic"
@@ -64,6 +66,12 @@
                                 "conditions": [{ "name": "ipad_chord", "type": "variable_if", "value": 1 }],
                                 "from": { "key_code": "r", "modifiers": { "optional": ["any"] } },
                                 "to": [{ "shell_command": "/Users/stanley/dotfiles/scripts/bin/ipad chord-add r" }],
+                                "type": "basic"
+                            },
+                            {
+                                "conditions": [{ "name": "ipad_chord", "type": "variable_if", "value": 1 }],
+                                "from": { "key_code": "b", "modifiers": { "optional": ["any"] } },
+                                "to": [{ "shell_command": "/Users/stanley/dotfiles/scripts/bin/ipad chord-add b" }],
                                 "type": "basic"
                             }
                         ]
