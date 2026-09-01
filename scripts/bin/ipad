@@ -37,6 +37,15 @@ export PATH="/opt/homebrew/bin:$PATH"
 # re-invokes ipad ("cvl" -> ipad -cvl). Invalid combos die on the usage check
 # below, so a nonsense chord is a logged no-op.
 CHORD_FILE="${TMPDIR:-/tmp}/ipad-chord-$(id -u)"
+
+# notify <title> <message> — chord feedback via Notification Center. argv
+# passing sidesteps quoting; failures (denied permission) never block the run.
+notify() {
+  osascript -e 'on run argv' \
+            -e 'display notification (item 2 of argv) with title (item 1 of argv)' \
+            -e 'end run' -- "$1" "$2" >/dev/null 2>&1 || true
+}
+
 case "${1:-}" in
   chord-add)
     # A leftover file from an aborted chord is stale, not part of this one.
@@ -50,7 +59,17 @@ case "${1:-}" in
     keys="$(cat "$CHORD_FILE" 2>/dev/null || true)"
     rm -f "$CHORD_FILE"
     [[ -n "$keys" ]] || exit 0   # bare tap of the layer key
-    exec "$0" "-$keys" >> "$HOME/Library/Logs/ipad-connect.log" 2>&1 ;;
+    notify "ipad -$keys" "running..."
+    rc=0
+    out="$("$0" "-$keys" 2>&1)" || rc=$?
+    printf '%s\n' "$out" >> "$HOME/Library/Logs/ipad-connect.log"
+    last="$(printf '%s\n' "$out" | tail -1)"
+    if (( rc == 0 )); then
+      notify "ipad -$keys ✓" "$last"
+    else
+      notify "ipad -$keys ✗ exit $rc" "$last"
+    fi
+    exit "$rc" ;;
 esac
 
 SIDECAR="s-ipad"               # physical iPad display name
