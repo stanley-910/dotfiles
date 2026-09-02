@@ -623,6 +623,23 @@ fi
 # Node is provided by Homebrew (on PATH from .zshenv). No shell-level Node
 # version manager is loaded here, so Homebrew upgrades are visible immediately.
 
+# Homebrew upgrade with an exclude list. `brew pin` only covers formulae and
+# casks can't be pinned at all, so compute the outdated set, drop the excluded
+# names, and upgrade the rest explicitly. `brew outdated --quiet` prints bare
+# names for formulae and casks alike; without --greedy it skips auto-updating
+# casks, same as a bare `brew upgrade`.
+BREW_UPGRADE_EXCLUDE=(
+  alt-tab   # v10.12.0 hand-restored from Time Machine; v11+ paywalls the switcher
+)
+brewup() {
+  local -a outdated
+  outdated=(${(f)"$(brew outdated --quiet)"})
+  for skip in $BREW_UPGRADE_EXCLUDE; do outdated=(${outdated:#$skip}); done
+  (( $#outdated )) || { echo "nothing to upgrade"; return; }
+  echo "upgrading: $outdated"
+  brew upgrade $outdated
+}
+
 # TheFuck command correction — lazy-loaded so we don't spawn Python at every
 # shell startup. The alias is registered on first use, then this wrapper removes
 # itself and re-runs the real command.
