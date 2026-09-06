@@ -132,7 +132,7 @@ Rules:
 
 Default execution worker: Pi/Copilot `headroom-copilot/gpt-5.6-sol` with thinking
 `high`. Claude Code's Agent tool cannot select Copilot models directly, so use
-the thin-launcher pattern in `~/.claude/DELEGATION.md`: write the worker handoff
+the thin-launcher pattern in `~/dotfiles/docs/archive/DELEGATION.md` (archived Copilot-fleet mechanics): write the worker handoff
 to a file, launch a cheap `sonnet` wrapper, and have it execute:
 
 ```text
@@ -236,7 +236,7 @@ Agent(
   model="sonnet",
   description="Impl A2 →pi gpt5.6s:high",
   run_in_background=true,
-  prompt="RUN_LEDGER role=launcher slice=a2 model=gpt-5.6-sol:high worktree=~/worktrees/... \nFollow ~/.claude/DELEGATION.md and run the handoff file with Pi."
+  prompt="RUN_LEDGER role=launcher slice=a2 model=gpt-5.6-sol:high worktree=~/worktrees/... \nFollow ~/dotfiles/docs/archive/DELEGATION.md and run the handoff file with Pi."
 )
 ```
 
