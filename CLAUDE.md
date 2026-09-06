@@ -2,11 +2,10 @@
 
 GNU Stow-managed dotfiles for macOS (Apple Silicon). Each top-level directory is a stow package.
 
-## Pi agent defaults
+## Pi
 
-- Claude-family Pi agents, such as `claude-opus-4.8`, use the `github-copilot` provider.
-- All other Pi agents use `headroom-copilot` and the latest GPT model. The current default is `gpt-5.6-sol:high`.
-- Parallel `github-copilot` launches can race while refreshing auth. Start those agents one at a time until each passes auth, then let them run concurrently. If a batch fails auth, retry it with sequenced launches.
+- Pi's default provider and model are whatever `pi/.config/pi/agent/settings.json` says (currently the ChatGPT subscription via `openai-codex`). Do not hardcode a provider or model in instructions or skills; pass `--model` per run when a different one is needed.
+- `models.json` adds a `headroom` provider: the same ChatGPT models routed through the local Headroom proxy, selectable in the picker as `headroom/<model>`; `openai-codex/<model>` goes direct.
 
 ## Commits
 

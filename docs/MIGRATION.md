@@ -52,20 +52,19 @@ already applies the right mode per package.
 Everything work-flavored stays in the repo but is inert without EA
 network/auth. Deliberate decisions, not oversights (see the dossier):
 
-- **Headroom proxy stack** (`scripts/bin/headroom-pi-copilot`,
-  `scripts/Library/LaunchAgents/com.stanwang.headroom-proxy.plist`,
-  `scripts/HEADROOM_PI_COPILOT.md`): do **not** deploy the launchd plist.
-  Without the proxy, `127.0.0.1:8787` is just a closed port.
-- **Pi default provider**: `pi/.config/pi/agent/settings.json` defaults to
-  `headroom-copilot/gpt-5.6-sol`, which needs the proxy. Change
-  `defaultProvider`/`defaultModel` to a provider you have auth for (e.g.
-  `github-copilot/...` with a personal Copilot, or an Anthropic key). The
-  `apiKey: "headroom-local"` in `models.json` is a proxy sentinel, not a
-  credential — leave it.
-- **`hpi` launcher** (`zsh/.zshrc`) and the Copilot-fleet delegation docs
-  (`claude/.claude/CLAUDE.md`, `DELEGATION.md`): leave unchanged. The docs
-  carry an explicit "if pi or Copilot auth is unavailable, run natively"
-  guard, so they're dormant by design.
+- **Headroom proxy** (`scripts/Library/LaunchAgents/com.stanwang.headroom-proxy.plist`,
+  `scripts/HEADROOM_PI_COPILOT.md`): deployed as a bare `headroom proxy` on
+  `127.0.0.1:8787` (2026-08). Claude Code reaches it via `ANTHROPIC_BASE_URL`;
+  Pi's `headroom` provider in `models.json` routes ChatGPT models through it
+  (2026-09). The Copilot helper
+  `headroom-pi-copilot` is archived under `scripts/archive/`.
+- **Pi default provider**: `pi/.config/pi/agent/settings.json` defaults to the
+  ChatGPT subscription (`openai-codex/gpt-6-astra`, 2026-09). Log in once with
+  `pi auth`. `models.json` only adds the `headroom` proxy provider, which
+  reuses that login via `scripts/bin/pi-codex-token`.
+- **Copilot-fleet delegation docs** (`docs/archive/DELEGATION.md`,
+  both `orchestrate` skills): archived or dormant. They describe the EA-era
+  Copilot fleet and are not loaded by default.
 - **EA helpers** (`scripts/bin/fastrun-*`, gitlab.ea.com/Jenkins/Jira
   matchers in `open_remote.sh`): kept intentionally; they only activate on
   EA hosts/remotes and are no-ops elsewhere.
