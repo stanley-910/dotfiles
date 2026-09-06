@@ -1,5 +1,14 @@
 # Headroom with Pi GitHub Copilot
 
+> **Status (2026-09):** the Copilot leg described below is retired. The
+> deployed launchd job runs a bare `headroom proxy` (see "Claude Code-only
+> variant"), Pi's default provider is the ChatGPT subscription
+> (`openai-codex`), and `models.json` defines a `headroom` provider that
+> sends the same models through the proxy (`pi --provider headroom`, see
+> `pi/README.md`). `headroom-pi-copilot` and the `hpi` shell function are
+> gone; the helper lives in `scripts/archive/`. The remainder is kept as a
+> runbook for launchd operations and as history.
+
 ## Purpose
 
 This guide reproduces and operates the persistent local Headroom proxy used by

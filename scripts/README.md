@@ -35,8 +35,8 @@ stow --restow scripts   # run from ~/dotfiles
 
 ## `Library/LaunchAgents/` — launchd services
 
-See [Headroom with Pi GitHub Copilot](HEADROOM_PI_COPILOT.md) for the full
-setup, model-routing, authentication, operations, and troubleshooting guide.
+See [HEADROOM_PI_COPILOT.md](HEADROOM_PI_COPILOT.md) for the proxy's history,
+launchd operations, health checks, and troubleshooting.
 
 LaunchAgent plists are versioned here but ignored by Stow because `launchctl`
 rejects them when installed as symlinks. Deploy the Headroom proxy plist as a
@@ -54,9 +54,11 @@ launchctl bootstrap "gui/$UID" "$plist"
 launchctl enable "gui/$UID/$label"
 ```
 
-The Headroom job runs `headroom-pi-copilot` in refresh-token mode on port 8787
-with Headroom's local request limiter disabled. Restart it after replacing Pi's
-stored GitHub Copilot login:
+The Headroom job runs a bare `headroom proxy` on `127.0.0.1:8787` with the
+request limiter disabled. Claude Code reaches it via `ANTHROPIC_BASE_URL` in
+`claude/.claude/settings.json`; Pi reaches it through the `headroom` provider
+in `pi/.config/pi/agent/models.json`. Both carry their own auth, so the proxy
+holds no credentials. Restart it after a `headroom update`:
 
 ```sh
 launchctl kickstart -k "gui/$UID/com.stanwang.headroom-proxy"

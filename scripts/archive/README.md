@@ -10,3 +10,6 @@ Retired from active use but kept for reference (2026-08 bloat audit,
 - `open-dev-apps` / `open-dev-apps.sh` — WebStorm+Ghostty toggler (plain +
   Raycast script-command variants); WebStorm no longer installed. If Raycast
   still lists "Open Dev Apps", remove it there or repoint it here.
+- `headroom-pi-copilot` — Headroom launcher that borrowed Pi's GitHub Copilot
+  OAuth token (EA-era). The deployed launchd job now runs bare `headroom proxy`
+  and Pi uses the ChatGPT subscription; see `HEADROOM_PI_COPILOT.md` (2026-09).

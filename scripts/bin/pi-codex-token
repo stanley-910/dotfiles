@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Print the ChatGPT OAuth bearer token from Pi's auth store, refreshed when it
+# is close to expiry. Used by the `headroom` provider in
+# pi/.config/pi/agent/models.json ("apiKey": "!pi-codex-token") so a proxied
+# model can reuse the `openai-codex` login instead of a second credential.
+#
+# Guard: `pi auth` loads models.json, which would run this script again and
+# recurse forever. On the inner call, fall back to the stored token as-is.
+set -euo pipefail
+
+auth="${PI_CODING_AGENT_DIR:-$HOME/.config/pi/agent}/auth.json"
+
+if [[ -n "${PI_CODEX_TOKEN_GUARD:-}" ]]; then
+  jq -er '."openai-codex".access // empty' "$auth"
+  exit
+fi
+
+PI_CODEX_TOKEN_GUARD=1 exec pi auth print-bearer-token \
+  --provider openai-codex --min-expiry 10m
