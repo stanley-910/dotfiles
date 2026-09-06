@@ -15,19 +15,42 @@ stow to `~/.config/pi/agent/`. Sessions are kept in
 
 ## Default model
 
-`settings.json` pins Pi to the Headroom/Copilot `gpt-5.6-sol` model with the
-`high` thinking level. This uses the local Headroom proxy defined in
-`models.json`, not Pi's built-in `github-copilot` provider:
+`settings.json` pins Pi to the ChatGPT subscription through Pi's built-in
+`openai-codex` provider (OAuth login via `pi auth`, stored in the untracked
+`~/.config/pi/agent/auth.json`):
 
 ```json
 {
-  "defaultProvider": "headroom-copilot",
-  "defaultModel": "gpt-5.6-sol",
-  "defaultThinkingLevel": "high"
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-6-astra",
+  "enabledModels": ["openai-codex/*", "headroom/*"]
 }
 ```
 
-The `apiKey: "headroom-local"` in `.config/pi/agent/models.json` is a sentinel that the local Headroom proxy ignores, not a credential; do not move it to `~/.secrets/env`.
+## Headroom provider
+
+`models.json` adds one custom provider, `headroom`, so the same models can be
+picked through the local Headroom proxy on `127.0.0.1:8787` (the service Claude
+Code already uses). `openai-codex/gpt-6-astra` goes direct to chatgpt.com;
+`headroom/gpt-6-astra` goes through the proxy:
+
+```sh
+pi --provider headroom --model gpt-6-astra
+```
+
+How it fits together:
+
+- `api` is `openai-codex-responses`, Pi's ChatGPT transport. Pi appends
+  `/codex/responses` to `baseUrl`, so `http://127.0.0.1:8787/backend-api`
+  lands on Headroom's `/backend-api/codex/responses` route, which forwards to
+  chatgpt.com using the request's own bearer token.
+- `apiKey` is `!pi-codex-token` (`scripts/bin/`): it prints the `openai-codex`
+  OAuth token from `auth.json`, refreshed via `pi auth print-bearer-token`.
+  The script guards against recursion, because `pi auth` itself loads
+  `models.json` and would otherwise re-run the command forever.
+- Model metadata is copied from Pi's built-in catalog. To expose another
+  ChatGPT model through the proxy, append it to the `models` array with the
+  same `id` Pi uses for the direct provider.
 
 Use no-folding because `~/.config/pi/agent` also contains runtime state such as
 auth, package installs, generated extension config, package caches, and locally

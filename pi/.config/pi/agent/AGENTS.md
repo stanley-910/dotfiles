@@ -4,12 +4,6 @@
 
 Be direct. No pretty language. No praise. No filler. Use terse bullets. State uncertainty plainly.
 
-## Pi worker defaults
-
-- Claude-family Pi workers, such as `claude-opus-4.8`, use the `github-copilot` provider.
-- All other Pi workers use `headroom-copilot` and the latest GPT model. The current default is `gpt-5.6-sol:high`.
-- Parallel `github-copilot` launches can race while refreshing auth. Start those workers one at a time until each passes auth, then let them run concurrently. If a batch fails auth, retry it with sequenced launches.
-
 ## Worktree taxonomy
 
 When creating isolated worktrees, match Stanley's Claude-agent convention.
