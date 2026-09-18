@@ -1,13 +1,14 @@
 ---
 name: orchestrate
 description: Orchestrates multi-slice implementation from a PRD and issue files using scouting, implementation, verification, isolated worktrees, merge integration, and normalized reporting. Use when the user asks to orchestrate a PRD, run issue slices, coordinate subagents, execute an implementation runbook, or invokes /orchestrate.
+disable-model-invocation: true
 ---
 
 # Orchestrate
 
 ## Style
 
-Be direct. No pretty language. No praise. No filler. Use terse bullets. Do not hide uncertainty.
+Follow the user's communication preferences. Make orchestration status and uncertainty clear.
 
 Do not implement the PRD in orchestrator context. The orchestrator coordinates, verifies, integrates, and reports.
 
@@ -26,6 +27,13 @@ Constraints: optional
 ```
 
 If PRD or issue paths are missing, ask.
+
+## Delegation environment
+
+Before delegating work that depends on a private service, verify access once from
+the environment the workers will use. When a worker is blocked, resolve the
+blocker and continue its existing session when possible rather than starting over.
+Use the current harness's available controls.
 
 ## Required setup
 
@@ -59,7 +67,7 @@ Rules:
   - `orchestrate/<run-slug>/integration`
   - `orchestrate/<run-slug>/<slice-id>`
 - Do not edit the source repo unless user explicitly asks.
-- Do not delete worktrees at the end. Report paths. Ask before cleanup.
+- Preserve worktrees for inspection unless cleanup is authorized. Report their paths.
 
 Example:
 

@@ -1,6 +1,7 @@
 ---
 name: chrome-devtools-mcp
 description: Use Chrome DevTools MCP safely by launching or attaching to a debuggable Chrome first, then inspecting DOM, screenshots, network, performance, and live pages through MCP. Use when the user mentions Chrome DevTools MCP, browser MCP, inspect DOM, screenshots/photos, live inspector changes, remote debugging, headless Chrome, or browser automation with MCP.
+disable-model-invocation: true
 ---
 
 # Chrome DevTools MCP

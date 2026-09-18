@@ -1,6 +1,7 @@
 ---
 name: dotfiles-drift
 description: Audit macOS dotfiles/bootstrap drift by comparing the current machine against Prepper/bootstrap scripts, Brewfile declarations, and the previous local snapshot, then produce reports and patch suggestions. Use when the user mentions dotfiles drift, Prepper drift, bootstrap drift, fresh-Mac scripts, Brewfile drift, installed app/package drift, or macOS defaults drift.
+disable-model-invocation: true
 ---
 
 # Dotfiles Drift

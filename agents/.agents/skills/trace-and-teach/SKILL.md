@@ -1,6 +1,7 @@
 ---
 name: trace-and-teach
 description: Teaches a codebase by tracing real execution paths, explaining each moving part in simple Feynman-style language, auditing prerequisite concepts before questions, and using teach-back loops. Use when the user wants to understand a codebase, learn how a feature works, trace async/control flow, unpack unfamiliar frameworks or SDKs, or says “teach me”, “walk me through”, “help me understand”, “explain the moving parts”, or “trace this”.
+disable-model-invocation: true
 ---
 
 # Trace and Teach

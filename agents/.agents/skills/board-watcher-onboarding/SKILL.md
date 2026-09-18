@@ -2,6 +2,7 @@
 name: board-watcher-onboarding
 description: Guides and automates end-to-end hosted Board Watcher onboarding for a new user and GitLab project, from cloning through verified Pi dispatch with GitHub Copilot-backed models. Use when provisioning a Board Watcher user, setting up a client machine, adding a project-scoped token, or troubleshooting first-run Fleet and remote dispatch on macOS, Linux, Windows, or WSL.
 compatibility: Pi with GitHub Copilot-backed models on macOS, Linux, Windows, or WSL; remote Linux host with Docker; GitLab hosted projects.
+disable-model-invocation: true
 ---
 
 # Board Watcher onboarding

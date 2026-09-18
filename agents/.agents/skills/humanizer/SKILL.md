@@ -17,6 +17,7 @@ allowed-tools:
   - Grep
   - Glob
   - AskUserQuestion
+disable-model-invocation: true
 ---
 
 # Humanizer: Remove AI Writing Patterns

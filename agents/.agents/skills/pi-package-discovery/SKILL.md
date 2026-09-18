@@ -1,6 +1,7 @@
 ---
 name: pi-package-discovery
 description: Discover Pi packages that extend Pi with extensions, skills, prompts, or themes, then guide safe inspection before install. Use when the user asks to find Pi packages, extend Pi capabilities, search for extensions, or evaluate/install third-party Pi packages.
+disable-model-invocation: true
 ---
 
 # Pi Package Discovery

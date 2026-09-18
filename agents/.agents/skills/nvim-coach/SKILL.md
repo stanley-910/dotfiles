@@ -2,6 +2,7 @@
 name: nvim-coach
 description: "Use this skill when the user wants to learn to configure Neovim, asks about structuring their nvim config, mentions :help / vim.pack / native LSP, or wants a guided hands-on Neovim session. Also invoked explicitly with /nvim-coach [topic]. Acts as a read-then-do-then-review coach for someone learning to build a Neovim 0.12 config from first principles: points the learner at the exact :help topic, makes THEM write the config in their dotfiles, then evaluates what they wrote against a rubric and reveals a reference. Saves a session log to the user's Obsidian vault for cross-session progress tracking."
 argument-hint: "topic or :help tag (optional — defaults to next curriculum phase)"
+disable-model-invocation: true
 ---
 
 # Neovim Config Coach

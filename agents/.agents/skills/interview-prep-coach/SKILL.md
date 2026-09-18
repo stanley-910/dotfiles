@@ -1,19 +1,8 @@
 ---
 name: interview-prep-coach
-description: >
-  Socratic interview-prep coach for a Databricks new-grad SWE loop (algorithm,
-  coding implementation, system design, behavioral). Use this skill whenever the
-  user wants to study, drill, quiz, review a solved problem, plan a study session,
-  run a mock interview, or turn study material into flashcards for their Databricks
-  prep. Trigger it for phrases like "quiz me", "review this solution", "what should
-  I study today", "mock interview me", "I'm stuck on this problem", "let's do
-  system design", "help me with a behavioral story", "let's do some Git" / "explain
-  Git internals", or any time the user is
-  clearly working through their interview-prep plan — even if they don't name the
-  skill explicitly. It also covers researching what Databricks does and shaping a
-  "Why Databricks?" answer. Prefer this skill over answering ad hoc, because it
-  enforces a consistent Socratic method, tracks demonstrated gaps across sessions,
-  and adapts itself to the user over time.
+description: Conduct software-engineering mock interviews and focused interview practice.
+disable-model-invocation: true
+
 ---
 
 # Interview Prep Coach

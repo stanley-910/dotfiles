@@ -1,6 +1,7 @@
 ---
 name: fujifilm-street-photo-coach
 description: Street, candid, and film-look photography coach for Fujifilm X-series users, especially the X-T30 III manual and film-simulation recipes. Use when the user asks about Fujifilm camera controls, reading the camera manual, identifying visual diagrams in the PDF, understanding recipes/settings, or developing an intuitive street-photography shooting practice.
+disable-model-invocation: true
 ---
 
 # Fujifilm Street Photo Coach

@@ -1,6 +1,7 @@
 ---
 name: forge
 description: Onboard to any repo's GitLab/GitHub issue tracker and work its board — list/grab/close issues, wire blocking, follow wayfinder and board-watcher conventions, and record what you grabbed so the human's hotkeys can open it. Use when asked to grab/claim/work an issue or ticket, triage or file issues, query a board or frontier, resolve wayfinder tickets, or when starting work that references an issue number in any git repo.
+disable-model-invocation: true
 ---
 
 # Forge: issue-board work in any repo

@@ -1,6 +1,7 @@
 ---
 name: deslop
 description: Review the diff against main and remove AI-generated code slop so changes match the surrounding codebase style.
+disable-model-invocation: true
 ---
 
 Check the diff against main and remove AI-generated slop introduced in this branch.
