@@ -68,11 +68,8 @@ contents still live under `~/.config/pi/agent/npm/` and are not tracked.
 
 Currently installed through settings:
 
-- `npm:@juicesharp/rpiv-pi` — RPIV research/design/plan/implement/validate skills
 - `npm:@juicesharp/rpiv-todo` — model-visible todo overlay/tool
 - `npm:@juicesharp/rpiv-btw` — `/btw` side questions without polluting the main conversation
-- `npm:@juicesharp/rpiv-workflow` — `/wf` workflow runner used by RPIV
-- `npm:@juicesharp/rpiv-args` — `$ARGUMENTS` / `$1` expansion for RPIV skills
 - `npm:@juicesharp/rpiv-i18n` — localization support used by RPIV packages
 - `npm:@juicesharp/rpiv-ask-user-question` — structured clarification tool used by RPIV skills
 - `npm:pi-mcp-adapter` — MCP bridge used by the Pi setup
@@ -82,8 +79,44 @@ Currently installed through settings:
 - `npm:@tintinweb/pi-subagents` — Claude-Code-style subagent tooling package
 - `npm:@juicesharp/rpiv-advisor` — RPIV advisor package
 
-The earlier local workflow prototype has been removed; `@juicesharp/rpiv-workflow`
-provides the active workflow commands.
+The RPIV workflow bundle (`rpiv-pi`, `rpiv-workflow`, and `rpiv-args`) is
+uninstalled. Ordinary chat uses standalone tools and `pi-subagents`; the
+bundle-generated agent definitions were archived outside Pi discovery.
+
+## Optional MCP debugging
+
+`context-mode` is disabled in normal sessions. Its tool-routing and memory
+injection are reserved for explicit MCP-debugging sessions. Load it for one run:
+
+```sh
+pi -e npm:context-mode
+```
+
+Restart Pi after changing the package list; an existing session may still have
+the extension loaded and previously injected context in its history.
+
+## Tool prompt guidance
+
+The following files are owned by this Stow package:
+
+- `.config/pi/agent/subagents.json` selects the compact Agent tool description.
+  Agent capabilities and parameter documentation are preserved. Project-local
+  `.pi/subagents.json` settings override these global defaults.
+- `.config/rpiv-todo/config.json` makes progress tracking situational instead of
+  mandatory for every multi-step task.
+- `.config/rpiv-ask-user-question/config.json` reserves structured choices for
+  useful decisions; interview questions remain conversational.
+- `.config/rpiv-web-tools/config.json` keeps source verification and inline links
+  without requiring a separate Sources section in every response.
+
+These use supported configuration overrides; installed package sources remain
+untouched. Start a new Pi session after changing tool guidance.
+
+Web search requires a search-provider credential. The default is Brave: set
+`BRAVE_SEARCH_API_KEY` in the untracked `~/.secrets/env`, then launch Pi from a
+fresh shell. Keep credentials there, not in the stowed web-tools config (the
+`/web-tools` key-entry flow writes credentials to that config). `web_fetch` can
+read ordinary pages without a search key.
 
 ## Agent worktree convention
 

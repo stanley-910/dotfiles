@@ -19,17 +19,8 @@
     "showTerminalProgress": true
   },
   "packages": [
-    {
-      "source": "npm:@juicesharp/rpiv-pi",
-      "skills": [
-        "-skills/implement/SKILL.md",
-        "-skills/research/SKILL.md"
-      ]
-    },
     "npm:@juicesharp/rpiv-todo",
     "npm:@juicesharp/rpiv-btw",
-    "npm:@juicesharp/rpiv-workflow",
-    "npm:@juicesharp/rpiv-args",
     "npm:@juicesharp/rpiv-i18n",
     "npm:@juicesharp/rpiv-ask-user-question",
     "npm:pi-mcp-adapter",
@@ -38,7 +29,6 @@
     "npm:pi-rewind",
     "npm:@tintinweb/pi-subagents",
     "npm:@juicesharp/rpiv-advisor",
-    "npm:context-mode",
     "git:github.com/stanley-910/pi-talk"
   ],
   "autocompleteMaxVisible": 20,

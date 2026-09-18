@@ -1,0 +1,19 @@
+{
+  "guidance": {
+    "web_search": {
+      "promptSnippet": "Search the web for current or uncertain information",
+      "promptGuidelines": [
+        "Search when the task needs current information or verification. Use dates and domain filters when relevant, and prefer primary sources.",
+        "Link supporting sources near the claims they support. Distinguish search snippets from pages you have read.",
+        "If search is unavailable, explain the limitation and continue independent work. Never imply a search succeeded when it did not."
+      ]
+    },
+    "web_fetch": {
+      "promptSnippet": "Read a specific web page",
+      "promptGuidelines": [
+        "Fetch relevant pages when their contents are needed to answer accurately. Link sources near the claims they support.",
+        "Large results may be truncated; consult the reported spill file when the missing content matters."
+      ]
+    }
+  }
+}

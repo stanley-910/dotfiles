@@ -1,0 +1,10 @@
+{
+  "guidance": {
+    "promptSnippet": "Track progress when a task list is useful",
+    "promptGuidelines": [
+      "Use todo when tracking substantial work or several deliverables would help. Skip it for ordinary conversation, interview practice, and simple tasks unless requested.",
+      "Keep task status accurate. Mark work completed only when its requested outcome is achieved; record blockers without claiming completion.",
+      "To change status, use update with id and status; include activeForm when marking in_progress. Use addBlockedBy/removeBlockedBy to update dependencies."
+    ]
+  }
+}

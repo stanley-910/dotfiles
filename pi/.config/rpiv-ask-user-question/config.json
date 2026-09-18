@@ -1,0 +1,10 @@
+{
+  "guidance": {
+    "promptSnippet": "Present structured choices when a user decision is needed",
+    "promptGuidelines": [
+      "Use ask_user_question when concrete choices help resolve a material ambiguity or preference. Make routine implementation decisions yourself. Ask interview and coaching questions conversationally unless structured choices are requested.",
+      "Focus on one substantive decision at a time. If recommending an option, put it first and append (Recommended) to its label.",
+      "Follow the schema's question and option limits. Each option needs a short label and description. Custom input is built in; do not add Other or Type something. Use multiSelect only for independent choices and preview only when comparing concrete artifacts."
+    ]
+  }
+}
