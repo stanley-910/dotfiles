@@ -18,11 +18,11 @@
   },
   "model": "claude-fable-5[1m]",
   "skillOverrides": {
-    "caveman": "name-only",
+    "caveman": "user-invocable-only",
     "claude-api": "off",
     "deep-research": "user-invocable-only",
     "domain-modeling": "user-invocable-only",
-    "dotfiles-drift": "off",
+    "dotfiles-drift": "user-invocable-only",
     "fewer-permission-prompts": "user-invocable-only",
     "frontend-design": "user-invocable-only",
     "init": "user-invocable-only",
@@ -39,28 +39,6 @@
     "write-a-skill": "name-only"
   },
   "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/agent-link-autorecord.sh"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/opt/homebrew/bin/rtk hook claude"
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "matcher": "*",
