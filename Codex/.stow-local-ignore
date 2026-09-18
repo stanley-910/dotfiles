@@ -1,0 +1,12 @@
+\.DS_Store
+\.git
+\.gitignore
+\.gitmodules
+.+~
+\#.*\#
+^/README.*
+^/LICENSE.*
+^/COPYING
+
+# Package documentation is not a home-directory config.
+^/HEADROOM_DEBUGGING\.md$
