@@ -106,12 +106,6 @@
         "source": "github",
         "repo": "kepano/obsidian-skills"
       }
-    },
-    "superwhisper": {
-      "source": {
-        "source": "github",
-        "repo": "superultrainc/superwhisper-claude-code"
-      }
     }
   },
   "viewMode": "verbose",
