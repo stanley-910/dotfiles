@@ -12,7 +12,7 @@
     "cancel": "Bottle",
     "arm": "Morse"
   },
-  "copyOnShift": true,
+  "modifiers": { "shift": "copy", "option": "send" },
   "restoreClipboard": true,
   "capitalize": false,
   "muteWhileRecording": false,
@@ -35,6 +35,7 @@
     "Obsidian",
     "Zed",
     "Homebrew",
+    "pi-talk",
     "Stow"
   ],
   "dictionaryThreshold": 0.8,
