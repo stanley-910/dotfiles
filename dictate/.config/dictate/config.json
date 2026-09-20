@@ -1,0 +1,36 @@
+{
+  "hotkey": "control+space",
+  "mode": "toggle",
+  "model": "~/.local/share/dictate/models/cohere-transcribe-03-2026-Q8_0.gguf",
+  "language": "en",
+  "unloadAfterSeconds": 300,
+  "sounds": true,
+  "indicator": true,
+  "trailingSpace": false,
+  "minimumSeconds": 0.3,
+  "maximumSeconds": 120,
+  "cancelConfirmAfterSeconds": 10,
+  "dictionary": [
+    "Neovim",
+    "Superwhisper",
+    "Karabiner",
+    "Ghostty",
+    "tmux",
+    "lazygit",
+    "Tailscale",
+    "Claude Code",
+    "GGUF",
+    "Stanley Wang",
+    "Obsidian",
+    "Zed",
+    "Homebrew",
+    "Stow"
+  ],
+  "dictionaryThreshold": 0.8,
+  "replacements": [
+    {
+      "from": "pie",
+      "to": "Pi"
+    }
+  ]
+}
