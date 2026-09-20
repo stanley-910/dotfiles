@@ -1,10 +1,21 @@
 {
   "hotkey": "control+space",
   "mode": "toggle",
+  "holdHotkey": null,
   "model": "~/.local/share/dictate/models/cohere-transcribe-03-2026-Q8_0.gguf",
   "language": "en",
   "unloadAfterSeconds": 300,
   "sounds": true,
+  "soundPack": {
+    "start": "Tink",
+    "stop": "Pop",
+    "cancel": "Bottle",
+    "arm": "Morse"
+  },
+  "copyOnShift": true,
+  "restoreClipboard": true,
+  "capitalize": false,
+  "muteWhileRecording": false,
   "indicator": true,
   "trailingSpace": false,
   "minimumSeconds": 0.3,
