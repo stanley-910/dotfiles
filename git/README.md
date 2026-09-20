@@ -29,3 +29,11 @@ git config --global user.email "your.email@example.com"
 
 Or edit `~/.gitconfig` directly.
 
+
+## Global hooks
+
+`core.hooksPath = ~/.githooks` (stowed from `git/.githooks/`). `commit-msg`
+rejects any commit whose message carries an AI attribution trailer
+(`Co-Authored-By: Claude …`, `Generated with Claude Code`, and similar), then
+delegates to the repository's own `.git/hooks/commit-msg` if one exists. A repo
+that sets its own `core.hooksPath` (husky, lefthook) bypasses this hook.

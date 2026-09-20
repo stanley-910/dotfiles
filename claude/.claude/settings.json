@@ -3,6 +3,7 @@
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:8787",
     "PATH": "/Users/stanley/dotfiles/scripts/bin:/Users/stanley/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Applications/Obsidian.app/Contents/MacOS:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
   },
+  "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
       "mcp__deepwiki__ask_question",
@@ -13,10 +14,14 @@
       "mcp__plugin_context7_context7__resolve-library-id",
       "mcp__plugin_context7_context7__query-docs"
     ],
+    "ask": [
+      "Bash(msmtp:*)",
+      "Bash(himalaya:*)"
+    ],
     "defaultMode": "bypassPermissions",
     "skipDangerousModePermissionPrompt": true
   },
-  "model": "claude-fable-5[1m]",
+  "model": "opus[1m]",
   "skillOverrides": {
     "caveman": "user-invocable-only",
     "claude-api": "off",
@@ -30,6 +35,7 @@
     "keybindings-help": "off",
     "loop": "user-invocable-only",
     "nvim-coach": "user-invocable-only",
+    "proton-mail": "user-invocable-only",
     "review": "off",
     "run": "user-invocable-only",
     "schedule": "user-invocable-only",
@@ -111,6 +117,14 @@
   "viewMode": "verbose",
   "syntaxHighlightingDisabled": false,
   "effortLevel": "high",
+  "modelSettings": {
+    "claude-fable-5": {
+      "effortLevel": "medium"
+    },
+    "claude-fable-5-1": {
+      "effortLevel": "medium"
+    }
+  },
   "tui": "fullscreen",
   "voice": {
     "enabled": true,
@@ -121,6 +135,8 @@
   "editorMode": "vim",
   "verbose": false,
   "preferredNotifChannel": "ghostty",
+  "autoCompactEnabled": true,
+  "switchModelsOnFlag": false,
   "showTurnDuration": true,
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,

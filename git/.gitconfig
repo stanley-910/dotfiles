@@ -20,6 +20,7 @@
 	sort = -committerdate
 [core]
 	excludesfile = ~/.gitignore_global
+	hooksPath = ~/.githooks
 	editor = nvim
 	untrackedCache = true
 [push]

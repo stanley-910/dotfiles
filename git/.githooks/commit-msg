@@ -1,0 +1,19 @@
+#!/bin/sh
+# Global commit-msg hook (core.hooksPath = ~/.githooks).
+# 1. Reject AI attribution trailers.
+# 2. Delegate to the repository's own commit-msg hook if it has one.
+
+msg_file="$1"
+
+if grep -Eiq '^(co-authored-by|generated-with|generated with):?.*(claude|anthropic|copilot|chatgpt|openai|gemini|cursor|codex|devin|noreply@anthropic\.com)' "$msg_file" \
+   || grep -Eiq 'generated with \[?claude code' "$msg_file"; then
+  echo "commit-msg: rejected AI attribution line in commit message:" >&2
+  grep -Ein 'co-authored-by|generated with' "$msg_file" >&2
+  exit 1
+fi
+
+repo_hook="$(git rev-parse --git-dir)/hooks/commit-msg"
+if [ -x "$repo_hook" ]; then
+  exec "$repo_hook" "$@"
+fi
+exit 0
