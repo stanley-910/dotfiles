@@ -17,6 +17,8 @@
   "casing": "lower",
   "muteSpeakersWhileRecording": false,
   "indicator": true,
+  "indicatorPosition": "bottom-right",
+  "indicatorMargin": 14,
   "trailingSpace": false,
   "minimumSeconds": 0.3,
   "maximumSeconds": 120,
