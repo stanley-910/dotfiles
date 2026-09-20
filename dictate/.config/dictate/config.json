@@ -13,9 +13,9 @@
     "arm": "Morse"
   },
   "modifiers": { "shift": "copy", "option": "send" },
-  "restoreClipboard": true,
-  "capitalize": false,
-  "muteWhileRecording": false,
+  "restoreClipboard": false,
+  "casing": "lower",
+  "muteSpeakersWhileRecording": false,
   "indicator": true,
   "trailingSpace": false,
   "minimumSeconds": 0.3,
