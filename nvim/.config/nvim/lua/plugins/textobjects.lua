@@ -11,7 +11,9 @@
 --   * keep ]h/[h for gitsigns hunks
 --   * keep ];/[; for dropbar context
 --   * avoid ]]/[[; this config leaves them as native section motions
---   * keep ]b/[b, ]q/[q, ]l/[l, ]a/[a native-style list navigation
+--   * keep ]b/[b, ]q/[q, ]l/[l native-style list navigation
+--   * ]a/[a deliberately shadow Neovim's arglist defaults (:next/:previous);
+--     the arglist is unused here, so the slot goes to @parameter.outer
 --
 -- See:
 --   :help mapmode-o
@@ -61,8 +63,8 @@ return {
     map("[o", "goto_previous_start", "@loop.outer", "Previous loop")
     map("]i", "goto_next_start", "@conditional.outer", "Next conditional")
     map("[i", "goto_previous_start", "@conditional.outer", "Previous conditional")
-    map("]p", "goto_next_start", "@parameter.outer", "Next parameter/argument")
-    map("[p", "goto_previous_start", "@parameter.outer", "Previous parameter/argument")
+    map("]a", "goto_next_start", "@parameter.outer", "Next parameter/argument")
+    map("[a", "goto_previous_start", "@parameter.outer", "Previous parameter/argument")
     map("]k", "goto_next_start", "@comment.outer", "Next comment")
     map("[k", "goto_previous_start", "@comment.outer", "Previous comment")
   end,
