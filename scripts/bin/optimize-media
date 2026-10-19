@@ -222,7 +222,10 @@ count=0; replaced=0; proxied=0; total_before=0; total_after=0
 PFX=""; DONE_BYTES=0; TOTAL_BYTES=0; NFILES=0; START=$SECONDS
 LIVE=false; [[ -t 1 && -t 2 ]] && LIVE=true
 
-row() { printf '%s' "$PFX"; printf "$@"; }
+row() {
+  if $LIVE; then printf '\r\033[K' >&2; fi  # the bar stays up until a row replaces it
+  printf '%s' "$PFX"; printf "$@"
+}
 
 dur() {
   local s=$1
@@ -237,14 +240,26 @@ bar() {  # bar <width> <pct>
   printf '%s' "$out"
 }
 
-progress() {  # progress <files done> <bar width>
-  local pct=0 elapsed=$((SECONDS - START)) eta="?"
+progress() {  # progress <files done> <bar width; 0 = fit the terminal>
+  local pct=0 elapsed=$((SECONDS - START)) eta="?" text width=$2 cols
   (( TOTAL_BYTES > 0 )) && pct=$(( DONE_BYTES * 100 / TOTAL_BYTES ))
   (( DONE_BYTES > 0 && elapsed > 0 )) &&
     eta="~$(dur $(( elapsed * (TOTAL_BYTES - DONE_BYTES) / DONE_BYTES )))"
-  printf '%s %3d%%  %d/%d  %s elapsed  %s left' "$(bar "$2" "$pct")" "$pct" "$1" "$NFILES" \
-    "$(dur "$elapsed")" "$eta"
+  text=$(printf ' %3d%%  %d/%d  %s elapsed  %s left' "$pct" "$1" "$NFILES" "$(dur "$elapsed")" "$eta")
+  if (( width == 0 )); then
+    # a wrapped bar can't be redrawn (\r\033[K clears only its last line), so
+    # shrink it to fit; re-read each time so resizing the pane is picked up
+    cols=$(stty size </dev/tty 2>/dev/null) && cols=${cols#* } || cols=80
+    width=$(( cols - ${#text} - 1 ))
+    (( width > 30 )) && width=30
+  fi
+  (( width >= 5 )) && printf '%s' "$(bar "$width" "$pct")"
+  printf '%s' "$text"
 }
+
+# Draw the live bar in place. Autowrap is off while it prints, so a pane too
+# narrow even for the text truncates it instead of wrapping.
+live_bar() { printf '\r\033[K\033[?7l%s\033[?7h' "$(progress "$1" 0)" >&2; }
 
 # copy EXIF/XMP/quicktime tags from $1 onto $2 (Clop's copyExif for video/heic)
 copy_metadata() {
@@ -624,16 +639,16 @@ fi
 echo "$NFILES files, $(human "$TOTAL_BYTES")"
 echo
 
+if $LIVE && (( NFILES > 0 )); then live_bar 0; fi
 for ((i = 0; i < NFILES; i++)); do
   if $LIVE; then
-    printf '\r\033[K' >&2
     PFX=$(printf '[%*d/%d] ' ${#NFILES} $((i + 1)) "$NFILES")
   else
     PFX="[$(progress "$i" 10)] "
   fi
   process_file "${FILES[$i]}"
   DONE_BYTES=$((DONE_BYTES + ${SIZES[$i]:-0}))
-  if $LIVE; then printf '\r\033[K%s' "$(progress $((i + 1)) 30)" >&2; fi
+  if $LIVE; then live_bar $((i + 1)); fi
 done
 if $LIVE; then printf '\r\033[K' >&2; fi
 PFX=""
