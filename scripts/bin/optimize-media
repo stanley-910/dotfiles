@@ -214,6 +214,38 @@ human() { awk -v b="$1" 'BEGIN { s = "B KB MB GB"; split(s, u); i = 1;
 
 count=0; replaced=0; proxied=0; total_before=0; total_after=0
 
+# ---------------------------------------------------------------- progress
+# Files are listed up front so the run knows its total. The ETA is by bytes:
+# encode time tracks file size far better than file count. On a terminal the
+# bar is a live line at the bottom; piped (tee, logs) each row carries a short
+# inline bar instead, since a redrawn line would interleave with piped output.
+PFX=""; DONE_BYTES=0; TOTAL_BYTES=0; NFILES=0; START=$SECONDS
+LIVE=false; [[ -t 1 && -t 2 ]] && LIVE=true
+
+row() { printf '%s' "$PFX"; printf "$@"; }
+
+dur() {
+  local s=$1
+  if (( s >= 3600 )); then printf '%dh%02dm' $((s / 3600)) $((s % 3600 / 60))
+  elif (( s >= 60 )); then printf '%dm%02ds' $((s / 60)) $((s % 60))
+  else printf '%ds' "$s"; fi
+}
+
+bar() {  # bar <width> <pct>
+  local i filled=$(( $2 * $1 / 100 )) out=""
+  for ((i = 0; i < $1; i++)); do (( i < filled )) && out+="█" || out+="░"; done
+  printf '%s' "$out"
+}
+
+progress() {  # progress <files done> <bar width>
+  local pct=0 elapsed=$((SECONDS - START)) eta="?"
+  (( TOTAL_BYTES > 0 )) && pct=$(( DONE_BYTES * 100 / TOTAL_BYTES ))
+  (( DONE_BYTES > 0 && elapsed > 0 )) &&
+    eta="~$(dur $(( elapsed * (TOTAL_BYTES - DONE_BYTES) / DONE_BYTES )))"
+  printf '%s %3d%%  %d/%d  %s elapsed  %s left' "$(bar "$2" "$pct")" "$pct" "$1" "$NFILES" \
+    "$(dur "$elapsed")" "$eta"
+}
+
 # copy EXIF/XMP/quicktime tags from $1 onto $2 (Clop's copyExif for video/heic)
 copy_metadata() {
   [[ -n "$EXIFTOOL" ]] || return 0
@@ -413,7 +445,7 @@ process_file() {
                    # video re-encodes are always lossy with no quality gate, so
                    # honor the optimised xattr (ours or Clop's) to stay idempotent
                    if xattr -p clop.optimisation.status "$f" >/dev/null 2>&1; then
-                     printf "  %-42s %9s  already optimized (xattr)\n" "$base" "$(human "$(fsize "$f")")"
+                     row "  %-42s %9s  already optimized (xattr)\n" "$base" "$(human "$(fsize "$f")")"
                      return 0
                    fi
                    # beyond H.264 hardware limits (e.g. Fuji 6.2K 10-bit masters):
@@ -423,7 +455,7 @@ process_file() {
                    dims=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$f" </dev/null 2>/dev/null | head -1)
                    IFS=, read -r w h _ <<< "$dims"   # ffprobe csv has a trailing comma
                    if [[ -n "$w" && -n "$h" ]] && (( w > 4096 || h > 4096 )); then
-                     printf "  %-42s %9s  skipped (%sx%s exceeds H.264 hardware limits — pro-format master)\n" \
+                     row "  %-42s %9s  skipped (%sx%s exceeds H.264 hardware limits — pro-format master)\n" \
                        "$base" "$(human "$(fsize "$f")")" "$w" "$h"
                      return 0
                    fi
@@ -434,7 +466,7 @@ process_file() {
   esac
 
   if [[ -n "$missing" ]]; then
-    printf "  %-42s skipped (%s not installed)\n" "$base" "$missing"
+    row "  %-42s skipped (%s not installed)\n" "$base" "$missing"
     return 0
   fi
 
@@ -442,7 +474,7 @@ process_file() {
   # mv can't replace it, and a deliberately protected shot shouldn't be
   # re-encoded anyway — skip it loudly instead of dying mid-run
   if [[ ",$(stat -f%Sf "$f")," == *,uchg,* ]]; then
-    printf "  %-42s %9s  skipped (locked file — uchg flag; unlock with: chflags nouchg)\n" \
+    row "  %-42s %9s  skipped (locked file — uchg flag; unlock with: chflags nouchg)\n" \
       "$base" "$(human "$(fsize "$f")")"
     return 0
   fi
@@ -453,34 +485,34 @@ process_file() {
   if [[ "$optimizer" == make_proxy ]]; then
     local proxy="${f%.*}_proxy.mp4" pcand="$WORK/proxy.mp4"
     if [[ -e "$proxy" ]]; then
-      printf "  %-42s %9s  proxy exists, skipped\n" "$base" "$(human "$size_before")"
+      row "  %-42s %9s  proxy exists, skipped\n" "$base" "$(human "$size_before")"
       return 0
     fi
     if $DRY_RUN; then
-      printf "  %-42s %9s  would create proxy (%s)\n" "$base" "$(human "$size_before")" "$(basename "$proxy")"
+      row "  %-42s %9s  would create proxy (%s)\n" "$base" "$(human "$size_before")" "$(basename "$proxy")"
       return 0
     fi
     rm -f "$pcand"
     if ! make_proxy "$f" "$pcand" </dev/null || [[ ! -s "$pcand" ]]; then
-      printf "  %-42s %9s  proxy encode failed, master untouched\n" "$base" "$(human "$size_before")"
+      row "  %-42s %9s  proxy encode failed, master untouched\n" "$base" "$(human "$size_before")"
       return 0
     fi
     $STRIP_METADATA || copy_metadata "$f" "$pcand"
     if ! mv -f "$pcand" "$proxy"; then
-      printf "  %-42s %9s  could not write proxy (permissions?) — skipped\n" "$base" "$(human "$size_before")"
+      row "  %-42s %9s  could not write proxy (permissions?) — skipped\n" "$base" "$(human "$size_before")"
       return 0
     fi
     mark_clop_optimised "$proxy"
     touch -r "$f" "$proxy"   # proxy sorts next to its master
     proxied=$((proxied + 1))
-    printf "  %-42s %9s -> %9s  proxy created (%s%% smaller)\n" "$base" \
+    row "  %-42s %9s -> %9s  proxy created (%s%% smaller)\n" "$base" \
       "$(human "$size_before")" "$(human "$(fsize "$proxy")")" \
       "$(awk -v a="$size_before" -v b="$(fsize "$proxy")" 'BEGIN { printf "%.0f", (1 - b/a) * 100 }')"
     return 0
   fi
 
   if $DRY_RUN; then
-    printf "  %-42s %9s  would optimize (%s)\n" "$base" "$(human "$size_before")" "${optimizer#optimize_}"
+    row "  %-42s %9s  would optimize (%s)\n" "$base" "$(human "$size_before")" "${optimizer#optimize_}"
     return 0
   fi
 
@@ -493,7 +525,7 @@ process_file() {
   esac
 
   if ! $ok || [[ ! -s "$candidate" ]]; then
-    printf "  %-42s %9s  failed, original untouched\n" "$base" "$(human "$size_before")"
+    row "  %-42s %9s  failed, original untouched\n" "$base" "$(human "$size_before")"
     return 0
   fi
 
@@ -504,7 +536,7 @@ process_file() {
   if (( size_after >= size_before )); then
     total_after=$((total_after + size_before))
     mark_clop_optimised "$f"
-    printf "  %-42s %9s  already optimal\n" "$base" "$(human "$size_before")"
+    row "  %-42s %9s  already optimal\n" "$base" "$(human "$size_before")"
     return 0
   fi
 
@@ -514,7 +546,7 @@ process_file() {
     # block overwrite — clear it; cp -f can't unlink an immutable file either
     chflags nouchg "$(dirname "$f")/_originals/$base" 2>/dev/null || true
     if ! cp -p "$f" "$(dirname "$f")/_originals/$base"; then
-      printf "  %-42s %9s  backup failed — skipped, original untouched\n" \
+      row "  %-42s %9s  backup failed — skipped, original untouched\n" \
         "$base" "$(human "$size_before")"
       total_after=$((total_after + size_before))
       return 0
@@ -529,7 +561,7 @@ process_file() {
   touch -r "$f" "$WORK/stamp"
   if ! mv -f "$candidate" "$f"; then
     # never let one unreplaceable file abort the whole run (set -e)
-    printf "  %-42s %9s  could not replace original (locked? permissions?) — skipped\n" \
+    row "  %-42s %9s  could not replace original (locked? permissions?) — skipped\n" \
       "$base" "$(human "$size_before")"
     total_after=$((total_after + size_before))
     return 0
@@ -539,7 +571,7 @@ process_file() {
 
   replaced=$((replaced + 1))
   total_after=$((total_after + size_after))
-  printf "  %-42s %9s -> %9s  (%s%% saved)\n" "$base" \
+  row "  %-42s %9s -> %9s  (%s%% saved)\n" "$base" \
     "$(human "$size_before")" "$(human "$size_after")" \
     "$(awk -v a="$size_before" -v b="$size_after" 'BEGIN { printf "%.0f", (1 - b/a) * 100 }')"
 }
@@ -567,12 +599,13 @@ PDF_MODE='(lossless pass)'; (( PDF_DPI < 300 )) && PDF_MODE='(lossy, downsampled
 echo "  pdf    gs @ ${PDF_DPI}dpi $PDF_MODE"
 echo
 
+FILES=()
 for path in "${PATHS[@]}"; do
   if [[ -f "$path" ]]; then
-    process_file "$path"
+    FILES+=("$path")
   elif [[ -d "$path" ]]; then
     while IFS= read -r -d '' file; do
-      process_file "$file"
+      FILES+=("$file")
     done < <(find "$path" -type f -not -path "*/_originals/*" -not -iname '*_proxy.*' \( \
         -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' \
         -o -iname '*.webp' -o -iname '*.heic' -o -iname '*.heif' -o -iname '*.avif' \
@@ -581,6 +614,29 @@ for path in "${PATHS[@]}"; do
     echo "not found: $path" >&2
   fi
 done
+
+SIZES=()
+NFILES=${#FILES[@]}
+if (( NFILES > 0 )); then
+  while IFS= read -r sz; do SIZES+=("$sz"); TOTAL_BYTES=$((TOTAL_BYTES + sz)); done \
+    < <(printf '%s\0' "${FILES[@]}" | xargs -0 stat -f%z)
+fi
+echo "$NFILES files, $(human "$TOTAL_BYTES")"
+echo
+
+for ((i = 0; i < NFILES; i++)); do
+  if $LIVE; then
+    printf '\r\033[K' >&2
+    PFX=$(printf '[%*d/%d] ' ${#NFILES} $((i + 1)) "$NFILES")
+  else
+    PFX="[$(progress "$i" 10)] "
+  fi
+  process_file "${FILES[$i]}"
+  DONE_BYTES=$((DONE_BYTES + ${SIZES[$i]:-0}))
+  if $LIVE; then printf '\r\033[K%s' "$(progress $((i + 1)) 30)" >&2; fi
+done
+if $LIVE; then printf '\r\033[K' >&2; fi
+PFX=""
 
 echo
 if $DRY_RUN; then
