@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# tag-camera — write camera and lens metadata the camera didn't record.
+#
+# Photos' smart albums and Info panel read Make/Model/LensModel from EXIF.
+# Some cameras leave them out or wrong:
+#   charmera  Kodak Charmera writes no EXIF at all.
+#   ee3       Olympus Pen EE-3 film scans carry the lab scanner (e.g. Noritsu
+#             EZ Controller) as the camera; the scanner stays in Software.
+#
+# Only facts that hold for every frame are written: body, lens, fixed focal
+# length and aperture, and (film) the box ISO and stock. The stock goes in as a
+# keyword (searchable, smart-album friendly), not the description, which
+# Photos would show as every photo's caption. Per-shot exposure isn't known,
+# so it isn't invented. Metadata only, file dates preserved (-P). Re-running
+# rewrites the same values. Run before importing into Photos: it reads
+# metadata once, at import.
+
+set -euo pipefail
+
+EXIFTOOL="/opt/homebrew/bin/exiftool"
+
+usage() {
+  cat <<EOF
+Usage: tag-camera [-n] PRESET [--film NAME] [--iso N] PATH...
+
+Presets:
+  charmera   Kodak Charmera (35mm equiv., f/2.4)
+  ee3        Olympus PEN EE-3, D.Zuiko 28mm f/3.5 (40mm equiv. on half frame)
+
+Options:
+  -n          show current camera tags without writing
+  --film NAME film stock, added as a keyword (ee3)
+  --iso N     film box speed (ee3)
+
+JPEGs under each PATH (files or folders, recursive).
+EOF
+}
+
+dry=false film="" iso=""
+[[ "${1:-}" == "-n" ]] && { dry=true; shift; }
+[[ $# -ge 1 ]] || { usage >&2; exit 2; }
+case "$1" in -h|--help) usage; exit 0 ;; esac
+preset=$1; shift
+
+paths=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --film) film=${2:?--film needs a value}; shift 2 ;;
+    --iso)  iso=${2:?--iso needs a value}; shift 2 ;;
+    -n)     dry=true; shift ;;
+    -*)     echo "unknown option: $1" >&2; exit 2 ;;
+    *)      paths+=("$1"); shift ;;
+  esac
+done
+[[ ${#paths[@]} -gt 0 ]] || { usage >&2; exit 2; }
+
+case "$preset" in
+  charmera)
+    tags=(-Make=Kodak -Model=Charmera
+          -FNumber=2.4 -MaxApertureValue=2.4 -FocalLengthIn35mmFormat=35
+          '-ExifImageWidth<ImageWidth' '-ExifImageHeight<ImageHeight') ;;
+  ee3)
+    tags=(-Make=OLYMPUS "-Model=PEN EE-3"
+          -LensMake=OLYMPUS "-LensModel=D.Zuiko 28mm f/3.5"
+          -FocalLength=28 -FocalLengthIn35mmFormat=40 -MaxApertureValue=3.5
+          -ExifVersion=0232)  # lens and offset tags need EXIF 2.3+; lab scans declare 2.2
+    [[ -n "$iso" ]]  && tags+=("-ISO=$iso")
+    # -= then += keeps a re-run from adding the keyword twice
+    [[ -n "$film" ]] && tags+=(-codedcharacterset=utf8
+      "-Keywords-=$film" "-Keywords+=$film" "-XMP-dc:Subject-=$film" "-XMP-dc:Subject+=$film") ;;
+  *) echo "unknown preset: $preset" >&2; usage >&2; exit 2 ;;
+esac
+
+common=(-r -q -ext jpg -ext jpeg)
+
+echo "current camera tags:"
+"$EXIFTOOL" "${common[@]}" -f -p '$Make|$Model|$LensModel|$ISO' "${paths[@]}" |
+  sort | uniq -c | sed 's/|/  /g'
+
+if $dry; then
+  echo "would write: ${tags[*]}"
+  exit 0
+fi
+
+"$EXIFTOOL" "${common[@]}" -P -overwrite_original "${tags[@]}" "${paths[@]}"
+
+echo "now:"
+"$EXIFTOOL" "${common[@]}" -f -p '$Make|$Model|$LensModel|$ISO' "${paths[@]}" |
+  sort | uniq -c | sed 's/|/  /g'
