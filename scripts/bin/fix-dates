@@ -1,0 +1,614 @@
+#!/usr/bin/env python3
+"""fix-dates — correct photos and videos shot with a wrong camera clock.
+
+Pick one shot whose real time you know (an iPhone photo of the same moment, a
+clock in frame). The difference between what the camera recorded and the real
+time is applied to every photo and video in the folder:
+
+  - EXIF DateTimeOriginal / CreateDate / ModifyDate + OffsetTime* (JPEG, HEIC,
+    PNG, TIFF, RAW, and videos that already carry EXIF like Fuji MOVs). This is
+    the "date taken" Photos sorts by.
+  - QuickTime dates (MOV/MP4) — all tracks — plus Keys:CreationDate, which is
+    the zone-aware date Photos shows for videos.
+  - File created/modified dates (everything, incl. AVI which has no internal
+    date). Cheap cameras (Kodak Charmera) write no EXIF at all, so this is
+    their only date.
+
+Pixels are never re-encoded.
+
+Clock model: each file has a "camera wall time" — what the camera's clock
+read. Sources, in order: EXIF DateTimeOriginal, EXIF CreateDate,
+Keys:CreationDate, QuickTime CreateDate (UTC, shown in this Mac's zone), and
+finally the earlier of the file's created/modified dates in this Mac's zone
+(memory cards store FAT local time, so that equals the camera clock). New wall
+= old wall + offset, tagged with the zone the photos were taken in. Instant
+tags (file dates, QuickTime) move by the same real-time delta, so their spread
+(video start vs end) is preserved.
+
+Re-running is safe without markers: a filename reference re-reads that photo's
+current (already fixed) date, giving a zero offset; a pasted reference date
+must match a photo that currently shows it.
+
+Every run writes an undo log to ~/.local/state/fix-dates/; `--undo` restores.
+"""
+
+import argparse
+import json
+import os
+import re
+import shlex
+import subprocess
+import sys
+import tempfile
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from zoneinfo import ZoneInfo, available_timezones
+
+EXIFTOOL = "/opt/homebrew/bin/exiftool"
+STATE_DIR = Path.home() / ".local/state/fix-dates"
+
+IMAGE = {"jpg", "jpeg", "heic", "heif", "png", "tif", "tiff"}
+RAW = {"raf", "dng", "cr2", "cr3", "nef", "arw", "orf", "rw2", "pef", "srw"}
+QT_VIDEO = {"mov", "mp4", "m4v", "3gp"}
+OTHER_VIDEO = {"avi", "mts", "m2ts"}
+
+EXIF_WALL = ["EXIF:DateTimeOriginal", "EXIF:CreateDate", "EXIF:ModifyDate"]
+EXIF_OFFSET = ["EXIF:OffsetTimeOriginal", "EXIF:OffsetTimeDigitized", "EXIF:OffsetTime"]
+FILE_DATES = ["File:FileModifyDate", "File:FileCreateDate"]
+KEYS_DATE = "Keys:CreationDate"  # reads back under -G0 as QuickTime:CreationDate
+READ_TAGS = FILE_DATES + EXIF_WALL + EXIF_OFFSET + ["QuickTime:CreateDate", KEYS_DATE]
+
+# Common abbreviations; anything else goes through IANA names / city lookup.
+ZONE_ABBREV = {
+    "JST": "Asia/Tokyo", "KST": "Asia/Seoul", "HKT": "Asia/Hong_Kong",
+    "SGT": "Asia/Singapore", "IST": "Asia/Kolkata",
+    "PST": "America/Los_Angeles", "PDT": "America/Los_Angeles", "PT": "America/Los_Angeles",
+    "MST": "America/Denver", "MDT": "America/Denver",
+    "CDT": "America/Chicago", "EST": "America/New_York", "EDT": "America/New_York",
+    "ET": "America/New_York", "BST": "Europe/London", "CET": "Europe/Paris",
+    "CEST": "Europe/Paris", "AEST": "Australia/Sydney", "AEDT": "Australia/Sydney",
+    "NZST": "Pacific/Auckland", "NZDT": "Pacific/Auckland",
+}
+
+
+def die(msg):
+    print(f"fix-dates: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def mac_zone():
+    link = str(Path("/etc/localtime").resolve())
+    return ZoneInfo(link.split("zoneinfo/", 1)[1]) if "zoneinfo/" in link else timezone.utc
+
+
+# ---------- parsing ----------
+
+DATE_FORMATS = ["%B %d %Y", "%b %d %Y", "%d %B %Y", "%d %b %Y",
+                "%Y:%m:%d", "%Y-%m-%d", "%Y/%m/%d", "%Y.%m.%d", "%Y%m%d"]
+TIME_FORMATS = ["%I:%M:%S %p", "%I:%M %p", "%H:%M:%S", "%H:%M", "%H%M%S"]
+
+
+def parse_offset(text):
+    m = re.fullmatch(r"(?:UTC|GMT)?\s*([+-])\s*(\d{1,2})(?::?(\d{2}))?", text.strip(), re.I)
+    if not m:
+        return None
+    sign = -1 if m.group(1) == "-" else 1
+    return timezone(sign * timedelta(hours=int(m.group(2)), minutes=int(m.group(3) or 0)))
+
+
+def parse_zone(text):
+    """'Tokyo', 'Asia/Tokyo', 'JST', '+9', 'UTC+09:00' -> tzinfo."""
+    t = text.strip()
+    if t.upper() in ("Z", "UTC", "GMT"):
+        return timezone.utc
+    if (off := parse_offset(t)) is not None:
+        return off
+    if t.upper() in ZONE_ABBREV:
+        return ZoneInfo(ZONE_ABBREV[t.upper()])
+    zones = available_timezones()
+    lower = {z.lower(): z for z in zones}
+    if t.lower() in lower:
+        return ZoneInfo(lower[t.lower()])
+    city = "/" + t.replace(" ", "_").lower()
+    hits = sorted(z for z in zones if z.lower().endswith(city))
+    if len(hits) == 1:
+        return ZoneInfo(hits[0])
+    raise ValueError(f"unknown time zone {text!r} (try a city like 'Tokyo', 'Asia/Tokyo', or '+09:00')")
+
+
+def parse_when(text):
+    """Pasted date/time -> (naive datetime, tzinfo|None).
+
+    Finder 'October 16, 2026 at 1:43 PM', Photos 'October 15, 2026   11:09:08 PM',
+    EXIF '2026:10:15 23:09:08+09:00', ISO, Lightroom '10/15/2026 11:09 PM',
+    '15 Oct 2026 23:09', filename-style '20261015_230908', 'Today at 1:43 PM'.
+    """
+    s = text
+    for ch in "\u202f\u00a0\u2009\u2007":  # macOS puts a narrow no-break space before AM/PM
+        s = s.replace(ch, " ")
+    s = s.strip().strip("\"'")
+    tz = None
+    m = re.search(r"\s*(Z|(?:GMT|UTC)?\s*[+-]\d{1,2}(?::?\d{2})?|\b[A-Z]{2,4})$", s)
+    if m and m.group(1).upper() not in ("AM", "PM"):
+        token = m.group(1)
+        try:
+            tz = parse_zone(token)
+            s = s[: m.start()]
+        except ValueError:
+            pass
+    s = re.sub(r"^(mon|tue|wed|thu|fri|sat|sun)[a-z]*,?\s+", "", s, flags=re.I)
+    today = datetime.now().date()
+    s = re.sub(r"^today\b", today.strftime("%Y-%m-%d"), s, flags=re.I)
+    s = re.sub(r"^yesterday\b", (today - timedelta(days=1)).strftime("%Y-%m-%d"), s, flags=re.I)
+    s = re.sub(r"\bat\b", " ", s, flags=re.I).replace(",", " ")
+    s = re.sub(r"(\d)T(\d)", r"\1 \2", s)
+    s = re.sub(r"(\d{8})[_-](\d{6})", r"\1 \2", s)
+    s = re.sub(r"(:\d{2})\.\d+", r"\1", s)
+    s = re.sub(r"\b([ap])\.?\s?m\.?(?=\s|$)", lambda m: m.group(1).upper() + "M", s, flags=re.I)
+    s = re.sub(r"(\d)(AM|PM)\b", r"\1 \2", s)
+    s = re.sub(r"\bSept\b", "Sep", s, flags=re.I)
+    m = re.match(r"^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})\b(.*)$", s.strip())
+    if m:
+        a, b, y, rest = int(m.group(1)), int(m.group(2)), m.group(3), m.group(4)
+        if a > 12:
+            day, mon = a, b
+        elif b > 12 or a == b:
+            mon, day = a, b
+        else:
+            raise ValueError(f"{text!r} is ambiguous (month/day or day/month?) — use e.g. 'October 5, 2026 1:43 PM' or 2026-10-05")
+        s = f"{y}-{mon:02d}-{day:02d}{rest}"
+    s = " ".join(s.split())
+    for df in DATE_FORMATS:
+        for tf in TIME_FORMATS:
+            try:
+                return datetime.strptime(s, f"{df} {tf}"), tz
+            except ValueError:
+                continue
+    raise ValueError(f"can't read {text!r} as a date and time (include the time, e.g. 'October 16, 2026 at 1:43 PM')")
+
+
+def parse_exif(value):
+    """exiftool date string -> (naive, tz|None), or None for empty/zero dates."""
+    if not isinstance(value, str):
+        return None
+    m = re.match(r"(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})?", value)
+    if not m or m.group(1) == "0000":
+        return None
+    try:
+        dt = datetime(*map(int, m.groups()[:6]))
+    except ValueError:
+        return None
+    tz = m.group(7)
+    return dt, (timezone.utc if tz == "Z" else parse_offset(tz) if tz else None)
+
+
+# ---------- formatting ----------
+
+def fmt_wall(dt):
+    return dt.strftime("%Y:%m:%d %H:%M:%S")
+
+
+def fmt_off(td):
+    sign = "-" if td < timedelta(0) else "+"
+    mins = abs(int(td.total_seconds())) // 60
+    return f"{sign}{mins // 60:02d}:{mins % 60:02d}"
+
+
+def fmt_inst(aware):
+    return fmt_wall(aware) + fmt_off(aware.utcoffset())
+
+
+def fmt_shift(seconds):
+    d, rem = divmod(abs(int(seconds)), 86400)
+    h, rem = divmod(rem, 3600)
+    m, s = divmod(rem, 60)
+    return f"{d} {h}:{m:02d}:{s:02d}"
+
+
+def human(dt, tz=None):
+    out = dt.strftime("%a %d %b %Y, %H:%M:%S")
+    if tz is not None:
+        out += f" ({fmt_off(dt.replace(tzinfo=tz).utcoffset())})"
+    return out
+
+
+def human_delta(seconds):
+    sign = "-" if seconds < 0 else "+"
+    d, rem = divmod(abs(int(seconds)), 86400)
+    h, rem = divmod(rem, 3600)
+    m, s = divmod(rem, 60)
+    return f"{sign}{d} days {h:02d}:{m:02d}:{s:02d}" if d else f"{sign}{h:02d}:{m:02d}:{s:02d}"
+
+
+# ---------- exiftool ----------
+
+def exiftool_json(paths):
+    with tempfile.NamedTemporaryFile("w", suffix=".args", delete=False) as f:
+        f.write("\n".join(str(p) for p in paths) + "\n")
+        listfile = f.name
+    try:
+        out = subprocess.run(
+            [EXIFTOOL, "-j", "-G0", "-api", "QuickTimeUTC", *[f"-{t}" for t in READ_TAGS], "-@", listfile],
+            capture_output=True, text=True,
+        )
+    finally:
+        os.unlink(listfile)
+    if not out.stdout.strip():
+        die(f"exiftool read failed: {out.stderr.strip()}")
+    return {str(Path(r["SourceFile"])): r for r in json.loads(out.stdout)}
+
+
+def exiftool_write(blocks):
+    """blocks: list of argument lists, each run as its own -execute step."""
+    with tempfile.NamedTemporaryFile("w", suffix=".args", delete=False) as f:
+        for args in blocks:
+            f.write("\n".join(args) + "\n-execute\n")
+        argfile = f.name
+    try:
+        out = subprocess.run(
+            [EXIFTOOL, "-@", argfile, "-common_args", "-q", "-overwrite_original", "-api", "QuickTimeUTC"],
+            capture_output=True, text=True,
+        )
+    finally:
+        os.unlink(argfile)
+    return [ln for ln in out.stderr.splitlines() if ln.startswith("Error")]
+
+
+# ---------- model ----------
+
+def kind_of(path):
+    ext = path.suffix.lower().lstrip(".")
+    for kind, exts in (("image", IMAGE), ("raw", RAW), ("qt", QT_VIDEO), ("video", OTHER_VIDEO)):
+        if ext in exts:
+            return kind
+    return None
+
+
+def scan(folder):
+    files = []
+    for root, dirs, names in os.walk(folder):
+        dirs[:] = sorted(d for d in dirs if not d.startswith(".") and not d.endswith(".photoslibrary"))
+        for n in sorted(names):
+            p = Path(root) / n
+            if not n.startswith(".") and kind_of(p):
+                files.append(p)
+    return files
+
+
+class Item:
+    def __init__(self, path, meta, local):
+        self.path = path
+        self.kind = kind_of(path)
+        self.meta = meta
+        self.file_walls = []  # how Finder shows the file dates on this Mac
+        for tag in FILE_DATES:
+            if (v := parse_exif(meta.get(tag))) and v[1]:
+                self.file_walls.append(v[0].replace(tzinfo=v[1]).astimezone(local).replace(tzinfo=None))
+        self.wall, self.zone, self.source = self._capture(local)
+
+    def _capture(self, local):
+        for tag, off_tag in (("EXIF:DateTimeOriginal", "EXIF:OffsetTimeOriginal"),
+                             ("EXIF:CreateDate", "EXIF:OffsetTimeDigitized")):
+            if v := parse_exif(self.meta.get(tag)):
+                off = parse_offset(self.meta.get(off_tag) or "")
+                return v[0], off, tag
+        if (v := parse_exif(self.meta.get("QuickTime:CreationDate"))) and v[1]:
+            return v[0], v[1], KEYS_DATE
+        if (v := parse_exif(self.meta.get("QuickTime:CreateDate"))) and v[1]:
+            return v[0].replace(tzinfo=v[1]).astimezone(local).replace(tzinfo=None), local, "QuickTime:CreateDate"
+        if self.file_walls:
+            return min(self.file_walls), local, "file date"
+        return None, None, None
+
+    def has_exif(self):
+        return any(parse_exif(self.meta.get(t)) for t in EXIF_WALL)
+
+    def plan(self, offset, target, local):
+        """-> (blocks, undo) for moving this file's camera time by `offset`."""
+        new_wall = self.wall + offset
+        old_inst = self.wall.replace(tzinfo=self.zone or local)
+        new_inst = new_wall.replace(tzinfo=target)
+        delta = new_inst - old_inst
+        writes, priors = {}, {}
+
+        if self.kind in ("image", "raw") or self.has_exif():
+            for tag in EXIF_WALL:
+                cur = parse_exif(self.meta.get(tag))
+                writes[tag] = fmt_wall((cur[0] if cur else self.wall) + offset)
+            for tag in EXIF_OFFSET:
+                writes[tag] = fmt_off(new_inst.utcoffset())
+        qt_shift = 0
+        if self.kind == "qt":
+            cur = parse_exif(self.meta.get("QuickTime:CreationDate"))
+            base = cur[0] + offset if cur else new_wall
+            writes[KEYS_DATE] = fmt_inst(base.replace(tzinfo=target))
+            if parse_exif(self.meta.get("QuickTime:CreateDate")):
+                qt_shift = int(delta.total_seconds())
+        for tag in FILE_DATES:
+            if (v := parse_exif(self.meta.get(tag))) and v[1]:
+                writes[tag] = fmt_inst((v[0].replace(tzinfo=v[1]) + delta).astimezone(local))
+        for tag in writes:
+            read_key = "QuickTime:CreationDate" if tag == KEYS_DATE else tag
+            priors[tag] = self.meta.get(read_key)
+
+        blocks = []
+        if qt_shift:
+            op = "+=" if qt_shift > 0 else "-="
+            blocks.append([f"-QuickTime:Time:All{op}{fmt_shift(qt_shift)}", str(self.path)])
+        # File dates last: earlier steps rewrite the file and bump its mtime.
+        blocks.append([f"-{t}={v}" for t, v in writes.items()] + [str(self.path)])
+        undo = {"path": str(self.path), "priors": priors, "qt_shift": qt_shift}
+        return blocks, undo, new_wall
+
+
+def undo_blocks(entry):
+    blocks = []
+    if entry["qt_shift"]:
+        op = "-=" if entry["qt_shift"] > 0 else "+="
+        blocks.append([f"-QuickTime:Time:All{op}{fmt_shift(entry['qt_shift'])}", entry["path"]])
+    sets = [f"-{t}={'' if v is None else v}" for t, v in entry["priors"].items()
+            if t not in FILE_DATES]
+    sets += [f"-{t}={v}" for t, v in entry["priors"].items() if t in FILE_DATES and v]
+    blocks.append(sets + [entry["path"]])
+    return blocks
+
+
+# ---------- interaction ----------
+
+def ask(prompt, parse=lambda s: s, default=None):
+    while True:
+        try:
+            raw = input(f"{prompt}{f' [{default}]' if default else ''}: ").strip()
+        except EOFError:
+            print()
+            sys.exit(1)
+        if not raw and default is not None:
+            raw = default
+        if not raw:
+            continue
+        try:
+            return parse(raw)
+        except ValueError as e:
+            print(f"  {e}")
+
+
+def yes(prompt, default=True):
+    try:
+        ans = input(f"{prompt} {'[Y/n]' if default else '[y/N]'}: ").strip().lower()
+    except EOFError:
+        print()
+        sys.exit(1)
+    return ans.startswith("y") if ans else default
+
+
+def as_path(text):
+    try:
+        parts = shlex.split(text)  # Finder drag-and-drop escapes spaces
+    except ValueError:
+        parts = [text]
+    return Path(os.path.expanduser(parts[0] if len(parts) == 1 else text))
+
+
+def find_by_name(items, text):
+    p = as_path(text)
+    if p.is_file():
+        return p
+    hits = [i.path for i in items if i.path.name.lower() == p.name.lower()]
+    if len(hits) > 1:
+        raise ValueError(f"{p.name} matches {len(hits)} files — paste the full path")
+    return hits[0] if hits else None
+
+
+def resolve_ref(text, items, local):
+    """Wrong-clock reference: filename -> its camera time; pasted date -> a photo showing it."""
+    path = find_by_name(items, text)
+    if path:
+        item = next((i for i in items if i.path == path), None) or Item(path, exiftool_json([path])[str(path)], local)
+        if item.wall is None:
+            raise ValueError(f"{path.name} has no date to read")
+        return item
+    if re.search(r"\.[A-Za-z0-9]{2,4}$", text.strip()) and not re.search(r"\d$", text.strip()):
+        raise ValueError(f"no file named {as_path(text).name} in this folder")
+    wall, _ = parse_when(text)
+    exact = wall.second != 0 or re.search(r"\d:\d{2}:\d{2}", text)
+    def shows(item):
+        for w in [item.wall, *item.file_walls]:
+            if w is None:
+                continue
+            if exact and abs((w - wall).total_seconds()) <= 2:  # FAT stores 2-second steps
+                return True
+            if not exact and w.replace(second=0) == wall:
+                return True
+        return False
+    hits = [i for i in items if i.wall and shows(i)]
+    if not hits:
+        raise ValueError(f"no photo here currently shows {human(wall)} — the folder may already be "
+                         "fixed, or paste the date exactly as shown (or give the filename)")
+    if len(hits) > 1:  # Finder shows minutes only; burst shots share a second
+        names = ", ".join(i.path.name for i in hits[:6]) + (" …" if len(hits) > 6 else "")
+        raise ValueError(f"{len(hits)} files show that time ({names}) — give the filename instead")
+    return hits[0]
+
+
+def resolve_real(text, local):
+    """Real time: pasted date (optionally with zone) or a file (e.g. the iPhone photo)."""
+    p = as_path(text)
+    if p.is_file():
+        item = Item(p, exiftool_json([p])[str(p)], local)
+        if item.wall is None:
+            raise ValueError(f"{p.name} has no date to read")
+        return item.wall, item.zone
+    return parse_when(text)
+
+
+# ---------- commands ----------
+
+def run_fix(args):
+    local = mac_zone()
+    interactive = sys.stdin.isatty() and not (args.ref and args.real)
+    if interactive:
+        import readline  # noqa: F401  (line editing for input())
+
+    folder = args.folder or (ask("Folder (drag it here from Finder)", as_path) if interactive else None)
+    if not folder:
+        die("give a folder")
+    folder = Path(folder).expanduser().resolve()
+    if not folder.is_dir():
+        die(f"not a folder: {folder}")
+
+    paths = scan(folder)
+    if not paths:
+        die(f"no photos or videos in {folder}")
+    meta = exiftool_json(paths)
+    items = [Item(p, meta.get(str(p), {}), local) for p in paths]
+    items = [i for i in items if i.wall]
+
+    counts = {}
+    for i in items:
+        counts[i.kind] = counts.get(i.kind, 0) + 1
+    walls = sorted(i.wall for i in items)
+    print(f"\n{folder}")
+    print("  " + ", ".join(f"{n} {k}" for k, n in sorted(counts.items())))
+    print(f"  camera times: {human(walls[0])}  →  {human(walls[-1])}\n")
+
+    include_raw = not args.no_raw
+    if counts.get("raw") and interactive and include_raw:
+        include_raw = yes(f"Fix the {counts['raw']} RAW files too? (masters — refresh backups afterwards)")
+    if not include_raw:
+        items = [i for i in items if i.kind != "raw"]
+
+    # 1. reference
+    if interactive and not args.ref:
+        print("Pick one photo whose real time you know.")
+        ref = ask("  Its filename, or the (wrong) date it shows", lambda s: resolve_ref(s, items, local))
+    else:
+        try:
+            ref = resolve_ref(args.ref, items, local)
+        except ValueError as e:
+            die(str(e))
+    print(f"  → {ref.path.name}: camera says {human(ref.wall)}  [{ref.source}]\n")
+
+    # 2. real time
+    if interactive and not args.real:
+        print("When was it really taken? Paste from Finder, Photos, your iPhone, or give a photo file.")
+        real_wall, real_tz = ask("  Real date/time", lambda s: resolve_real(s, local))
+    else:
+        try:
+            real_wall, real_tz = resolve_real(args.real, local)
+        except ValueError as e:
+            die(str(e))
+
+    # 3. zone it was taken in
+    default_zone = getattr(real_tz, "key", None) or (fmt_off(real_tz.utcoffset(None)) if real_tz else None) \
+        or getattr(local, "key", "UTC")
+    if args.tz:
+        try:
+            target = parse_zone(args.tz)
+        except ValueError as e:
+            die(str(e))
+    elif interactive:
+        target = ask("  Time zone where it was taken (city, e.g. Tokyo)", parse_zone, default=default_zone)
+    else:
+        target = real_tz or local
+    if real_tz is not None and real_tz != target:
+        real_wall = real_wall.replace(tzinfo=real_tz).astimezone(target).replace(tzinfo=None)
+
+    offset = real_wall - ref.wall
+    if abs(offset.total_seconds()) < 2:
+        print("\nThat photo already shows the real time — nothing to do.")
+        return
+    print(f"\nOffset: {human_delta(offset.total_seconds())}  (zone: {getattr(target, 'key', target)})")
+
+    plans = [(i, *i.plan(offset, target, local)) for i in items]
+    plans.sort(key=lambda p: p[0].wall)
+    new_walls = [p[3] for p in plans]
+    print(f"New times:    {human(new_walls[0], target)}  →  {human(new_walls[-1], target)}")
+    for item, _, _, new in plans[:3] + (plans[-2:] if len(plans) > 5 else []):
+        print(f"  {item.path.name:<22} {human(item.wall)}  →  {human(new, target)}")
+    if max(new_walls).replace(tzinfo=target) > datetime.now(timezone.utc):
+        print("  ⚠ some new times are in the future — check the dates")
+    file_only = sum(1 for p in plans if p[0].kind == "video")
+    if file_only:
+        print(f"  ({file_only} AVI/MTS: no internal date, file dates only)")
+
+    if args.dry_run:
+        print("\nDry run — nothing written.")
+        return
+    if interactive and not args.yes and not yes(f"\nRewrite dates on {len(plans)} files?", default=False):
+        print("Nothing written.")
+        return
+    if not interactive and not args.yes:
+        die("non-interactive run: pass -y to write, or -n for a dry run")
+
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    log = STATE_DIR / f"{datetime.now():%Y%m%d-%H%M%S}.json"
+    log.write_text(json.dumps({
+        "folder": str(folder), "offset_seconds": int(offset.total_seconds()),
+        "zone": str(getattr(target, "key", target)), "reference": str(ref.path),
+        "files": [p[2] for p in plans],
+    }, indent=1))
+
+    errors = exiftool_write([b for p in plans for b in p[1]])
+
+    # Verify against a fresh read. File-date-only items read back in this Mac's
+    # zone, so compare those as instants.
+    after = exiftool_json([p[0].path for p in plans])
+    def took(path, new_wall):
+        item = Item(path, after.get(str(path), {}), local)
+        want = new_wall
+        if item.source == "file date":
+            want = new_wall.replace(tzinfo=target).astimezone(local).replace(tzinfo=None)
+        return item.wall and abs((item.wall - want).total_seconds()) <= 2
+    bad = [p[0].path.name for p in plans if not took(p[0].path, p[3])]
+    print(f"\nUpdated {len(plans) - len(bad)}/{len(plans)} files.  Undo: fix-dates --undo {log}")
+    for e in errors:
+        print(f"  {e}", file=sys.stderr)
+    if bad:
+        die(f"{len(bad)} files didn't take the new date: {', '.join(bad[:10])}")
+
+
+def run_undo(args):
+    logs = sorted(STATE_DIR.glob("*.json"))
+    log = Path(args.undo) if args.undo != "latest" else (logs[-1] if logs else None)
+    if not log or not log.is_file():
+        die("no undo log found")
+    data = json.loads(log.read_text())
+    print(f"Undo {log.name}: {len(data['files'])} files in {data['folder']} "
+          f"(offset {human_delta(data['offset_seconds'])})")
+    if not args.yes and sys.stdin.isatty() and not yes("Restore the original dates?", default=False):
+        return
+    missing = [e["path"] for e in data["files"] if not Path(e["path"]).exists()]
+    entries = [e for e in data["files"] if Path(e["path"]).exists()]
+    errors = exiftool_write([b for e in entries for b in undo_blocks(e)])
+    for e in errors:
+        print(f"  {e}", file=sys.stderr)
+    log.rename(log.with_suffix(".undone"))
+    print(f"Restored {len(entries)} files." + (f" {len(missing)} moved/missing, skipped." if missing else ""))
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        description="Correct photo/video dates from a wrong camera clock. Run with just a folder to be asked.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""examples:
+  fix-dates ~/Pictures/trip                         interactive
+  fix-dates -n ~/Pictures/trip --ref PICT0042.jpg \\
+      --real "October 13, 2026 at 10:55:20 PM" --tz Tokyo
+  fix-dates --undo                                   restore the last run""")
+    ap.add_argument("folder", nargs="?", type=Path)
+    ap.add_argument("--ref", help="photo whose real time you know: filename, or the wrong date it shows")
+    ap.add_argument("--real", help="its real date/time (or a file to read it from)")
+    ap.add_argument("--tz", help="time zone it was taken in (city, IANA name, or +09:00)")
+    ap.add_argument("--no-raw", action="store_true", help="leave RAW files untouched")
+    ap.add_argument("-n", "--dry-run", action="store_true", help="show the plan, write nothing")
+    ap.add_argument("-y", "--yes", action="store_true", help="don't ask for confirmation")
+    ap.add_argument("--undo", nargs="?", const="latest", metavar="LOG", help="restore a run (default: latest)")
+    args = ap.parse_args()
+    sys.stdout.reconfigure(line_buffering=True)  # keep stdout/stderr in order when piped
+    if not Path(EXIFTOOL).exists():
+        die(f"exiftool not found at {EXIFTOOL}")
+    run_undo(args) if args.undo else run_fix(args)
+
+
+if __name__ == "__main__":
+    main()
