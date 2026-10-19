@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+"""sync-negatives — mirror the contacts/ folder layout onto negatives/.
+
+After culling JPGs in contacts/ into folders (prints/, _outtakes/, per
+location, ...), move each RAF into the matching folder under negatives/ so the
+RAWs can be browsed with the same filtering. Files pair by stem: XT304383.JPG
+pairs with XT304383.RAF, and sidecars like XT304383.xmp or XT304383.FP2 move
+with their RAF.
+
+Moves only (rename within the same disk): RAFs stay byte-identical, nothing is
+copied or deleted except negatives/ folders left empty by the moves. RAFs with
+no matching JPG are left where they are and listed. Safe to re-run.
+
+Usage: sync-negatives [-n] [TRIP | CONTACTS NEGATIVES]
+"""
+
+import argparse
+import os
+import sys
+from collections import defaultdict
+
+IMAGE_EXTS = {".jpg", ".jpeg", ".hif", ".heic", ".heif"}
+JUNK = {".DS_Store"}
+
+
+def stem(name):
+    return name.split(".", 1)[0]
+
+
+def walk(root):
+    """Yield (reldir, name) for files under root, skipping dot dirs and dotfiles."""
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
+        rel = os.path.relpath(dirpath, root)
+        for name in sorted(filenames):
+            if not name.startswith("."):
+                yield ("" if rel == "." else rel), name
+
+
+def prune_empty(root, dry):
+    """Remove folders under root (not root itself) holding nothing but .DS_Store."""
+    removed = []
+    for dirpath, dirnames, filenames in os.walk(root, topdown=False):
+        if dirpath == root:
+            continue
+        left = [n for n in os.listdir(dirpath) if n not in JUNK]
+        if not left:
+            removed.append(os.path.relpath(dirpath, root))
+            if not dry:
+                for n in JUNK:
+                    p = os.path.join(dirpath, n)
+                    if os.path.exists(p):
+                        os.remove(p)
+                os.rmdir(dirpath)
+    return removed
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        description="Move RAFs in negatives/ into the folders their JPGs have in contacts/.",
+        epilog="TRIP is a folder containing contacts/ and negatives/ (default: current folder).",
+    )
+    ap.add_argument("-n", "--dry-run", action="store_true", help="show moves without making them")
+    ap.add_argument("paths", nargs="*", metavar="PATH")
+    a = ap.parse_args()
+
+    if len(a.paths) <= 1:
+        trip = a.paths[0] if a.paths else "."
+        contacts, negatives = os.path.join(trip, "contacts"), os.path.join(trip, "negatives")
+    elif len(a.paths) == 2:
+        contacts, negatives = a.paths
+    else:
+        ap.error("give TRIP, or CONTACTS and NEGATIVES")
+    for d in (contacts, negatives):
+        if not os.path.isdir(d):
+            sys.exit(f"error: not a folder: {d}")
+
+    # Where each stem lives in contacts/.
+    homes = defaultdict(set)
+    for rel, name in walk(contacts):
+        if os.path.splitext(name)[1].lower() in IMAGE_EXTS:
+            homes[stem(name)].add(rel)
+
+    # Every file in negatives/, grouped by stem.
+    groups = defaultdict(list)
+    for rel, name in walk(negatives):
+        groups[stem(name)].append((rel, name))
+
+    moves, orphans, ambiguous, clashes = [], [], [], []
+    for s, files in sorted(groups.items()):
+        dirs = homes.get(s)
+        if not dirs:
+            orphans += [os.path.join(r, n) for r, n in files if n.upper().endswith(".RAF")]
+            continue
+        if len(dirs) > 1:
+            ambiguous.append((s, sorted(dirs)))
+            continue
+        (target,) = dirs
+        for rel, name in files:
+            if rel == target:
+                continue
+            dst = os.path.join(negatives, target, name)
+            if os.path.exists(dst):
+                clashes.append(os.path.join(target, name))
+                continue
+            moves.append((os.path.join(rel, name), os.path.join(target, name)))
+
+    tag = "would move" if a.dry_run else "moved"
+    by_dir = defaultdict(int)
+    for src, dst in moves:
+        if not a.dry_run:
+            os.makedirs(os.path.dirname(os.path.join(negatives, dst)), exist_ok=True)
+            os.rename(os.path.join(negatives, src), os.path.join(negatives, dst))
+        by_dir[os.path.dirname(dst) or "."] += 1
+
+    for d in sorted(by_dir):
+        print(f"  {by_dir[d]:5d}  {tag} -> negatives/{d}/")
+    print(f"{len(moves)} files {tag}" if moves else "nothing to move: negatives/ already matches contacts/")
+
+    removed = prune_empty(negatives, a.dry_run)
+    for d in removed:
+        print(f"{'would remove' if a.dry_run else 'removed'} empty negatives/{d}/")
+
+    status = 0
+    if orphans:
+        print(f"\n{len(orphans)} RAFs have no JPG in contacts/ (left in place):", file=sys.stderr)
+        for p in orphans:
+            print(f"  negatives/{p}", file=sys.stderr)
+    if ambiguous:
+        status = 1
+        print(f"\n{len(ambiguous)} stems are in more than one contacts/ folder (skipped):", file=sys.stderr)
+        for s, dirs in ambiguous:
+            print(f"  {s}: {', '.join(d or '.' for d in dirs)}", file=sys.stderr)
+    if clashes:
+        status = 1
+        print(f"\n{len(clashes)} targets already exist (skipped):", file=sys.stderr)
+        for p in clashes:
+            print(f"  negatives/{p}", file=sys.stderr)
+    return status
+
+
+if __name__ == "__main__":
+    sys.exit(main())
