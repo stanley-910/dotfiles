@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# sync-orientation — make Apple apps honor rotations done in FastRawViewer.
+#
+# A JPEG can carry two "which way is up" tags. The camera writes EXIF
+# Orientation; FastRawViewer writes XMP tiff:Orientation (inside the JPEG when
+# "Write XMP blocks to JPEG files" is on) and never touches the EXIF one. Photos,
+# Preview, Finder and iOS read EXIF, so a frame rotated only in FastRawViewer
+# still shows the camera's (sometimes wrong) orientation after import.
+#
+# This copies the XMP value over EXIF Orientation wherever the two disagree —
+# IFD0 (the image) and IFD1 (the embedded thumbnail, when present). Metadata
+# only: pixels are not re-encoded, file dates are preserved (-P), and files
+# without an XMP orientation are left alone. Safe to re-run.
+#
+# JPEGs only. RAF rotations live in FastRawViewer's sidecars; RAFs are
+# masters and stay byte-identical to their backups. With "RAW+JPEG mode: embed
+# XMP block into JPEG" on, the paired JPG gets the rotation and is synced here.
+#
+# Run after culling/rotating, before importing into Photos.
+
+set -euo pipefail
+
+EXIFTOOL="/opt/homebrew/bin/exiftool"
+
+usage() {
+  cat <<EOF
+Usage: sync-orientation [-n] PATH...
+
+Copy FastRawViewer's XMP orientation into EXIF Orientation for JPEGs under
+each PATH (files or folders, recursive).
+
+  -n   dry run: list what would change, write nothing
+EOF
+}
+
+dry_run=0
+while getopts "nh" opt; do
+  case "$opt" in
+    n) dry_run=1 ;;
+    h) usage; exit 0 ;;
+    *) usage >&2; exit 2 ;;
+  esac
+done
+shift $((OPTIND - 1))
+[[ $# -gt 0 ]] || { usage >&2; exit 2; }
+
+common=(-r -q -ext jpg -ext jpeg)
+# Raw (#) values. A missing EXIF tag counts as a mismatch so it gets created.
+# Written to hold under -f too, which turns missing tags into "-". No "$" regex
+# anchors: exiftool reads "$" in -if expressions as a tag reference.
+needs_sync='($XMP-tiff:Orientation# // "") =~ /^\d+\z/ and $XMP-tiff:Orientation# ne ($IFD0:Orientation# // "")'
+thumb_stale='defined $IFD1:Orientation# and defined $IFD0:Orientation# and $IFD1:Orientation# != $IFD0:Orientation#'
+
+"$EXIFTOOL" "${common[@]}" -f -if "$needs_sync" \
+  -p '$Directory/$FileName: $IFD0:Orientation -> $XMP-tiff:Orientation' "$@" || true
+
+if [[ $dry_run -eq 1 ]]; then
+  exit 0
+fi
+
+"$EXIFTOOL" "${common[@]}" -P -overwrite_original -if "$needs_sync" \
+  '-IFD0:Orientation<XMP-tiff:Orientation' "$@" || true
+# Thumbnail follows the image so previews match.
+"$EXIFTOOL" "${common[@]}" -P -overwrite_original -if "$thumb_stale" \
+  '-IFD1:Orientation<IFD0:Orientation' "$@" || true
+
+# Anything still mismatched is an error worth seeing.
+left=$("$EXIFTOOL" "${common[@]}" -if "$needs_sync" -p '$Directory/$FileName' "$@" || true)
+if [[ -n "$left" ]]; then
+  printf 'Still out of sync:\n%s\n' "$left" >&2
+  exit 1
+fi
