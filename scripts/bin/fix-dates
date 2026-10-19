@@ -3,7 +3,7 @@
 
 Pick one shot whose real time you know (an iPhone photo of the same moment, a
 clock in frame). The difference between what the camera recorded and the real
-time is applied to every photo and video in the folder:
+time is applied to every photo and video in the given folders/files:
 
   - EXIF DateTimeOriginal / CreateDate / ModifyDate + OffsetTime* (JPEG, HEIC,
     PNG, TIFF, RAW, and videos that already carry EXIF like Fuji MOVs). This is
@@ -326,7 +326,16 @@ class Item:
                 qt_shift = int(delta.total_seconds())
         for tag in FILE_DATES:
             if (v := parse_exif(self.meta.get(tag))) and v[1]:
-                writes[tag] = fmt_inst((v[0].replace(tzinfo=v[1]) + delta).astimezone(local))
+                inst = v[0].replace(tzinfo=v[1])
+                file_wall = inst.astimezone(local).replace(tzinfo=None)
+                # Memory cards store the camera clock's wall time (FAT has no
+                # zone), so a file date close to the capture wall IS the camera
+                # clock: move it like a wall. Anything else is a real instant.
+                if abs((file_wall - self.wall).total_seconds()) <= 3600:
+                    new = (file_wall + offset).replace(tzinfo=target)
+                else:
+                    new = inst + delta
+                writes[tag] = fmt_inst(new.astimezone(local))
         for tag in writes:
             read_key = "QuickTime:CreationDate" if tag == KEYS_DATE else tag
             priors[tag] = self.meta.get(read_key)
@@ -449,16 +458,25 @@ def run_fix(args):
     if interactive:
         import readline  # noqa: F401  (line editing for input())
 
-    folder = args.folder or (ask("Folder (drag it here from Finder)", as_path) if interactive else None)
-    if not folder:
-        die("give a folder")
-    folder = Path(folder).expanduser().resolve()
-    if not folder.is_dir():
-        die(f"not a folder: {folder}")
-
-    paths = scan(folder)
+    targets = args.paths or ([ask("Folder (drag it here from Finder)", as_path)] if interactive else [])
+    if not targets:
+        die("give a folder (or files)")
+    paths, seen = [], set()
+    for t in targets:
+        t = Path(t).expanduser().resolve()
+        if t.is_dir():
+            found = scan(t)
+        elif t.is_file() and kind_of(t):
+            found = [t]
+        else:
+            die(f"not a folder or photo/video: {t}")
+        for f in found:
+            if f not in seen:
+                seen.add(f)
+                paths.append(f)
     if not paths:
-        die(f"no photos or videos in {folder}")
+        die("no photos or videos found")
+    folder = targets[0] if len(targets) == 1 else f"{len(targets)} paths"
     meta = exiftool_json(paths)
     items = [Item(p, meta.get(str(p), {}), local) for p in paths]
     items = [i for i in items if i.wall]
@@ -541,7 +559,7 @@ def run_fix(args):
         die("non-interactive run: pass -y to write, or -n for a dry run")
 
     STATE_DIR.mkdir(parents=True, exist_ok=True)
-    log = STATE_DIR / f"{datetime.now():%Y%m%d-%H%M%S}.json"
+    log = STATE_DIR / f"{datetime.now():%Y%m%d-%H%M%S-%f}.json"
     log.write_text(json.dumps({
         "folder": str(folder), "offset_seconds": int(offset.total_seconds()),
         "zone": str(getattr(target, "key", target)), "reference": str(ref.path),
@@ -588,14 +606,16 @@ def run_undo(args):
 
 def main():
     ap = argparse.ArgumentParser(
-        description="Correct photo/video dates from a wrong camera clock. Run with just a folder to be asked.",
+        description="Correct photo/video dates from a wrong camera clock. Run with just a folder to be asked;\n"
+                    "give several folders/files to fix them together with one offset.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""examples:
   fix-dates ~/Pictures/trip                         interactive
   fix-dates -n ~/Pictures/trip --ref PICT0042.jpg \\
       --real "October 13, 2026 at 10:55:20 PM" --tz Tokyo
   fix-dates --undo                                   restore the last run""")
-    ap.add_argument("folder", nargs="?", type=Path)
+    ap.add_argument("paths", nargs="*", type=Path, metavar="PATH",
+                    help="folders (searched recursively) and/or individual files")
     ap.add_argument("--ref", help="photo whose real time you know: filename, or the wrong date it shows")
     ap.add_argument("--real", help="its real date/time (or a file to read it from)")
     ap.add_argument("--tz", help="time zone it was taken in (city, IANA name, or +09:00)")
