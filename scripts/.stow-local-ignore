@@ -18,6 +18,7 @@
 # home-directory targets.
 ^/HEADROOM_PI_COPILOT\.md$
 ^/prototypes$
+^/src$
 ^/archive$
 
 # stow defaults (kept):
