@@ -429,7 +429,8 @@
                                             "^net.imput.helium",
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
-                                            "^com.chabomakers.Antinote"
+                                            "^com.chabomakers.Antinote",
+                                            "^com.apple.Photos"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -465,7 +466,8 @@
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
                                             "^md.obsidian",
-                                            "^com.chabomakers.Antinote"
+                                            "^com.chabomakers.Antinote",
+                                            "^com.apple.Photos"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -496,7 +498,8 @@
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
                                             "^md.obsidian",
-                                            "^com.chabomakers.Antinote"
+                                            "^com.chabomakers.Antinote",
+                                            "^com.apple.Photos"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -527,7 +530,8 @@
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
                                             "^md.obsidian",
-                                            "^com.chabomakers.Antinote"
+                                            "^com.chabomakers.Antinote",
+                                            "^com.apple.Photos"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -558,7 +562,8 @@
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
                                             "^md.obsidian",
-                                            "^com.chabomakers.Antinote"
+                                            "^com.chabomakers.Antinote",
+                                            "^com.apple.Photos"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -588,7 +593,8 @@
                                             "^net.imput.helium",
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
-                                            "^com.chabomakers.Antinote"
+                                            "^com.chabomakers.Antinote",
+                                            "^com.apple.Photos"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -639,7 +645,8 @@
                                             "^net.imput.helium",
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
-                                            "^com.chabomakers.Antinote"
+                                            "^com.chabomakers.Antinote",
+                                            "^com.apple.Photos"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
@@ -674,7 +681,8 @@
                                             "^net.imput.helium",
                                             "^com.todoist.mac.Todoist",
                                             "^com.apple.iCal",
-                                            "^com.chabomakers.Antinote"
+                                            "^com.chabomakers.Antinote",
+                                            "^com.apple.Photos"
                                         ],
                                         "type": "frontmost_application_if"
                                     }
