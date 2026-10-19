@@ -9,8 +9,8 @@ set -euo pipefail
 #   $2 = <dest_root>      e.g. /Volumes/PhotoSSD/Photos
 #
 # Layout created on the drive:
-#   <dest_root>/<date-range>/RAW/     <- .RAF
-#   <dest_root>/<date-range>/media/   <- .JPG/.HIF + .MOV videos + .WAV voice memos
+#   <dest_root>/<date-range>/negatives/ <- .RAF
+#   <dest_root>/<date-range>/contacts/  <- .JPG/.HIF + .MOV videos + .WAV voice memos
 #
 # Date range comes from EXIF DateTimeOriginal (real capture date), not mtime.
 # Copies (cp -pn) — never moves — so the card stays intact until you verify.
@@ -105,8 +105,8 @@ else
 fi
 
 dest="$dest_root/$folder"
-raw_dir="$dest/RAW"
-media_dir="$dest/media"
+raw_dir="$dest/negatives"
+media_dir="$dest/contacts"
 mkdir -p "$raw_dir" "$media_dir"
 
 # --- 3. sort files into place -----------------------------------------------
