@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+"""backup-photos — mirror the camera folders in ~/Pictures onto the Passport.
+
+Makes /Volumes/Passport/photos/<camera>/ match ~/Pictures/<camera>/ exactly:
+  1. lists files on the drive that no longer exist at that path on the Mac
+     (re-culled, renamed, deleted) and removes them after you confirm;
+  2. copies new and changed files with ditto (keeps creation dates and
+     xattrs, which macOS's openrsync drops);
+  3. byte-compares every copied file against the Mac.
+
+"Changed" means a different size or mtime, or a different inode change time
+(ctime) than at the last backup. ctime matters: `exiftool -P` edits such as
+sync-orientation keep size and mtime, but always bump ctime. ctimes are kept
+in ~/.local/state/backup-photos/manifest.json; files with no entry yet are
+byte-compared instead of recopied, so the first run reads both sides once.
+
+Usage: backup-photos [-n] [-y] [--full] [CAMERA...]
+"""
+
+import argparse
+import filecmp
+import json
+import os
+import subprocess
+import sys
+
+SRC = os.path.expanduser("~/Pictures")
+DST = "/Volumes/Passport/photos"
+CAMERAS = ["x-t30 iii", "olympus pen ee-3", "kodak charmera", "instax mini evo"]
+MANIFEST = os.path.expanduser("~/.local/state/backup-photos/manifest.json")
+JUNK = {".DS_Store"}
+
+
+def files(root):
+    """{relpath: stat} for regular files under root, skipping Finder litter."""
+    out = {}
+    for dirpath, dirnames, names in os.walk(root):
+        dirnames.sort()
+        for n in names:
+            if n in JUNK or n.startswith("._"):
+                continue
+            p = os.path.join(dirpath, n)
+            out[os.path.relpath(p, root)] = os.stat(p)
+    return out
+
+
+def human(n):
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if n < 1024 or unit == "TB":
+            return f"{n:.1f}{unit}" if unit != "B" else f"{n}B"
+        n /= 1024
+
+
+def confirm(prompt):
+    if not sys.stdin.isatty():
+        return False
+    return input(f"{prompt} [y/N] ").strip().lower() in ("y", "yes")
+
+
+def prune_dirs(root, keep_root):
+    """Remove folders under root that are empty (or only hold Finder litter)."""
+    for dirpath, _, _ in os.walk(root, topdown=False):
+        if dirpath == keep_root:
+            continue
+        if all(n in JUNK for n in os.listdir(dirpath)):
+            for n in os.listdir(dirpath):
+                os.remove(os.path.join(dirpath, n))
+            os.rmdir(dirpath)
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Mirror ~/Pictures camera folders onto the Passport.")
+    ap.add_argument("-n", "--dry-run", action="store_true", help="show what would change, touch nothing")
+    ap.add_argument("-y", "--yes", action="store_true", help="remove stale files without asking")
+    ap.add_argument("--full", action="store_true", help="byte-compare every file, not just changed ones")
+    ap.add_argument("--src", default=SRC, help=argparse.SUPPRESS)
+    ap.add_argument("--dst", default=DST, help=argparse.SUPPRESS)
+    ap.add_argument("--manifest", default=MANIFEST, help=argparse.SUPPRESS)
+    ap.add_argument("cameras", nargs="*", metavar="CAMERA", help=f"default: {', '.join(CAMERAS)}")
+    a = ap.parse_args()
+
+    volume = os.path.dirname(a.dst)
+    if not os.path.isdir(volume):
+        sys.exit(f"error: {volume} is not mounted")
+    try:
+        with open(a.manifest) as f:
+            manifest = json.load(f)
+    except (OSError, ValueError):
+        manifest = {}
+
+    status, tty = 0, sys.stdout.isatty()
+    for cam in a.cameras or CAMERAS:
+        src, dst = os.path.join(a.src, cam), os.path.join(a.dst, cam)
+        if not os.path.isdir(src):
+            print(f"skip {cam}: not in {a.src}", file=sys.stderr)
+            continue
+        print(f"== {cam}")
+        here = files(src)
+        there = files(dst) if os.path.isdir(dst) else {}
+        seen = manifest.setdefault(cam, {})
+
+        # 1. stale: on the drive, gone from the Mac
+        stale = sorted(set(there) - set(here))
+        if stale:
+            print(f"  {len(stale)} file(s) on the drive no longer on the Mac:")
+            for r in stale:
+                print(f"    {r}")
+            if a.dry_run:
+                print("  (would remove)")
+            elif a.yes or confirm("  remove them from the drive?"):
+                for r in stale:
+                    os.remove(os.path.join(dst, r))
+                    seen.pop(r, None)
+                prune_dirs(dst, dst)
+                print(f"  removed {len(stale)}")
+            else:
+                print("  kept; the drive won't match until they're removed")
+                status = 1
+
+        # 2. copy new/changed; byte-check files never seen before
+        copy, check = [], []
+        for r, s in here.items():
+            d = there.get(r)
+            if d is None or d.st_size != s.st_size or int(d.st_mtime) != int(s.st_mtime):
+                copy.append(r)
+            elif a.full or r not in seen:
+                check.append(r)
+            elif seen[r] != s.st_ctime_ns:
+                copy.append(r)
+        if check and a.dry_run:
+            print(f"  would byte-compare {len(check)} file(s) with no backup record")
+            check = []
+        if check:
+            print(f"  byte-comparing {len(check)} file(s) with no backup record...")
+            same = [r for r in check if filecmp.cmp(os.path.join(src, r), os.path.join(dst, r), shallow=False)]
+            copy += [r for r in check if r not in same]
+            for r in same:
+                seen[r] = here[r].st_ctime_ns
+        size = sum(here[r].st_size for r in copy)
+        if a.dry_run:
+            print(f"  would copy {len(copy)} file(s), {human(size)}")
+            for r in sorted(copy)[:20]:
+                print(f"    {r}")
+            if len(copy) > 20:
+                print(f"    ... and {len(copy) - 20} more")
+            continue
+        bad = []
+        for i, r in enumerate(sorted(copy), 1):
+            s, d = os.path.join(src, r), os.path.join(dst, r)
+            if tty:
+                print(f"\r  copying {i}/{len(copy)}", end="", flush=True)
+            if subprocess.run(["ditto", s, d]).returncode or not filecmp.cmp(s, d, shallow=False):
+                bad.append(r)
+            else:
+                seen[r] = here[r].st_ctime_ns
+        if copy:
+            print(f"{chr(13) if tty else ''}  copied {len(copy) - len(bad)} file(s), {human(size)}, byte-checked")
+        for r in bad:
+            print(f"  FAILED: {r}", file=sys.stderr)
+            status = 1
+
+        # manifest only tracks what's on the Mac now
+        for r in list(seen):
+            if r not in here:
+                del seen[r]
+        after = files(dst)
+        ok = set(after) == set(here) and not bad
+        print(f"  {'in sync' if ok else 'NOT in sync'}: {len(here)} files on the Mac, {len(after)} on the drive")
+        status |= 0 if ok else 1
+
+    if not a.dry_run:
+        os.makedirs(os.path.dirname(a.manifest), exist_ok=True)
+        tmp = a.manifest + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(manifest, f)
+        os.replace(tmp, a.manifest)
+    return status
+
+
+if __name__ == "__main__":
+    sys.exit(main())
