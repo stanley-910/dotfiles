@@ -825,6 +825,25 @@
                         ]
                     },
                     {
+                        "description": "Opt+I -> F18 in Obsidian (Opt+I is the ^ dead key on the U.S. layout so Obsidian never sees it; bind F18 in Obsidian Hotkeys instead. Cmd+I untouched)",
+                        "manipulators": [
+                            {
+                                "conditions": [
+                                    {
+                                        "bundle_identifiers": ["^md.obsidian"],
+                                        "type": "frontmost_application_if"
+                                    }
+                                ],
+                                "from": {
+                                    "key_code": "i",
+                                    "modifiers": { "mandatory": ["option"] }
+                                },
+                                "to": [{ "key_code": "f18" }],
+                                "type": "basic"
+                            }
+                        ]
+                    },
+                    {
                         "description": "Double left_command to activate combo mode: left_cmd + left_opt + [next key]",
                         "enabled": false,
                         "manipulators": [
