@@ -12,10 +12,12 @@
     "cancel": "Bottle",
     "arm": "Morse"
   },
-  "modifiers": { "option": "send" },
+  "modifiers": {
+    "option": "send"
+  },
   "restoreClipboard": true,
   "restoreClipboardAfterSeconds": 1.5,
-  "casing": "lower",
+  "casing": "sentence",
   "muteSpeakersWhileRecording": false,
   "indicator": true,
   "indicatorPosition": "bottom-right",
@@ -54,6 +56,71 @@
     {
       "from": "at twin fantasy fan",
       "to": "@twinfantasyfan"
+    },
+    {
+      "regex": true,
+      "from": "\\bangry,? (?=(?:wink,? )?(?:smile|frown|tongue|lick|grin|oh|shock),? face\\b)",
+      "to": ">"
+    },
+    {
+      "regex": true,
+      "from": "\\bwink,? (?=(?:smile|frown|tongue|lick|grin|oh|shock),? face\\b)",
+      "to": ";"
+    },
+    {
+      "regex": true,
+      "from": "(?<!;)\\b(?=(?:smile|frown|tongue|lick|grin|oh|shock),? face\\b)",
+      "to": ":"
+    },
+    {
+      "regex": true,
+      "from": "\\blick,? face\\b",
+      "to": "p"
+    },
+    {
+      "regex": true,
+      "from": "\\bsmile,? face\\b",
+      "to": ")"
+    },
+    {
+      "regex": true,
+      "from": "\\bfrown,? face\\b",
+      "to": "("
+    },
+    {
+      "regex": true,
+      "from": "\\btongue,? face\\b",
+      "to": "P"
+    },
+    {
+      "regex": true,
+      "from": "\\bgrin,? face\\b",
+      "to": "D"
+    },
+    {
+      "regex": true,
+      "from": "\\boh,? face\\b",
+      "to": "o"
+    },
+    {
+      "regex": true,
+      "from": "\\bshock,? face\\b",
+      "to": "O"
     }
+  ],
+  "cheatSheet": [
+    "smile face",
+    "wink smile face",
+    "frown face",
+    "angry frown face",
+    "angry wink frown face",
+    "grin face",
+    "wink grin face",
+    "tongue face",
+    "wink tongue face",
+    "lick face",
+    "wink lick face",
+    "oh face",
+    "shock face"
   ]
 }
