@@ -59,68 +59,84 @@
     },
     {
       "regex": true,
-      "from": "\\bangry,? (?=(?:wink,? )?(?:smile|frown|tongue|lick|grin|oh|shock),? face\\b)",
+      "from": "\\b(?:(angry),? )?(?:(winky?|winkie),? )?(smiley?|frowny?|grin|tongue|lick|shock|little p|little o|dee|d|pee|p|oh|o),? face\\b",
+      "to": "⟨$1|$2|$3⟩"
+    },
+    {
+      "regex": true,
+      "from": "\\b(?:(angry),? )?(winky?|winkie),? face\\b",
+      "to": "⟨$1|$2|smile⟩"
+    },
+    {
+      "regex": true,
+      "from": "⟨angry\\|",
       "to": ">"
     },
     {
       "regex": true,
-      "from": "\\bwink,? (?=(?:smile|frown|tongue|lick|grin|oh|shock),? face\\b)",
+      "from": "⟨\\|",
+      "to": ""
+    },
+    {
+      "regex": true,
+      "from": "(?:winky?|winkie)\\|(?=[^⟩]*⟩)",
       "to": ";"
     },
     {
       "regex": true,
-      "from": "(?<!;)\\b(?=(?:smile|frown|tongue|lick|grin|oh|shock),? face\\b)",
+      "from": "\\|(?=[^⟩]*⟩)",
       "to": ":"
     },
     {
       "regex": true,
-      "from": "\\blick,? face\\b",
-      "to": "p"
-    },
-    {
-      "regex": true,
-      "from": "\\bsmile,? face\\b",
+      "from": "(?:smiley?)⟩",
       "to": ")"
     },
     {
       "regex": true,
-      "from": "\\bfrown,? face\\b",
+      "from": "(?:frowny?)⟩",
       "to": "("
     },
     {
       "regex": true,
-      "from": "\\btongue,? face\\b",
+      "from": "(?:little p|lick)⟩",
+      "to": "p"
+    },
+    {
+      "regex": true,
+      "from": "(?:pee|p|tongue)⟩",
       "to": "P"
     },
     {
       "regex": true,
-      "from": "\\bgrin,? face\\b",
+      "from": "(?:dee|d|grin)⟩",
       "to": "D"
     },
     {
       "regex": true,
-      "from": "\\boh,? face\\b",
+      "from": "little o⟩",
       "to": "o"
     },
     {
       "regex": true,
-      "from": "\\bshock,? face\\b",
+      "from": "(?:oh|o|shock)⟩",
       "to": "O"
     }
   ],
   "cheatSheet": [
-    "smile face",
-    "wink smile face",
-    "frown face",
+    "winky face",
+    "smiley face",
+    "frowny face",
+    "winky frown face",
     "angry frown face",
-    "angry wink frown face",
-    "grin face",
-    "wink grin face",
-    "tongue face",
-    "wink tongue face",
-    "lick face",
-    "wink lick face",
-    "oh face",
-    "shock face"
+    "angry winky frown face",
+    "D face",
+    "winky D face",
+    "P face",
+    "winky P face",
+    "little p face",
+    "winky little p face",
+    "O face",
+    "little o face"
   ]
 }
