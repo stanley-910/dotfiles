@@ -12,13 +12,11 @@
 # launchd rejects these plists when Stow installs them as symlinks. Keep the
 # versioned sources here, but deploy them as real files in ~/Library/LaunchAgents.
 ^/Library/LaunchAgents/com\.stanwang\.headroom-proxy\.plist$
-^/Library/LaunchAgents/com\.stanwang\.ipad-attach\.plist$
 
 # Repository-only documentation, prototypes, and retired scripts are not
 # home-directory targets.
 ^/HEADROOM_PI_COPILOT\.md$
 ^/prototypes$
-^/src$
 ^/archive$
 
 # stow defaults (kept):

@@ -21,5 +21,3 @@ index.txt
 !.crew/artifacts/.gitkeep
 !.crew/graphs/.gitkeep
 
-# Compiled launchd-event shim (source: scripts/src/consume-launch-event.c)
-scripts/bin/consume-launch-event
