@@ -30,7 +30,6 @@ import subprocess
 import sys
 import time
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo, available_timezones
 
 DEFAULT_TARGETS = ["HKD", "CAD", "USD"]
 ECB_URL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
@@ -86,16 +85,29 @@ CURRENCY_ALIASES = {
 }
 
 
-def zone_index():
-    index = {}
-    for name in available_timezones():
-        city = name.rsplit("/", 1)[-1].replace("_", " ").lower()
-        index.setdefault(city, name)
-    index.update(PLACE_ALIASES)
-    return index
+ZONE_REGIONS = ("America", "Europe", "Asia", "Africa", "Australia", "Pacific",
+                "Atlantic", "Indian", "America/Argentina", "America/Indiana")
+ZONEINFO = "/usr/share/zoneinfo"
 
 
-ZONES = zone_index()
+def ZoneInfo(name):
+    # Imported on first use: a math or currency answer never pays for it.
+    from zoneinfo import ZoneInfo as zone
+    return zone(name)
+
+
+def find_zone(key):
+    """The IANA zone for an alias or a city name; probing region folders on
+    disk is ~100x cheaper than indexing every zone on each run."""
+    if key in PLACE_ALIASES:
+        return PLACE_ALIASES[key]
+    if not re.fullmatch(r"[a-z][a-z .'-]*", key):
+        return None
+    city = "_".join(w.capitalize() for w in key.split())
+    for region in ZONE_REGIONS:
+        if os.path.isfile(os.path.join(ZONEINFO, region, city)):
+            return region + "/" + city
+    return None
 
 
 def place(text):
@@ -110,7 +122,7 @@ def place(text):
             zone = "Etc/GMT%+d" % (-sign * hours) if hours else "UTC"
             return ZoneInfo(zone), "UTC%s%d" % ("+" if sign > 0 else "−", hours)
         return None
-    zone = ZONES.get(key)
+    zone = find_zone(key)
     if not zone:
         return None
     if zone == "UTC":
@@ -612,7 +624,7 @@ def main():
     q = " ".join(sys.argv[1:]).strip()
     if not q:
         return
-    result = answer_currency(q) or answer_time(q) or answer_date(q) or answer_math(q)
+    result = answer_currency(q) or answer_date(q) or answer_math(q) or answer_time(q)
     if result:
         print(result)
 
