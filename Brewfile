@@ -83,9 +83,6 @@ brew "jq"
 # tree - Directory listing in tree format
 brew "tree"
 
-# libqalculate - qalc CLI; its exchange-rate cache feeds scripts/bin/quick-calc
-brew "libqalculate"
-
 # ============================================================================
 # Document Viewers
 # ============================================================================
