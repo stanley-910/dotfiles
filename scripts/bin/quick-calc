@@ -1,0 +1,294 @@
+#!/usr/bin/python3
+"""Free-form time zone and currency answers for a launcher's script hook.
+
+    quick-calc time in tokyo            8:47 PM Wed · Tokyo (UTC+9)
+    quick-calc 3pm london in nyc        11:00 AM Wed · New York (EDT, UTC−4)
+    quick-calc tokyo, sf, london        one answer per place, joined with " · "
+    quick-calc 100 usd to cad           140.23 CAD
+    quick-calc 50 € in $, hkd           55.75 USD · 435.12 HKD
+    quick-calc 1.5k hkd                 converts to DEFAULT_TARGETS
+
+Prints one line, or nothing when the input is neither, so the launcher shows
+no answer row. Built for Vorssaint's Command Bar script links (the query
+arrives as argv), but any shell can call it.
+
+Rates come from the caches libqalculate keeps (`brew install libqalculate`)
+in ~/.local/share/qalculate, layered like qalc does: rates.json (per 1 EUR,
+fiat and crypto) under the ECB's eurofxref-daily.xml under btc.json. When
+the cache is over a day old a detached `qalc -e` refreshes it for next time;
+the current answer uses what is on disk. Stdlib only, Python 3.9+.
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo, available_timezones
+
+DEFAULT_TARGETS = ["HKD", "CAD", "USD"]
+CACHE = os.path.expanduser("~/.local/share/qalculate")
+RATES = os.path.join(CACHE, "rates.json")
+QALC = "/opt/homebrew/bin/qalc"
+
+# Everyday names the IANA database spells differently or not at all. City
+# names that ARE in it ("tokyo", "sao paulo") resolve without an entry here.
+PLACE_ALIASES = {
+    "sf": "America/Los_Angeles", "san francisco": "America/Los_Angeles",
+    "la": "America/Los_Angeles", "seattle": "America/Los_Angeles",
+    "nyc": "America/New_York", "ny": "America/New_York",
+    "boston": "America/New_York", "dc": "America/New_York",
+    "washington": "America/New_York", "miami": "America/New_York",
+    "austin": "America/Chicago", "dallas": "America/Chicago",
+    "houston": "America/Chicago", "ottawa": "America/Toronto",
+    "quebec": "America/Toronto", "calgary": "America/Edmonton",
+    "beijing": "Asia/Shanghai", "shenzhen": "Asia/Shanghai",
+    "guangzhou": "Asia/Shanghai", "hk": "Asia/Hong_Kong",
+    "macau": "Asia/Macau", "taipei": "Asia/Taipei", "seoul": "Asia/Seoul",
+    "delhi": "Asia/Kolkata", "new delhi": "Asia/Kolkata",
+    "mumbai": "Asia/Kolkata", "bangalore": "Asia/Kolkata",
+    "sg": "Asia/Singapore", "osaka": "Asia/Tokyo", "kyoto": "Asia/Tokyo",
+    "munich": "Europe/Berlin", "frankfurt": "Europe/Berlin",
+    "barcelona": "Europe/Madrid", "milan": "Europe/Rome",
+    "geneva": "Europe/Zurich", "edinburgh": "Europe/London",
+    "melbourne": "Australia/Melbourne", "sydney": "Australia/Sydney",
+    # countries with one zone, or one everybody means
+    "japan": "Asia/Tokyo", "china": "Asia/Shanghai", "korea": "Asia/Seoul",
+    "taiwan": "Asia/Taipei", "india": "Asia/Kolkata", "uk": "Europe/London",
+    "england": "Europe/London", "france": "Europe/Paris",
+    "germany": "Europe/Berlin", "spain": "Europe/Madrid",
+    "italy": "Europe/Rome", "hong kong": "Asia/Hong_Kong",
+    # abbreviations, read as the place that observes them (DST-aware)
+    "pt": "America/Los_Angeles", "pst": "America/Los_Angeles",
+    "pdt": "America/Los_Angeles", "mt": "America/Denver",
+    "mst": "America/Denver", "mdt": "America/Denver",
+    "ct": "America/Chicago", "cst": "America/Chicago",
+    "cdt": "America/Chicago", "et": "America/New_York",
+    "est": "America/New_York", "edt": "America/New_York",
+    "bst": "Europe/London", "cet": "Europe/Paris", "cest": "Europe/Paris",
+    "jst": "Asia/Tokyo", "kst": "Asia/Seoul", "hkt": "Asia/Hong_Kong",
+    "sgt": "Asia/Singapore", "ist": "Asia/Kolkata",
+    "aest": "Australia/Sydney", "aedt": "Australia/Sydney",
+    "utc": "UTC", "gmt": "UTC", "z": "UTC",
+}
+
+CURRENCY_ALIASES = {
+    "$": "USD", "us$": "USD", "dollar": "USD", "dollars": "USD",
+    "bucks": "USD", "c$": "CAD", "ca$": "CAD", "hk$": "HKD", "a$": "AUD",
+    "€": "EUR", "euro": "EUR", "euros": "EUR", "£": "GBP", "quid": "GBP",
+    "¥": "JPY", "yen": "JPY", "rmb": "CNY", "yuan": "CNY", "kuai": "CNY",
+    "won": "KRW", "₩": "KRW", "₹": "INR", "rupees": "INR", "bitcoin": "BTC",
+}
+
+
+def zone_index():
+    index = {}
+    for name in available_timezones():
+        city = name.rsplit("/", 1)[-1].replace("_", " ").lower()
+        index.setdefault(city, name)
+    index.update(PLACE_ALIASES)
+    return index
+
+
+ZONES = zone_index()
+
+
+def place(text):
+    """(ZoneInfo, label) for a place name, abbreviation or UTC±N; or None."""
+    key = re.sub(r"\s+", " ", text.strip().lower().rstrip("?."))
+    m = re.fullmatch(r"(?:utc|gmt)\s*([+-−])\s*(\d{1,2})(?::?(\d{2}))?", key)
+    if m:
+        sign = -1 if m.group(1) in "-−" else 1
+        hours, minutes = int(m.group(2)), int(m.group(3) or 0)
+        # Etc/GMT names invert the sign; only whole hours exist there.
+        if minutes == 0 and hours <= 14:
+            zone = "Etc/GMT%+d" % (-sign * hours) if hours else "UTC"
+            return ZoneInfo(zone), "UTC%s%d" % ("+" if sign > 0 else "−", hours)
+        return None
+    zone = ZONES.get(key)
+    if not zone:
+        return None
+    if zone == "UTC":
+        label = "UTC"
+    elif key in PLACE_ALIASES and len(key) > 4:
+        label = key.title()  # "san francisco", not the zone's "Los Angeles"
+    elif key in PLACE_ALIASES and key in ("sf", "la", "nyc", "ny", "dc", "hk", "sg", "uk"):
+        label = key.upper()
+    else:
+        label = zone.rsplit("/", 1)[-1].replace("_", " ")
+    return ZoneInfo(zone), label
+
+
+def offset_text(dt):
+    total = int(dt.utcoffset().total_seconds() // 60)
+    sign = "+" if total >= 0 else "−"
+    h, m = divmod(abs(total), 60)
+    utc = "UTC%s%d%s" % (sign, h, ":%02d" % m if m else "")
+    abbr = dt.tzname() or ""
+    return utc if not abbr or abbr[0] in "+-" or abbr == "UTC" else "%s, %s" % (abbr, utc)
+
+
+def describe(dt, reference, label):
+    zone = "" if label.startswith("UTC") else " (%s)" % offset_text(dt)
+    return "%s · %s%s" % (clock(dt, reference), label, zone)
+
+
+def clock(dt, reference):
+    text = dt.strftime("%-I:%M %p %a")
+    days = (dt.date() - reference.date()).days
+    return text + (" (%+d day)" % days if days else "")
+
+
+def parse_clock(text):
+    """A wall-clock time like 3pm, 15:00, 9:30am, noon; as (hour, minute)."""
+    t = text.strip().lower()
+    if t in ("noon", "midday"):
+        return 12, 0
+    if t == "midnight":
+        return 0, 0
+    m = re.fullmatch(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm|a|p)?", t)
+    if not m or (m.group(2) is None and m.group(3) is None):
+        return None
+    hour, minute, meridiem = int(m.group(1)), int(m.group(2) or 0), m.group(3)
+    if meridiem:
+        if not 1 <= hour <= 12:
+            return None
+        hour = hour % 12 + (12 if meridiem.startswith("p") else 0)
+    if hour > 23 or minute > 59:
+        return None
+    return hour, minute
+
+
+def places(text):
+    found = [place(p) for p in re.split(r"\s*(?:,|\band\b|&)\s*", text) if p]
+    return found if found and all(found) else None
+
+
+def answer_time(q):
+    local = datetime.now().astimezone()
+    lowered = q.lower().strip().rstrip("?")
+    # "time in tokyo", "what time is it in sf", "tokyo time", "tokyo, london"
+    m = re.fullmatch(r"(?:(?:what\s+)?time(?:\s+is\s+it)?|now|current\s+time)\s+(?:in|at)\s+(.+)", lowered) \
+        or re.fullmatch(r"(.+?)\s+time", lowered)
+    targets = places(m.group(1)) if m else places(lowered)
+    if targets:
+        return " · ".join(describe(local.astimezone(z), local, label)
+                          for z, label in targets)
+    # "3pm london in new york", "15:00 in tokyo", "now in utc", "9am pst to hk"
+    m = re.fullmatch(r"(.+?)\s+(?:in|to|->|→)\s+(.+)", lowered)
+    if not m:
+        return None
+    left, dests = m.group(1), places(m.group(2))
+    if not dests:
+        return None
+    words = left.split()
+    source, when = None, None
+    for split in range(len(words), 0, -1):
+        moment = " ".join(words[:split])
+        rest = " ".join(words[split:])
+        hm = (local.hour, local.minute) if moment == "now" else parse_clock(moment)
+        if hm and (not rest or place(rest)):
+            zone = place(rest)[0] if rest else local.tzinfo
+            base = datetime.now(zone) if moment == "now" else None
+            if base is None:
+                today = datetime.now(zone)
+                base = today.replace(hour=hm[0], minute=hm[1], second=0, microsecond=0)
+            source, when = zone, base
+            break
+    if when is None:
+        return None
+    return " · ".join(describe(when.astimezone(z), when, label)
+                      for z, label in dests)
+
+
+def load_rates():
+    try:
+        with open(RATES) as f:
+            data = json.load(f)
+        if time.time() - os.path.getmtime(RATES) > 86400:
+            refresh()
+        rates = {k.upper(): v for k, v in data["eur"].items()}
+    except (OSError, ValueError, KeyError):
+        refresh()
+        return None
+    try:  # ECB reference rates, the source qalc prefers for fiat
+        with open(os.path.join(CACHE, "eurofxref-daily.xml")) as f:
+            for code, rate in re.findall(r"currency='([A-Z]{3})' rate='([\d.]+)'", f.read()):
+                rates[code] = float(rate)
+    except OSError:
+        pass
+    try:  # fresher bitcoin price, quoted in USD
+        with open(os.path.join(CACHE, "btc.json")) as f:
+            usd_per_btc = float(json.load(f)["data"]["amount"])
+        rates["BTC"] = rates["USD"] / usd_per_btc
+    except (OSError, ValueError, KeyError):
+        pass
+    return rates
+
+
+def refresh():
+    if os.path.exists(QALC):
+        subprocess.Popen([QALC, "-e", "1"], stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+
+
+def currency(token, rates):
+    t = token.strip().lower()
+    code = CURRENCY_ALIASES.get(t, t.upper())
+    return code if code in rates else None
+
+
+def amount(text):
+    m = re.fullmatch(r"([\d.,]+)\s*([km])?", text.strip().lower())
+    if not m:
+        return None
+    try:
+        value = float(m.group(1).replace(",", ""))
+    except ValueError:
+        return None
+    return value * {"k": 1e3, "m": 1e6}.get(m.group(2), 1)
+
+
+def money(value, code):
+    if abs(value) >= 1 or value == 0:
+        return "{:,.2f} {}".format(value, code)
+    return "{:.6g} {}".format(value, code)
+
+
+def answer_currency(q):
+    s = q.strip().lower()
+    # Separate symbols glued to numbers: "$100", "100€", "hk$50".
+    s = re.sub(r"((?:us|c|ca|hk|a)?\$|€|£|¥|₩|₹)", r" \1 ", s)
+    m = re.fullmatch(r"\s*(?:(\S+)\s+)?([\d.,]+\s*[km]?)\s*(\S+)?\s*(?:(?:to|in|->|→|=)\s+(.+?))?\s*", s)
+    if not m:
+        return None
+    pre, num, post, dest = m.groups()
+    value = amount(num)
+    if value is None or (pre is None) == (post is None):
+        return None
+    rates = load_rates()
+    if not rates:
+        return None
+    src = currency(pre or post, rates)
+    if not src:
+        return None
+    targets = [currency(t, rates) for t in re.split(r"\s*(?:,|\band\b|&|\s)\s*", dest) if t] \
+        if dest else [c for c in DEFAULT_TARGETS if c != src]
+    if not targets or not all(targets):
+        return None
+    return " · ".join(money(value / rates[src] * rates[t], t) for t in targets)
+
+
+def main():
+    q = " ".join(sys.argv[1:]).strip()
+    if not q:
+        return
+    result = answer_currency(q) or answer_time(q)
+    if result:
+        print(result)
+
+
+if __name__ == "__main__":
+    main()
