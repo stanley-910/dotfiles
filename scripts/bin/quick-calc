@@ -1,14 +1,17 @@
 #!/usr/bin/python3
-"""Free-form time zone and currency answers for a launcher's script hook.
+"""Free-form currency, world clock and date answers for a launcher's script hook.
 
-    quick-calc time in tokyo            8:47 PM Wed · Tokyo (UTC+9)
-    quick-calc 3pm london in nyc        11:00 AM Wed · New York (EDT, UTC−4)
-    quick-calc tokyo, sf, london        one answer per place, joined with " · "
     quick-calc 100 usd to cad           140.23 CAD
-    quick-calc 50 € in $, hkd           55.75 USD · 435.12 HKD
+    quick-calc 50 € in $, hkd           55.75 USD · 437.33 HKD
     quick-calc 1.5k hkd                 converts to DEFAULT_TARGETS
+    quick-calc time in tokyo            8:47 PM Wed · Tokyo (JST, UTC+9)
+    quick-calc tokyo, sf, london        one answer per place, joined with " · "
+    quick-calc 3pm london in nyc        11:00 AM Wed · NYC (EDT, UTC−4)
+    quick-calc two weeks from thursday  Thursday, November 12, 2026 · in 15 days
+    quick-calc days until christmas     58 days (8 weeks 2 days) · Friday, ...
+    quick-calc last tuesday             Tuesday, October 27, 2026 · yesterday
 
-Prints one line, or nothing when the input is neither, so the launcher shows
+Prints one line, or nothing when the input is none of these, so the launcher shows
 no answer row. Built for Vorssaint's Command Bar script links (the query
 arrives as argv), but any shell can call it.
 
@@ -24,7 +27,7 @@ import re
 import subprocess
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo, available_timezones
 
 DEFAULT_TARGETS = ["HKD", "CAD", "USD"]
@@ -280,11 +283,219 @@ def answer_currency(q):
     return " · ".join(money(value / rates[src] * rates[t], t) for t in targets)
 
 
+WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday",
+            "saturday", "sunday"]
+MONTHS = ["january", "february", "march", "april", "may", "june", "july",
+          "august", "september", "october", "november", "december"]
+NUMBER_WORDS = {w: i for i, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve "
+    "thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty".split())}
+NUMBER_WORDS.update({"a": 1, "an": 1, "a couple": 2, "couple": 2, "a few": 3})
+DATE_UNITS = {"day": "days", "week": "weeks", "fortnight": "fortnights",
+              "month": "months", "year": "years"}
+
+
+def weekday_index(word):
+    word = word.rstrip("s") if word.endswith("days") else word
+    for i, name in enumerate(WEEKDAYS):
+        if word in (name, name[:3], name[:4]):
+            return i
+    return None
+
+
+def month_index(word):
+    for i, name in enumerate(MONTHS):
+        if word == name or (len(word) >= 3 and name.startswith(word)):
+            return i + 1
+    return None
+
+
+def add_months(day, months):
+    total = day.month - 1 + months
+    year, month = day.year + total // 12, total % 12 + 1
+    for d in (day.day, 30, 29, 28):  # Jan 31 + 1 month lands on Feb 28/29
+        try:
+            return day.replace(year=year, month=month, day=d)
+        except ValueError:
+            continue
+
+
+def calendar_date(text, today, future):
+    """'dec 25', '25 december', '12/25', '2026-12-25', 'christmas'. A date
+    without a year that has already passed means next year when `future`."""
+    t = text.replace(",", " ").replace("'s", "").split()
+    t = " ".join(t)
+    named = {"christmas": (12, 25), "xmas": (12, 25), "new year": (1, 1),
+             "new years": (1, 1), "new years day": (1, 1),
+             "halloween": (10, 31), "valentines": (2, 14), "valentines day": (2, 14)}
+    month = day = year = None
+    m = re.fullmatch(r"(\d{4})-(\d{1,2})-(\d{1,2})", t)
+    if m:
+        year, month, day = map(int, m.groups())
+    elif t in named:
+        month, day = named[t]
+    else:
+        m = re.fullmatch(r"(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?", t)
+        if m:
+            month, day = int(m.group(1)), int(m.group(2))
+            year = m.group(3) and int(m.group(3)) % 100 + 2000
+        else:
+            m = re.fullmatch(r"([a-z]+)\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?", t) \
+                or re.fullmatch(r"(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)\.?(?:\s+(\d{4}))?", t)
+            if not m:
+                return None
+            a, b, y = m.groups()
+            month, day = (month_index(a), int(b)) if a.isalpha() else (month_index(b), int(a))
+            year = y and int(y)
+            if not month:
+                return None
+    try:
+        result = today.replace(year=year or today.year, month=month, day=day)
+    except ValueError:
+        return None
+    if year is None and future and result < today:
+        result = result.replace(year=result.year + 1)
+    return result
+
+
+def anchor(text, today):
+    """A day named relative to today, or None."""
+    t = re.sub(r"^(?:the\s+)?", "", text.strip())
+    if t in ("today", "now", "tonight"):
+        return today
+    if t == "tomorrow":
+        return today + timedelta(days=1)
+    if t == "yesterday":
+        return today - timedelta(days=1)
+    m = re.fullmatch(r"(?:(this|next|last|coming|past)\s+)?([a-z]+)", t)
+    if m and weekday_index(m.group(2)) is not None:
+        target, which = weekday_index(m.group(2)), m.group(1)
+        ahead = (target - today.weekday()) % 7
+        if which in ("last", "past"):
+            return today - timedelta(days=(today.weekday() - target) % 7 or 7)
+        if which == "this":
+            return today + timedelta(days=ahead)
+        return today + timedelta(days=ahead or 7)
+    m = re.fullmatch(r"(next|last)\s+(week|month|year)", t)
+    if m:
+        step = 1 if m.group(1) == "next" else -1
+        return shift(today, step, m.group(2) + "s")
+    return calendar_date(t, today, future=True)
+
+
+def count(text):
+    text = text.strip()
+    if text in NUMBER_WORDS:
+        return NUMBER_WORDS[text]
+    try:
+        return float(text) if "." in text else int(text)
+    except ValueError:
+        return None
+
+
+def shift(day, n, unit):
+    if unit == "days":
+        return day + timedelta(days=n)
+    if unit in ("weeks", "fortnights"):
+        return day + timedelta(weeks=n * (2 if unit == "fortnights" else 1))
+    if unit == "months":
+        return add_months(day, int(n))
+    return add_months(day, int(n) * 12)
+
+
+def offsets(text):
+    """'2 weeks', 'two weeks and 3 days', 'a month' as [(n, unit)], or None."""
+    parts = re.split(r"\s*(?:,|\band\b|\+)\s*", text.strip())
+    found = []
+    for part in parts:
+        m = re.fullmatch(r"(.+?)\s*(day|week|fortnight|month|year)s?", part.strip())
+        n = m and count(m.group(1))
+        if n is None or not m:
+            return None
+        found.append((n, DATE_UNITS[m.group(2)]))
+    return found or None
+
+
+def date_line(day, today):
+    gap = (day - today).days
+    when = {0: "today", 1: "tomorrow", -1: "yesterday"}.get(gap) or (
+        "in %d days" % gap if gap > 0 else "%d days ago" % -gap)
+    return "%s · %s" % (day.strftime("%A, %B %-d, %Y"), when)
+
+
+def span(days):
+    weeks, rest = divmod(abs(days), 7)
+    detail = "%d weeks %d days" % (weeks, rest) if weeks and rest else (
+        "%d weeks" % weeks if weeks else "")
+    return "%d days%s" % (days, " (%s)" % detail if detail else "")
+
+
+def answer_date(q):
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    t = re.sub(r"\s+", " ", q.lower().strip().rstrip("?"))
+    t = re.sub(r"^(?:what(?:'s| is)?\s+(?:the\s+)?(?:day|date)\s+(?:is|was|will be|of)?\s*"
+               r"|when is\s+|what day is\s+)", "", t).strip()
+
+    # days until christmas / how long until friday / until dec 25
+    m = re.fullmatch(r"(?:(?:how many\s+)?days|how long)?\s*(?:until|till|to|before)\s+(.+)", t)
+    if m and (t.startswith(("days", "how", "until", "till"))):
+        day = anchor(m.group(1), today)
+        if day:
+            return "%s · %s" % (span((day - today).days), day.strftime("%A, %B %-d, %Y"))
+    # days between jan 1 and mar 15 / days from monday to friday
+    m = re.fullmatch(r"(?:days|time)\s+(?:between|from)\s+(.+?)\s+(?:and|to|until)\s+(.+)", t)
+    if m:
+        a, b = anchor(m.group(1), today), anchor(m.group(2), today)
+        if a and b:
+            # "monday to friday" means the friday after that monday
+            if b < a and weekday_index(m.group(2).split()[-1]) is not None:
+                b += timedelta(days=7 * -(-(a - b).days // 7))
+            return span((b - a).days)
+    # 3 days ago / in two weeks
+    m = re.fullmatch(r"(.+?)\s+ago", t)
+    if m and offsets(m.group(1)):
+        day = today
+        for n, unit in offsets(m.group(1)):
+            day = shift(day, -n, unit)
+        return date_line(day, today)
+    m = re.fullmatch(r"in\s+(.+)", t)
+    if m and offsets(m.group(1)):
+        day = today
+        for n, unit in offsets(m.group(1)):
+            day = shift(day, n, unit)
+        return date_line(day, today)
+    # two weeks from thursday / 10 days after dec 25 / a month before christmas
+    m = re.fullmatch(r"(.+?)\s+(from|after|before)\s+(.+)", t)
+    if m and offsets(m.group(1)):
+        day = anchor(m.group(3), today)
+        if day:
+            sign = -1 if m.group(2) == "before" else 1
+            for n, unit in offsets(m.group(1)):
+                day = shift(day, sign * n, unit)
+            return date_line(day, today)
+    # thursday + 2 weeks / christmas - 10 days
+    m = re.fullmatch(r"(.+?)\s*(\+|-|plus|minus)\s*(.+)", t)
+    if m and offsets(m.group(3)):
+        day = anchor(m.group(1), today)
+        if day:
+            sign = -1 if m.group(2) in ("-", "minus") else 1
+            for n, unit in offsets(m.group(3)):
+                day = shift(day, sign * n, unit)
+            return date_line(day, today)
+    # next friday / last tuesday / dec 25 / christmas
+    day = anchor(t, today)
+    if day and t not in ("today", "now", "tonight"):
+        return date_line(day, today)
+    if t in ("today", "date", "the date"):
+        return date_line(today, today)
+    return None
+
+
 def main():
     q = " ".join(sys.argv[1:]).strip()
     if not q:
         return
-    result = answer_currency(q) or answer_time(q)
+    result = answer_currency(q) or answer_time(q) or answer_date(q)
     if result:
         print(result)
 
