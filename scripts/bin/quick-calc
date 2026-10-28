@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Free-form currency, world clock and date answers for a launcher's script hook.
+"""Free-form currency, world clock, date and math answers for a launcher's script hook.
 
     quick-calc 100 usd to cad           140.23 CAD
     quick-calc 50 € in $, hkd           55.75 USD · 437.33 HKD
@@ -10,6 +10,7 @@
     quick-calc two weeks from thursday  Thursday, November 12, 2026 · in 15 days
     quick-calc days until christmas     58 days (8 weeks 2 days) · Friday, ...
     quick-calc last tuesday             Tuesday, October 27, 2026 · yesterday
+    quick-calc 15% off 80               68  (also 5!, 17 mod 5, sin(90°), 255 in hex)
 
 Prints one line, or nothing when the input is none of these, so the launcher shows
 no answer row. Built for Vorssaint's Command Bar script links (the query
@@ -22,6 +23,7 @@ curl for next time, and the current answer uses what is on disk. Stdlib and
 /usr/bin/curl only, Python 3.9+.
 """
 
+import math
 import os
 import re
 import subprocess
@@ -482,7 +484,10 @@ def answer_date(q):
             for n, unit in offsets(m.group(3)):
                 day = shift(day, sign * n, unit)
             return date_line(day, today)
-    # next friday / last tuesday / dec 25 / christmas
+    # next friday / last tuesday / dec 25 / christmas. A bare "1/3" is a
+    # division, not January 3rd; slash dates still work after "until" etc.
+    if re.fullmatch(r"\d+/\d+", t):
+        return None
     day = anchor(t, today)
     if day and t not in ("today", "now", "tonight"):
         return date_line(day, today)
@@ -491,11 +496,123 @@ def answer_date(q):
     return None
 
 
+MATH_FUNCS = {
+    "sqrt": math.sqrt, "cbrt": lambda x: math.copysign(abs(x) ** (1 / 3), x),
+    "sin": math.sin, "cos": math.cos, "tan": math.tan,
+    "asin": math.asin, "acos": math.acos, "atan": math.atan,
+    "log": math.log10, "ln": math.log, "log2": math.log2, "exp": math.exp,
+    "abs": abs, "round": round, "floor": math.floor, "ceil": math.ceil,
+    "fact": lambda n: math.factorial(int(n)) if n == int(n) and 0 <= n <= 170 else None,
+}
+MATH_CONSTS = {"pi": math.pi, "π": math.pi, "e": math.e, "tau": math.tau}
+FRACTION_WORDS = {"half": 0.5, "a half": 0.5, "a third": 1 / 3, "third": 1 / 3,
+                  "a quarter": 0.25, "quarter": 0.25, "twice": 2, "double": 2,
+                  "triple": 3}
+BASES = {"hex": (16, "0x"), "hexadecimal": (16, "0x"), "binary": (2, "0b"),
+         "bin": (2, "0b"), "octal": (8, "0o"), "oct": (8, "0o"),
+         "decimal": (10, ""), "dec": (10, "")}
+
+
+def evaluate(expr):
+    """Evaluate arithmetic safely: numbers, + - * / ^ %, whitelisted calls."""
+    import ast
+    expr = expr.strip()
+    expr = re.sub(r"(?<=\d),(?=\d{3}\b)", "", expr)          # 1,000 -> 1000
+    expr = expr.replace("×", "*").replace("÷", "/").replace("−", "-")
+    expr = re.sub(r"(?<=[\d)])\s*x\s*(?=[\d(])", "*", expr)  # 3 x 4
+    expr = re.sub(r"\bmod\b", "%", expr)
+    expr = re.sub(r"(\d+(?:\.\d+)?|\))\s*°", r"\1*pi/180", expr)
+    expr = re.sub(r"(\d+(?:\.\d+)?)\s*!", r"fact(\1)", expr)
+    expr = re.sub(r"(\d+(?:\.\d+)?)\s*%(?!\s*[\d(a-z])", r"(\1/100)", expr)
+    expr = expr.replace("^", "**")
+    try:
+        tree = ast.parse(expr, mode="eval")
+    except SyntaxError:
+        return None
+    ops = {ast.Add: lambda a, b: a + b, ast.Sub: lambda a, b: a - b,
+           ast.Mult: lambda a, b: a * b, ast.Div: lambda a, b: a / b,
+           ast.Mod: lambda a, b: a % b, ast.FloorDiv: lambda a, b: a // b,
+           ast.Pow: lambda a, b: a ** b if abs(b) <= 1000 else None}
+
+    def walk(node):
+        if isinstance(node, ast.Expression):
+            return walk(node.body)
+        if isinstance(node, ast.Constant) and type(node.value) in (int, float):
+            return node.value
+        if isinstance(node, ast.Name) and node.id in MATH_CONSTS:
+            return MATH_CONSTS[node.id]
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
+            v = walk(node.operand)
+            return None if v is None else (-v if isinstance(node.op, ast.USub) else v)
+        if isinstance(node, ast.BinOp) and type(node.op) in ops:
+            a, b = walk(node.left), walk(node.right)
+            return None if a is None or b is None else ops[type(node.op)](a, b)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) \
+                and node.func.id in MATH_FUNCS and len(node.args) == 1 and not node.keywords:
+            v = walk(node.args[0])
+            return None if v is None else MATH_FUNCS[node.func.id](v)
+        raise ValueError
+    try:
+        value = walk(tree)
+    except (ValueError, ArithmeticError, OverflowError, TypeError):
+        return None
+    if isinstance(value, complex) or value is None:
+        return None
+    return value
+
+
+def number(value):
+    if isinstance(value, int) or (isinstance(value, float) and value.is_integer()
+                                  and abs(value) < 1e15):
+        return "{:,}".format(int(value))
+    if abs(value) >= 1e15 or abs(value) < 1e-6:
+        return "{:.10g}".format(value)
+    return "{:,.10f}".format(value).rstrip("0").rstrip(".")
+
+
+def answer_math(q):
+    t = re.sub(r"\s+", " ", q.lower().strip().rstrip("?=").strip())
+    t = re.sub(r"^(?:what(?:'s| is)\s+|calc(?:ulate)?\s+)", "", t)
+    # 255 in hex / 0xff in decimal / 0b1010 to dec
+    m = re.fullmatch(r"(.+?)\s+(?:in|to|as)\s+(" + "|".join(BASES) + r")", t)
+    if m:
+        value = evaluate(m.group(1))
+        if value is None or value != int(value):
+            return None
+        base, prefix = BASES[m.group(2)]
+        n = int(value)
+        digits = {16: "%x", 8: "%o", 10: "%d"}.get(base, "")
+        text = format(abs(n), "b") if base == 2 else (digits % abs(n))
+        return ("-" if n < 0 else "") + prefix + text.upper().replace("0X", "0x")
+    # 20% of 50 / 15% off 80 / 50 + 20% / half of 80
+    m = re.fullmatch(r"(.+?)\s*%\s*(of|off)\s+(.+)", t)
+    if m:
+        p, base = evaluate(m.group(1)), evaluate(m.group(3))
+        if p is None or base is None:
+            return None
+        return number(base * p / 100 if m.group(2) == "of" else base * (1 - p / 100))
+    m = re.fullmatch(r"(.+?)\s*([+-])\s*(\d+(?:\.\d+)?)\s*%", t)
+    if m:
+        base, p = evaluate(m.group(1)), float(m.group(3))
+        if base is None:
+            return None
+        return number(base * (1 + p / 100 if m.group(2) == "+" else 1 - p / 100))
+    m = re.fullmatch(r"(" + "|".join(FRACTION_WORDS) + r")\s+(?:of\s+)?(.+)", t)
+    if m:
+        value = evaluate(m.group(2))
+        return None if value is None else number(FRACTION_WORDS[m.group(1)] * value)
+    # Plain expressions; a lone number is not a question (hex/binary aside).
+    if not re.search(r"[-+*/^%!×÷°()]|\bmod\b|\d\s*x\s*\d|[a-z]{2,}\(|0[xbo][0-9a-f]", t):
+        return None
+    value = evaluate(t)
+    return None if value is None else number(value)
+
+
 def main():
     q = " ".join(sys.argv[1:]).strip()
     if not q:
         return
-    result = answer_currency(q) or answer_time(q) or answer_date(q)
+    result = answer_currency(q) or answer_time(q) or answer_date(q) or answer_math(q)
     if result:
         print(result)
 
