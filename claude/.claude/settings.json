@@ -1,6 +1,5 @@
 {
   "env": {
-    "ANTHROPIC_BASE_URL": "http://127.0.0.1:8787",
     "PATH": "/Users/stanley/dotfiles/scripts/bin:/Users/stanley/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Applications/Obsidian.app/Contents/MacOS:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
   },
   "includeCoAuthoredBy": false,
