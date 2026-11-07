@@ -1,129 +1,7 @@
 {
-  "hotkey": "control+space",
-  "mode": "toggle",
-  "holdHotkey": null,
-  "model": "~/.local/share/dictate/models/cohere-transcribe-03-2026-Q8_0.gguf",
-  "language": "en",
-  "unloadAfterSeconds": 300,
-  "sounds": true,
-  "soundPack": {
-    "start": "Tink",
-    "stop": "Pop",
-    "cancel": "Bottle",
-    "arm": "Morse"
-  },
-  "modifiers": {
-    "option": "send"
-  },
-  "restoreClipboard": true,
-  "restoreClipboardAfterSeconds": 1.5,
-  "casing": "sentence",
-  "muteSpeakersWhileRecording": false,
-  "indicator": true,
-  "indicatorPosition": "bottom-right",
-  "indicatorMargin": 14,
-  "trailingSpace": false,
-  "minimumSeconds": 0.3,
-  "maximumSeconds": 300,
-  "cancelConfirmAfterSeconds": 10,
-  "dictionary": [
-    "Neovim",
-    "Superwhisper",
-    "Karabiner",
-    "Ghostty",
-    "tmux",
-    "lazygit",
-    "Tailscale",
-    "Claude Code",
-    "GGUF",
-    "Stanley Wang",
-    "Obsidian",
-    "Zed",
-    "Homebrew",
-    "pi-talk",
-    "Stow"
-  ],
-  "dictionaryThreshold": 0.8,
-  "replacements": [
-    {
-      "from": "pie",
-      "to": "Pi"
-    },
-    {
-      "from": "twin fantasy fan",
-      "to": "twinfantasyfan"
-    },
-    {
-      "from": "at twin fantasy fan",
-      "to": "@twinfantasyfan"
-    },
-    {
-      "regex": true,
-      "from": "\\b(?:(angry),? )?(?:(winky?|winkie),? )?(smiley?|frowny?|grin|tongue|lick|shock|little p|little o|dee|d|pee|p|oh|o),? face\\b",
-      "to": "⟨$1|$2|$3⟩"
-    },
-    {
-      "regex": true,
-      "from": "\\b(?:(angry),? )?(winky?|winkie),? face\\b",
-      "to": "⟨$1|$2|smile⟩"
-    },
-    {
-      "regex": true,
-      "from": "⟨angry\\|",
-      "to": ">"
-    },
-    {
-      "regex": true,
-      "from": "⟨\\|",
-      "to": ""
-    },
-    {
-      "regex": true,
-      "from": "(?:winky?|winkie)\\|(?=[^⟩]*⟩)",
-      "to": ";"
-    },
-    {
-      "regex": true,
-      "from": "\\|(?=[^⟩]*⟩)",
-      "to": ":"
-    },
-    {
-      "regex": true,
-      "from": "(?:smiley?)⟩",
-      "to": ")"
-    },
-    {
-      "regex": true,
-      "from": "(?:frowny?)⟩",
-      "to": "("
-    },
-    {
-      "regex": true,
-      "from": "(?:little p|lick)⟩",
-      "to": "p"
-    },
-    {
-      "regex": true,
-      "from": "(?:pee|p|tongue)⟩",
-      "to": "P"
-    },
-    {
-      "regex": true,
-      "from": "(?:dee|d|grin)⟩",
-      "to": "D"
-    },
-    {
-      "regex": true,
-      "from": "little o⟩",
-      "to": "o"
-    },
-    {
-      "regex": true,
-      "from": "(?:oh|o|shock)⟩",
-      "to": "O"
-    }
-  ],
-  "cheatSheet": [
+  "cancelConfirmAfterSeconds" : 10,
+  "casing" : "sentence",
+  "cheatSheet" : [
     "winky face",
     "smiley face",
     "frowny face",
@@ -138,5 +16,129 @@
     "winky little p face",
     "O face",
     "little o face"
-  ]
+  ],
+  "dictionary" : [
+    "Neovim",
+    "Superwhisper",
+    "Karabiner",
+    "Ghostty",
+    "tmux",
+    "lazygit",
+    "Tailscale",
+    "Claude Code",
+    "GGUF",
+    "Stanley Wang",
+    "Obsidian",
+    "Zed",
+    "Homebrew",
+    "pi-talk",
+    "Stow",
+    "idempotency"
+  ],
+  "dictionaryThreshold" : 0.8,
+  "holdHotkey" : null,
+  "hotkey" : "control+space",
+  "indicator" : true,
+  "indicatorMargin" : 14,
+  "indicatorPosition" : "bottom-right",
+  "language" : "en",
+  "maximumSeconds" : 600,
+  "maxPauseSeconds" : 0.3,
+  "minimumSeconds" : 0.3,
+  "mode" : "toggle",
+  "model" : "~/.local/share/dictate/models/cohere-transcribe-03-2026-Q8_0.gguf",
+  "modifiers" : {
+    "option" : "send"
+  },
+  "muteSpeakersWhileRecording" : false,
+  "replacements" : [
+    {
+      "from" : "pie",
+      "to" : "Pi"
+    },
+    {
+      "from" : "twin fantasy fan",
+      "to" : "twinfantasyfan"
+    },
+    {
+      "from" : "at twin fantasy fan",
+      "to" : "@twinfantasyfan"
+    },
+    {
+      "from" : "\\b(?:(angry),? )?(?:(winky?|winkie),? )?(smiley?|frowny?|grin|tongue|lick|shock|little p|little o|dee|d|pee|p|oh|o),? face\\b",
+      "regex" : true,
+      "to" : "⟨$1|$2|$3⟩"
+    },
+    {
+      "from" : "\\b(?:(angry),? )?(winky?|winkie),? face\\b",
+      "regex" : true,
+      "to" : "⟨$1|$2|smile⟩"
+    },
+    {
+      "from" : "⟨angry\\|",
+      "regex" : true,
+      "to" : ">"
+    },
+    {
+      "from" : "⟨\\|",
+      "regex" : true,
+      "to" : ""
+    },
+    {
+      "from" : "(?:winky?|winkie)\\|(?=[^⟩]*⟩)",
+      "regex" : true,
+      "to" : ";"
+    },
+    {
+      "from" : "\\|(?=[^⟩]*⟩)",
+      "regex" : true,
+      "to" : ":"
+    },
+    {
+      "from" : "(?:smiley?)⟩",
+      "regex" : true,
+      "to" : ")"
+    },
+    {
+      "from" : "(?:frowny?)⟩",
+      "regex" : true,
+      "to" : "("
+    },
+    {
+      "from" : "(?:little p|lick)⟩",
+      "regex" : true,
+      "to" : "p"
+    },
+    {
+      "from" : "(?:pee|p|tongue)⟩",
+      "regex" : true,
+      "to" : "P"
+    },
+    {
+      "from" : "(?:dee|d|grin)⟩",
+      "regex" : true,
+      "to" : "D"
+    },
+    {
+      "from" : "little o⟩",
+      "regex" : true,
+      "to" : "o"
+    },
+    {
+      "from" : "(?:oh|o|shock)⟩",
+      "regex" : true,
+      "to" : "O"
+    }
+  ],
+  "restoreClipboard" : true,
+  "restoreClipboardAfterSeconds" : 1.5,
+  "soundPack" : {
+    "arm" : "Morse",
+    "cancel" : "Bottle",
+    "start" : "Tink",
+    "stop" : "Pop"
+  },
+  "sounds" : true,
+  "trailingSpace" : false,
+  "unloadAfterSeconds" : 300
 }
