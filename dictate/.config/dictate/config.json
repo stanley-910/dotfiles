@@ -33,7 +33,8 @@
     "Homebrew",
     "pi-talk",
     "Stow",
-    "idempotency"
+    "idempotency",
+    "Excalidraw"
   ],
   "dictionaryThreshold" : 0.8,
   "holdHotkey" : null,
@@ -43,7 +44,7 @@
   "indicatorPosition" : "bottom-right",
   "language" : "en",
   "maximumSeconds" : 600,
-  "maxPauseSeconds" : 0.3,
+  "maxPauseSeconds" : 0.6,
   "minimumSeconds" : 0.3,
   "mode" : "toggle",
   "model" : "~/.local/share/dictate/models/cohere-transcribe-03-2026-Q8_0.gguf",
@@ -52,6 +53,10 @@
   },
   "muteSpeakersWhileRecording" : false,
   "replacements" : [
+    {
+      "from" : "Excalibur",
+      "to" : "Excalidraw"
+    },
     {
       "from" : "pie",
       "to" : "Pi"
